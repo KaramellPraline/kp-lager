@@ -20,5 +20,7 @@ uv run --group cad python cad/norb_bins.py --standard         # 12 Standard-Eins
 ```
 - Ausgabe `out/bins/*.step` + `*.stl` (gitignored), ~0,5 s pro Bin.
 - Etikettenablage 40×12 mm (Mulde 40,6×12,6×0,6) an der Rückwand (+Y), 45°-Stütze → ohne Support druckbar.
+- Innen: Ecken R5, Boden-Wand-Übergang R2,5, vorn Greifmulde R15 (jede Fachreihe; `scoop=0` = aus).
+- Rille mit 45°-Spitzbogen-Decke statt flacher Brücke (support-frei).
 - Alle Maße sind Felder von `BinSpec` (Raster, Wand, Rille, Ablage …); Höhe fest `HEIGHT = 45.5`.
 - Tests: `uv run --group cad pytest tests/test_cad.py` (ohne `cad`-Gruppe übersprungen).

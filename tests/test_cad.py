@@ -28,7 +28,8 @@ def test_depth_two_has_groove_width_two_not() -> None:
     deep = nb.build(nb.BinSpec(1, 2, label=False))
     wide = nb.build(nb.BinSpec(2, 1, label=False))
     assert not deep.is_inside(Vector(0, 0, 1.0))  # Rille an der Rastergrenze
-    assert deep.is_inside(Vector(0, 0, 5.4))  # Rillendecke
+    assert not deep.is_inside(Vector(0, 0, 6.5))  # Spitzbogen-Decke (kein flacher Steg)
+    assert deep.is_inside(Vector(0, 0, 8.0))  # Gehäuse über der Spitze
     assert wide.is_inside(Vector(0, 0, 0.6))  # Breite allein: keine Rille
 
 
@@ -48,3 +49,15 @@ def test_dividers_and_names(tmp_path: Path) -> None:
 def test_too_small_for_label_rejected() -> None:
     with pytest.raises(ValueError):
         nb.build(nb.BinSpec(1, 1, pitch=40))
+
+
+def test_scoop_and_rounded_floor() -> None:
+    spec = nb.BinSpec(1, 1, label=False)
+    part = nb.build(spec)
+    front = -spec.size_y / 2 + nb._draft_inset(spec, spec.floor + spec.scoop) + spec.wall
+    assert part.is_inside(Vector(0, front + 2, spec.floor + 5))  # Mulde füllt die Ecke
+    assert not part.is_inside(
+        Vector(0, front + spec.scoop, spec.floor + spec.scoop)
+    )  # Kreismitte frei
+    no_scoop = nb.build(nb.BinSpec(1, 1, label=False, scoop=0, floor_fillet=0))
+    assert not no_scoop.is_inside(Vector(0, front + 2, spec.floor + 5))

@@ -16,7 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from build123d import (
+    Axis,
     Box,
+    Cylinder,
     Part,
     Plane,
     Polygon,
@@ -25,6 +27,7 @@ from build123d import (
     export_step,
     export_stl,
     extrude,
+    fillet,
     loft,
 )
 
@@ -55,6 +58,9 @@ class BinSpec:
     label_depth: float = 0.6  # Tiefe der Etikettenmulde
     shelf_depth: float = 15.0  # Tiefe der Ablage (Y)
     shelf_thickness: float = 2.0
+    inner_radius: float = 5.0  # senkrechte Innenecken
+    floor_fillet: float = 2.5  # Übergang Boden/Wand innen
+    scoop: float = 15.0  # Greifmulde vorn (Radius), 0 = aus
 
     @property
     def size_x(self) -> float:
@@ -74,8 +80,10 @@ class BinSpec:
         return "_".join(parts)
 
 
-def _section(spec: BinSpec, z: float, inset: float) -> RectangleRounded:
-    r = max(0.5, spec.corner - inset if inset > spec.corner else spec.corner)
+def _section(
+    spec: BinSpec, z: float, inset: float, radius: float | None = None
+) -> RectangleRounded:
+    r = radius if radius is not None else spec.corner
     sk = RectangleRounded(spec.size_x - 2 * inset, spec.size_y - 2 * inset, r)
     return Plane.XY.offset(z) * sk
 
@@ -97,16 +105,20 @@ def _outer(spec: BinSpec) -> Part:
 
 
 def _cavity(spec: BinSpec) -> Part:
-    c, t = spec.chamfer, spec.wall
+    c, t, ri = spec.chamfer, spec.wall, spec.inner_radius
     z0 = spec.floor
-    return loft(
+    cavity = loft(
         [
-            _section(spec, z0, _draft_inset(spec, 0) + c + t),
-            _section(spec, c + t, _draft_inset(spec, c + t) + t),
-            _section(spec, HEIGHT + 1, _draft_inset(spec, HEIGHT + 1) + t),
+            _section(spec, z0, _draft_inset(spec, 0) + c + t, ri),
+            _section(spec, c + t, _draft_inset(spec, c + t) + t, ri),
+            _section(spec, HEIGHT + 1, _draft_inset(spec, HEIGHT + 1) + t, ri),
         ],
         ruled=True,
     )
+    if spec.floor_fillet > 0:  # gerundeter Boden – Kleinteile sammeln sich nicht in Kanten
+        bottom = cavity.edges().group_by(Axis.Z)[0]
+        cavity = fillet(bottom, radius=spec.floor_fillet)
+    return cavity
 
 
 def _groove_prism(spec: BinSpec, y: float, grow: float, extra_h: float) -> Part:
@@ -114,7 +126,8 @@ def _groove_prism(spec: BinSpec, y: float, grow: float, extra_h: float) -> Part:
     hb = spec.groove_bottom / 2 + grow
     ht = spec.groove_top / 2 + grow
     h = spec.groove_height + extra_h
-    profile = Polygon((-hb, -0.01), (hb, -0.01), (ht, h), (-ht, h), align=None)
+    # Spitzbogen-Decke (45°) statt flacher Brücke -> ohne Support druckbar
+    profile = Polygon((-hb, -0.01), (hb, -0.01), (ht, h), (0, h + ht), (-ht, h), align=None)
     prism = extrude(Plane.YZ * profile, amount=spec.size_x, both=True)
     return Pos(0, y, 0) * prism
 
@@ -154,16 +167,39 @@ def _label_shelf(spec: BinSpec) -> tuple[Part, Part]:
     return shelf, pocket
 
 
+def _scoops(spec: BinSpec) -> Part | None:
+    """Greifmulden: Viertelkreis-Rundung zwischen Boden und Vorderwand jeder Fachreihe."""
+    if spec.scoop <= 0:
+        return None
+    row_depth = spec.size_y / spec.div_y
+    r = min(spec.scoop, row_depth * 0.5)
+    z0 = spec.floor
+    fronts = [-spec.size_y / 2 + _draft_inset(spec, z0 + r) + spec.wall]
+    fronts += [-spec.size_y / 2 + j * row_depth + spec.divider / 2 for j in range(1, spec.div_y)]
+    parts = []
+    for y in fronts:
+        block = Pos(0, y + r / 2 - 2.5, z0 + r / 2) * Box(spec.size_x, r + 5, r)
+        cyl = Pos(0, y + r, z0 + r) * (Plane.YZ * Cylinder(r, spec.size_x + 2))
+        parts.append(block - cyl)
+    result = parts[0]
+    for p in parts[1:]:
+        result = result + p
+    return result
+
+
 def build(spec: BinSpec) -> Part:
     if spec.w < 1 or spec.d < 1:
         raise ValueError("Mindestens 1x1")
     if spec.label and spec.size_x - 2 * (spec.wall + spec.draft) < spec.label_w + 2:
         raise ValueError("Bin zu schmal für das Etikett")
     outer = _outer(spec)
-    body = outer - _cavity(spec)
-    inner_volume = outer - (outer - _cavity(spec))  # Hohlraum innerhalb der Außenhülle
+    cavity = _cavity(spec)
+    body = outer - cavity
+    inner_volume = outer & cavity  # Hohlraum innerhalb der Außenhülle
     if (div := _dividers(spec)) is not None:
         body = body + (div & inner_volume)
+    if (scoop := _scoops(spec)) is not None:
+        body = body + (scoop & inner_volume)
     if spec.label:
         shelf, pocket = _label_shelf(spec)
         body = body + (shelf & outer)
