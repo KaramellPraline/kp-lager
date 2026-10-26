@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A8-Etiketten {{ rows[0].code }}–{{ rows[-1].code }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* A4 quer, 4×4 A8 quer (74,25×52,5 mm), dünne Schnittlinien */
+    @page { size: A4 landscape; margin: 0; }
+    .sheet { width: 297mm; height: 210mm; display: grid; background: #fff; color: #000;
+      grid-template-columns: repeat(4, 74.25mm); grid-template-rows: repeat(4, 52.5mm);
+      break-after: page; margin: 0 auto 16px; box-shadow: 0 0 4px #0004; }
+    .a8 { border: 0.1mm solid #999; display: flex; align-items: center; gap: 3mm; padding: 4mm;
+      overflow: hidden; }
+    .a8 svg { width: 40mm; height: 40mm; flex: none; }
+    .a8 .txt { display: flex; flex-direction: column; justify-content: space-between; height: 40mm;
+      min-width: 0; }
+    .a8 .name { font: 700 4.6mm/1.15 system-ui, sans-serif; overflow-wrap: anywhere;
+      display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+    .a8 .extra { font: 3mm/1.2 system-ui, sans-serif; color: #444; }
+    .a8 .code { font: 700 4.2mm/1 ui-monospace, monospace; letter-spacing: .2mm; }
+    @media print { .no-print { display: none; } body { background: #fff; }
+      .sheet { box-shadow: none; margin: 0; } }
+  </style>
+</head>
+<body>
+  <main class="no-print">
+    <a href="/labels">← Etiketten</a>
+    <h1>A8-Bogen ({{ rows|length }} Etiketten)</h1>
+    <p>A4 <b>quer</b>, Skalierung 100 %, Ränder „keine“. Entlang der dünnen Linien schneiden.</p>
+    <button class="primary" onclick="window.print()">Drucken</button>
+  </main>
+  {% for page in pages %}
+  <div class="sheet">
+    {% for r, svg in page %}
+    <div class="a8">{{ svg|safe }}<div class="txt">
+      <div><div class="name">{{ r.text }}</div>{% if r.extra %}<div class="extra">{{ r.extra }}</div>{% endif %}</div>
+      <div class="code">{{ r.code }}</div>
+    </div></div>
+    {% endfor %}
+    {% for _ in range(16 - page|length) %}<div class="a8"></div>{% endfor %}
+  </div>
+  {% endfor %}
+</body>
+</html>

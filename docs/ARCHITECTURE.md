@@ -35,7 +35,7 @@ Keller (raum)
 - `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster, Löschen), Items (Bestand), Protokoll, Suche
 - `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus
 - `app/codes.py`: Code-Schema PRÄFIX-NNN, Normalisieren, Zähler je Präfix, Einstellungen (`meta`)
-- `app/labels.py`: QR-Inhalt (Großbuchstaben), XLSX für D30 (40×12), Etikettenlisten, A4-Bogen
+- `app/labels.py`: QR-Inhalt (Großbuchstaben), XLSX für D30 (40×12), Etikettenlisten, `finalize()` (Export: Namen speichern, gedruckt markieren, Codes reservieren)
 - `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
 - `app/photos.py`: Foto speichern (EXIF-Drehung, 1600 px + Thumbnail), löschen
 - `app/templates/`: `node.html` (Behälter), `item.html`, `search.html`, `import.html`, `labels.html` (Druck), Partials `_*.html`
@@ -44,7 +44,7 @@ Keller (raum)
 
 ## Wichtige Routen
 - `/c/{code}` bzw. `/C/{code}` QR-Einstieg (Behälter oder Teil) · `/n/{id}` Behälter · `/items/{id}` Teil · `/suche?q=` · `/labels` · `/settings` · `/import` · `/export.json`
-- Etiketten: `POST /labels/blank.xlsx`, `POST /labels/pending.xlsx`, `POST /n/{id}/labels.xlsx`, `GET /items/{id}/label.xlsx`, `GET /labels/sheet`
+- Etiketten: `POST /labels/preview` (source=blank|pending|container|item → editierbare Tabelle), `POST /labels/export` (fmt=xlsx|a8)
 - Umlagern: `POST /carry/{item|node}/{id}` setzt Cookie, `POST /drop/{id}` legt ab.
 
 ## Schnittstellen

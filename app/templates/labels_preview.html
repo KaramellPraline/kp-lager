@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Druckvorschau · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/labels">Etiketten</a> › Vorschau</nav>
+<h1>Druckvorschau ({{ rows|length }})</h1>
+<p class="meta">Text bearbeiten, dann exportieren. Auf dem D30 (40×12) passen ca. {{ text_max }} Zeichen – längere werden gekürzt.</p>
+
+<form method="post" action="/labels/export" class="stack" id="export">
+  <div class="table-wrap">
+    <table class="labels">
+      <thead><tr><th>Code</th><th>Text / Name</th><th>Zusatz</th></tr></thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td><input type="hidden" name="code" value="{{ r.code }}"><b>{{ r.code }}</b></td>
+          <td><input name="text" value="{{ r.text }}" data-max="{{ text_max }}" aria-label="Text für {{ r.code }}"></td>
+          <td><input name="extra" value="{{ r.extra }}" class="short" aria-label="Zusatz für {{ r.code }}"></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if source != 'blank' %}
+  <label class="check"><input type="checkbox" name="save_names" value="1"> Geänderte Texte auch als Namen im Lager speichern</label>
+  {% endif %}
+  <div class="row">
+    <button name="fmt" value="xlsx" class="primary">XLSX für D30 (40×12)</button>
+    <button name="fmt" value="a8">A8-Bogen drucken (16 pro A4 quer)</button>
+  </div>
+  <p class="meta">Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
+</form>
+<script>
+  // Hinweis, wenn Text auf dem D30 gekürzt würde
+  document.querySelectorAll('input[data-max]').forEach(function (el) {
+    var check = function () { el.classList.toggle('too-long', el.value.length > +el.dataset.max); };
+    el.addEventListener('input', check); check();
+  });
+</script>
+{% endblock %}

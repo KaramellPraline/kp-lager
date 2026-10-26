@@ -21,6 +21,7 @@ Stand: 2026-10-26
 - [x] **M5 Import/Export**: `/import` mit Vorschau (läuft auf DB-Kopie), Idempotenz, `slot` → Fach; `/export.json` voller Dump.
 - [x] **M6 Deployment-Dateien**: `deploy/` (install.sh, systemd, Caddy `tls internal` + `/ca.crt`, Backup-Timer). **Auf echtem Server noch nicht getestet.**
 - [x] **M7b Code-Schema & D30**: PRÄFIX-NNN, ART-Codes für Teile, XLSX-Export 40×12, Einstellungen.
+- [x] **M7c Druckvorschau & A8**: editierbare Tabelle vor Export, A8-Bogen (A4 quer, 16 Stück).
 - [x] **M7 Fotos**: Upload per Handykamera, EXIF-Drehung, 1600 px + Thumbnail, Löschen räumt Dateien auf.
 - [ ] **M8 Sprache (niedrige Prio)**: separater Dienst faster-whisper (`small`, int8, CPU), Aufnahme per MediaRecorder → Transkript ins Eingabefeld. Abschaltbar per Config. Erst sinnvoll, wenn HTTPS im LAN läuft (Mikrofon).
 - [ ] **M9 Optional**: semantische Suche (lokale Embeddings), Claude-API- oder Ollama-Extraktion aus Foto+Transkript, Status „ausgeliehen“ für Werkzeug.

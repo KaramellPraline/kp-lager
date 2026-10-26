@@ -217,14 +217,7 @@ def create_app(settings: Settings) -> FastAPI:
             headers={"Content-Disposition": 'attachment; filename="lager-export.json"'},
         )
 
-    # --- Etiketten (D30-XLSX, A4) ---------------------------------------------
-
-    def xlsx_response(rows: list[labels.Label], name: str) -> Response:
-        return Response(
-            labels.to_xlsx(rows),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'},
-        )
+    # --- Etiketten: Vorschau (Namen bearbeiten) → XLSX für D30 oder A8-Bogen -------
 
     @app.get("/labels", response_class=HTMLResponse)
     def labels_page(request: Request, conn: Conn) -> HTMLResponse:
@@ -239,83 +232,74 @@ def create_app(settings: Settings) -> FastAPI:
             pending=labels.pending(conn, settings.base_url),
         )
 
-    @app.post("/labels/blank.xlsx")
-    def labels_blank(
-        conn: Conn, prefix: Annotated[str, Form()], count: Annotated[int, Form()]
-    ) -> Response:
-        if prefix not in codes.PREFIX_KIND:
-            raise LagerError(f"Unbekanntes Präfix {prefix}")
-        rows = labels.blank(conn, settings.base_url, prefix, max(1, min(count, 500)))
-        return xlsx_response(rows, f"{rows[0].code}_bis_{rows[-1].code}")
-
-    @app.post("/labels/pending.xlsx")
-    def labels_pending(conn: Conn) -> Response:
-        rows = labels.pending(conn, settings.base_url)
-        if not rows:
-            raise LagerError("Keine ungedruckten Etiketten")
-        labels.mark_printed(conn, rows)
-        return xlsx_response(rows, "etiketten_neu")
-
-    @app.post("/n/{node_id}/labels.xlsx")
-    def labels_container(node_id: int, conn: Conn) -> Response:
-        node = need_node(conn, node_id)
-        rows = labels.for_container(conn, settings.base_url, node_id)
-        if not rows:
-            raise LagerError("Keine Gegenstände in diesem Behälter")
-        labels.mark_printed(conn, rows)
-        return xlsx_response(rows, f"etiketten_{node['code'] or node_id}")
-
-    @app.get("/items/{item_id}/label.xlsx")
-    def label_item(item_id: int, conn: Conn) -> Response:
-        item = repo.get_item(conn, item_id)
-        if not item["code"]:
-            raise LagerError("Teil hat noch keinen Code")
-        rows = [labels.item_label(conn, settings.base_url, item)]
-        labels.mark_printed(conn, rows)
-        return xlsx_response(rows, item["code"])
-
-    @app.get("/labels/sheet", response_class=HTMLResponse)
-    def label_sheet(
+    @app.post("/labels/preview", response_class=HTMLResponse)
+    def labels_preview(
         request: Request,
         conn: Conn,
-        prefix: str = "EUR",
-        count: int = 40,
-        cols: int = labels.Sheet.cols,
-        rows: int = labels.Sheet.rows,
-        width: float = labels.Sheet.width,
-        height: float = labels.Sheet.height,
-        top: float = labels.Sheet.top,
-        left: float = labels.Sheet.left,
+        source: Annotated[str, Form()],
+        prefix: Annotated[str, Form()] = "",
+        count: Annotated[int, Form()] = 0,
+        node_id: Annotated[int, Form()] = 0,
+        item_id: Annotated[int, Form()] = 0,
     ) -> HTMLResponse:
-        if prefix not in codes.PREFIX_KIND:
-            raise HTTPException(404, "Unbekanntes Präfix")
-        sheet = labels.Sheet(cols, rows, width, height, top, left)
-        start = codes.next_number(conn, prefix)
-        count = max(1, min(count, 400))
-        cells = [
-            (code, labels.qr_svg(labels.qr_content(settings.base_url, code)))
-            for code in (codes.format_code(prefix, n) for n in range(start, start + count))
-        ]
-        pages = [cells[i : i + sheet.per_page] for i in range(0, len(cells), sheet.per_page)]
-        return templates.TemplateResponse(
+        if source == "blank":
+            if prefix not in codes.PREFIX_KIND:
+                raise LagerError(f"Unbekanntes Präfix {prefix}")
+            rows = labels.blank(conn, settings.base_url, prefix, max(1, min(count, 500)))
+        elif source == "pending":
+            rows = labels.pending(conn, settings.base_url)
+        elif source == "container":
+            need_node(conn, node_id)
+            rows = labels.for_container(conn, settings.base_url, node_id)
+        elif source == "item":
+            item = repo.get_item(conn, item_id)
+            if not item["code"]:
+                raise LagerError("Teil hat noch keinen Code")
+            rows = [labels.item_label(conn, settings.base_url, item)]
+        else:
+            raise HTTPException(400, "Unbekannte Quelle")
+        if not rows:
+            raise LagerError("Keine Etiketten zum Drucken")
+        return render(
             request,
-            "labels_sheet.html",
-            {
-                "s": sheet,
-                "prefix": prefix,
-                "count": count,
-                "last": start + count - 1,
-                "codes": [c for c, _ in cells],
-                "pages": pages,
-            },
+            conn,
+            "labels_preview.html",
+            rows=rows,
+            source=source,
+            text_max=labels.TEXT_MAX,
         )
 
-    @app.post("/labels/sheet/printed")
-    def sheet_printed(
-        conn: Conn, prefix: Annotated[str, Form()], last: Annotated[int, Form()]
-    ) -> RedirectResponse:
-        codes.mark_used_until(conn, prefix, last)
-        return redirect("/labels", f"Gemerkt – nächster Code {codes.format_code(prefix, last + 1)}")
+    @app.post("/labels/export", response_model=None)
+    def labels_export(
+        request: Request,
+        conn: Conn,
+        fmt: Annotated[str, Form()],
+        code: Annotated[list[str], Form()],
+        text: Annotated[list[str], Form()],
+        extra: Annotated[list[str], Form()],
+        save_names: Annotated[str, Form()] = "",
+    ) -> Response:
+        if not (len(code) == len(text) == len(extra)):
+            raise HTTPException(400, "Tabelle unvollständig")
+        rows = labels.finalize(
+            conn, settings.base_url, list(zip(code, text, extra, strict=True)), bool(save_names)
+        )
+        if not rows:
+            raise LagerError("Keine gültigen Codes")
+        if fmt == "a8":
+            cells = [(r, labels.qr_svg(r.qr)) for r in rows]
+            pages = [
+                cells[i : i + labels.A8_PER_PAGE] for i in range(0, len(cells), labels.A8_PER_PAGE)
+            ]
+            return templates.TemplateResponse(
+                request, "labels_a8.html", {"pages": pages, "rows": rows}
+            )
+        name = rows[0].code if len(rows) == 1 else f"{rows[0].code}_bis_{rows[-1].code}"
+        return Response(
+            labels.to_xlsx(rows),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'},
+        )
 
     # --- Einstellungen ----------------------------------------------------------
 

@@ -10,7 +10,10 @@
 <div class="row codes">
   {% if item.code %}
   <span class="meta">Code <b>{{ item.code }}</b>{% if not item.label_printed %} · Etikett offen{% endif %}</span>
-  <a href="/items/{{ item.id }}/label.xlsx">Etikett (XLSX)</a>
+  <form method="post" action="/labels/preview">
+    <input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}">
+    <button>Etikett drucken</button>
+  </form>
   {% else %}
   <form method="post" action="/items/{{ item.id }}/code"><button>Etikett vergeben</button></form>
   {% endif %}

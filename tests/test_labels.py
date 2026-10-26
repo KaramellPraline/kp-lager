@@ -1,9 +1,11 @@
+import html
 import io
 import re
 
 import pytest
 import segno
 from fastapi.testclient import TestClient
+from httpx import Response
 from openpyxl import load_workbook
 
 from app import codes, labels
@@ -15,8 +17,23 @@ def xlsx_rows(content: bytes) -> list[tuple[object, ...]]:
     return list(ws.iter_rows(values_only=True))
 
 
-def node_of(r: object) -> str:
-    return str(r.url.path).rsplit("/", 1)[1]  # type: ignore[attr-defined]
+def node_of(r: Response) -> str:
+    return str(r.url.path).rsplit("/", 1)[1]
+
+
+def preview(client: TestClient, **form: str) -> dict[str, list[str]]:
+    """Vorschau öffnen und die Tabellenfelder auslesen."""
+    page = client.post("/labels/preview", data=form).text
+    fields: dict[str, list[str]] = {"code": [], "text": [], "extra": []}
+    for name, value in re.findall(r'name="(code|text|extra)" value="([^"]*)"', page):
+        fields[name].append(html.unescape(value))
+    return fields
+
+
+def export(
+    client: TestClient, fields: dict[str, list[str]], fmt: str = "xlsx", **extra: str
+) -> Response:
+    return client.post("/labels/export", data={**fields, "fmt": fmt, **extra})
 
 
 def test_qr_uppercase_is_alphanumeric_and_small() -> None:
@@ -34,15 +51,55 @@ def test_uppercase_qr_url_resolves(client: TestClient) -> None:
     assert node_of(client.get("/c/eur001")) == node_of(r)
 
 
-def test_blank_xlsx_reserves_codes(client: TestClient) -> None:
-    r = client.post("/labels/blank.xlsx", data={"prefix": "EUR", "count": "3"})
-    rows = xlsx_rows(r.content)
+def test_blank_preview_reserves_only_on_export(client: TestClient) -> None:
+    fields = preview(client, source="blank", prefix="EUR", count="3")
+    assert fields["code"] == ["EUR-001", "EUR-002", "EUR-003"]
+    assert preview(client, source="blank", prefix="EUR", count="1")["code"] == ["EUR-001"]
+    fields["text"][0] = "Elektronik"
+    rows = xlsx_rows(export(client, fields).content)
     assert rows[0] == ("Code", "QR", "Text", "Zusatz")
-    assert [row[0] for row in rows[1:]] == ["EUR-001", "EUR-002", "EUR-003"]
-    assert rows[1][1] == "HTTPS://LAGER.TEST/C/EUR-001"
-    r = client.post("/labels/blank.xlsx", data={"prefix": "EUR", "count": "1"})
-    assert xlsx_rows(r.content)[1][0] == "EUR-004"  # nie doppelt
-    assert "EUR-005" in client.get("/labels").text
+    assert rows[1] == ("EUR-001", "HTTPS://LAGER.TEST/C/EUR-001", "Elektronik", None)
+    assert preview(client, source="blank", prefix="EUR", count="1")["code"] == ["EUR-004"]
+
+
+def test_edit_names_and_optionally_save(client: TestClient) -> None:
+    box = node_of(client.post("/containers", data={"name": "Box", "kind": "kiste"}))
+    client.post(f"/n/{box}/items", data={"name": "Akkuschrauber Makita DDF485 18V"})
+    fields = preview(client, source="pending")
+    assert fields["code"] == ["ART-0001"] and fields["extra"] == ["Box"]
+    fields["text"] = ["Akkuschrauber kurz"]
+    rows = xlsx_rows(export(client, fields).content)
+    assert rows[1][2] == "Akkuschrauber kurz"
+    assert "Akkuschrauber Makita DDF485 18V" in client.get(f"/n/{box}").text  # nicht gespeichert
+    assert "Alles gedruckt" in client.get("/labels").text
+    export(client, fields, save_names="1")
+    assert "Akkuschrauber kurz" in client.get(f"/n/{box}").text
+
+
+def test_long_text_cut_in_xlsx_only(client: TestClient) -> None:
+    fields = {
+        "code": ["ART-0005"],
+        "text": ["Ein wirklich sehr langer Gegenstandsname"],
+        "extra": [""],
+    }
+    assert xlsx_rows(export(client, fields).content)[1][2] == "Ein wirklich sehr lange…"
+    a8 = export(client, fields, fmt="a8").text
+    assert "Ein wirklich sehr langer Gegenstandsname" in a8
+
+
+def test_a8_sheet_layout(client: TestClient) -> None:
+    fields = preview(client, source="blank", prefix="KIS", count="17")
+    r = export(client, fields, fmt="a8")
+    assert "size: A4 landscape" in r.text
+    assert r.text.count('class="sheet"') == 2
+    assert r.text.count('<div class="a8">') == 32  # 17 Etiketten + 15 leere Felder
+    first = r.text.index('<div class="a8">')
+    assert (
+        r.text.index("<svg", first)
+        < r.text.index('class="name"', first)
+        < r.text.index("KIS-001", first)
+    )
+    assert "KIS-018" in preview(client, source="blank", prefix="KIS", count="1")["code"]
 
 
 def test_scan_reserved_code_preselects_kind(client: TestClient) -> None:
@@ -60,25 +117,15 @@ def test_create_item_from_scanned_code(client: TestClient) -> None:
     r = client.post(f"/n/{box}/items", data={"name": "Zange"})
     zange = re.findall(r'id="item-(\d+)"', r.text)[-1]
     assert "Code <b>ART-0008</b>" in client.get(f"/items/{zange}").text  # Zähler läuft weiter
-
-
-def test_item_code_flow_and_pending(client: TestClient) -> None:
-    box = node_of(client.post("/containers", data={"name": "Box", "kind": "kiste"}))
-    r = client.post(f"/n/{box}/items", data={"name": "Akkuschrauber Makita DDF485", "qty": "1"})
-    item = re.search(r'id="item-(\d+)"', r.text).group(1)  # type: ignore[union-attr]
-    assert "Code <b>ART-0001</b>" in client.get(f"/items/{item}").text  # automatisch (Standard an)
-    assert "ART-0001 · Akkuschrauber" in client.get("/labels").text
-    rows = xlsx_rows(client.post("/labels/pending.xlsx").content)
-    assert rows[1][0] == "ART-0001" and rows[1][2] == "Akkuschrauber Makita DD…"
-    assert rows[1][3] == "Box"
-    assert "Alles gedruckt" in client.get("/labels").text
+    fields = preview(client, source="item", item_id=zange)
+    assert fields["code"] == ["ART-0008"]
 
 
 def test_auto_code_toggle_and_button(client: TestClient) -> None:
     client.post("/settings", data={})
     box = node_of(client.post("/containers", data={"name": "Box", "kind": "kiste"}))
     r = client.post(f"/n/{box}/items", data={"name": "Kabel"})
-    item = re.search(r'id="item-(\d+)"', r.text).group(1)  # type: ignore[union-attr]
+    item = re.findall(r'id="item-(\d+)"', r.text)[0]
     page = client.get(f"/items/{item}").text
     assert "Etikett vergeben" in page and "ART-" not in page
     assert "Code ART-0001 vergeben" in client.post(f"/items/{item}/code").text
@@ -88,7 +135,7 @@ def test_auto_code_toggle_and_button(client: TestClient) -> None:
 
 
 def test_sortierkasten_labels_one_per_item(client: TestClient) -> None:
-    client.post("/settings", data={})  # auto aus: Export vergibt fehlende Codes selbst
+    client.post("/settings", data={})  # auto aus: Vorschau vergibt fehlende Codes selbst
     r = client.post(
         "/containers", data={"name": "Schrauben", "kind": "sortierkasten", "grid": "2x2"}
     )
@@ -96,11 +143,12 @@ def test_sortierkasten_labels_one_per_item(client: TestClient) -> None:
     faecher = re.findall(r'href="/n/(\d+)" class="cell', client.get(f"/n/{kasten}").text)
     client.post(f"/n/{faecher[2]}/items", data={"name": "Holzschrauben 4x40"})
     client.post(f"/n/{faecher[0]}/items", data={"name": "Dübel 6mm"})
-    rows = xlsx_rows(client.post(f"/n/{kasten}/labels.xlsx").content)
-    assert [(r[0], r[2], r[3]) for r in rows[1:]] == [
+    fields = preview(client, source="container", node_id=kasten)
+    assert list(zip(fields["code"], fields["text"], fields["extra"], strict=True)) == [
         ("ART-0001", "Dübel 6mm", "A1"),
         ("ART-0002", "Holzschrauben 4x40", "B1"),
     ]
+    export(client, fields)
     assert "Alles gedruckt" in client.get("/labels").text
 
 
@@ -114,14 +162,6 @@ def test_next_code_button_and_invalid_codes(client: TestClient) -> None:
             headers={"referer": "/"},
         )
         assert msg in r.text
-
-
-def test_a4_sheet_and_printed_marker(client: TestClient) -> None:
-    r = client.get("/labels/sheet", params={"prefix": "KIS", "count": 45})
-    assert r.text.count('class="sheet"') == 2 and "<b>KIS-045</b>" in r.text
-    client.post("/labels/sheet/printed", data={"prefix": "KIS", "last": 45})
-    r = client.get("/labels/sheet", params={"prefix": "KIS", "count": 1})
-    assert "<b>KIS-046</b>" in r.text
 
 
 @pytest.mark.parametrize(

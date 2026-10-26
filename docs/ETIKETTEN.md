@@ -32,9 +32,17 @@
 4. Vorlage speichern; danach nur noch neue XLSX importieren und drucken.
 
 ## Abläufe
-- **Neue Boxen:** `Etiketten › Neue Codes auf Vorrat` (z. B. 20× EUR) → XLSX → drucken → aufkleben → beim ersten Scan anlegen.
-- **Sortierkasten komplett:** Kastenseite › „Etiketten aller Teile (XLSX)“ → ein Etikett pro Teil, fehlende ART-Codes werden vergeben.
-- **Alles Neue seit dem letzten Druck:** `Etiketten › Noch nicht gedruckt` → XLSX.
-- **Einzelnes Teil:** Teileseite › „Etikett (XLSX)“ (bzw. „Etikett vergeben“).
-- Herunterladen zählt als gedruckt. Erneut drucken: Teil- oder Kastenexport nochmal laden.
-- Alternative ohne D30: A4-Bogen (`/labels/sheet?prefix=EUR`).
+Jede Auswahl öffnet zuerst die **Vorschau-Tabelle** (Code | Text | Zusatz). Texte lassen sich dort ändern
+(rot = zu lang für 40×12, wird im XLSX gekürzt). Optional „Geänderte Texte auch als Namen im Lager speichern“.
+Dann **XLSX für D30** oder **A8-Bogen**.
+
+- **Neue Boxen:** `Etiketten › Neue Codes auf Vorrat` (z. B. 20× EUR) → Vorschau (Text z. B. „Elektronik“) → Export → aufkleben → beim ersten Scan anlegen. Codes werden erst beim Export reserviert.
+- **Sortierkasten komplett:** Kastenseite › „Etiketten aller Teile drucken“ → ein Etikett pro Teil, fehlende ART-Codes werden vergeben.
+- **Alles Neue seit dem letzten Druck:** `Etiketten › Noch nicht gedruckt`.
+- **Einzelnes Teil:** Teileseite › „Etikett drucken“ (bzw. „Etikett vergeben“).
+- Export zählt als gedruckt. Erneut drucken: Teil- oder Kasten-Etiketten nochmal öffnen.
+
+## A8-Etiketten (Normaldrucker)
+A4 **quer**, 4×4 = 16 Etiketten à 74×52 mm (A8 quer), dünne graue Schnittlinien.
+Aufbau je Etikett: **QR links** (40 mm), rechts **Name** (bis 5 Zeilen) + Zusatz, unten **Code**.
+Drucken mit Skalierung 100 %, Ränder „keine“. Gut für Euroboxen, Kisten, Regale (aus Distanz lesbar).

@@ -2,13 +2,15 @@
 {% block title %}Etiketten · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Etiketten</h1>
-<p class="meta">D30 (40×12 mm): XLSX laden, in der D30-App importieren. Vorlage einmal anlegen:
-QR-Feld ← Spalte <b>QR</b>, Text ← <b>Code</b> und <b>Text</b>. Herunterladen zählt als gedruckt.</p>
+<p class="meta">Jede Auswahl öffnet erst eine Vorschau-Tabelle (Texte bearbeitbar), dann Export als
+<b>XLSX für den D30</b> (40×12 mm) oder <b>A8-Bogen</b> (16 pro A4 quer, z. B. für Euroboxen).
+D30-Vorlage einmal anlegen: QR-Feld ← Spalte <b>QR</b>, Text ← <b>Code</b>/<b>Text</b>.</p>
 
 <section>
   <h2>Neue Codes auf Vorrat</h2>
   <p class="meta">Für Boxen, Kisten, Regale: Etikett aufkleben, scannen → Behälter wird angelegt.</p>
-  <form method="post" action="/labels/blank.xlsx" class="stack">
+  <form method="post" action="/labels/preview" class="stack">
+    <input type="hidden" name="source" value="blank">
     <select name="prefix">
       {% for p, label in prefixes.items() %}
       <option value="{{ p }}" {% if p == 'EUR' %}selected{% endif %}>{{ p }} – {{ label }} (nächster {{ next_codes[p] }})</option>
@@ -16,14 +18,8 @@ QR-Feld ← Spalte <b>QR</b>, Text ← <b>Code</b> und <b>Text</b>. Herunterlade
     </select>
     <div class="row">
       <input name="count" value="20" inputmode="numeric" aria-label="Anzahl">
-      <button class="primary">XLSX für D30</button>
+      <button class="primary">Vorschau</button>
     </div>
-  </form>
-  <form method="get" action="/labels/sheet" class="row">
-    <select name="prefix" aria-label="Präfix für A4-Bogen">
-      {% for p in prefixes %}<option {% if p == 'EUR' %}selected{% endif %}>{{ p }}</option>{% endfor %}
-    </select>
-    <button>A4-Bogen (40 Stück)</button>
   </form>
 </section>
 
@@ -34,13 +30,13 @@ QR-Feld ← Spalte <b>QR</b>, Text ← <b>Code</b> und <b>Text</b>. Herunterlade
     {% for l in pending[:15] %}<li class="item"><span class="name">{{ l.code }} · {{ l.text }}</span><small>{{ l.extra }}</small></li>{% endfor %}
     {% if pending|length > 15 %}<li class="item"><small>… und {{ pending|length - 15 }} weitere</small></li>{% endif %}
   </ul>
-  <form method="post" action="/labels/pending.xlsx"><button class="primary">Alle als XLSX für D30</button></form>
+  <form method="post" action="/labels/preview"><input type="hidden" name="source" value="pending"><button class="primary">Vorschau &amp; drucken</button></form>
   {% else %}<p class="empty">Alles gedruckt.</p>{% endif %}
 </section>
 
 <section>
   <h2>Sortierkasten / Box komplett</h2>
-  <p class="meta">Auf der Seite des Behälters: „Etiketten aller Teile (XLSX)“ – vergibt fehlende ART-Codes, ein Etikett pro Teil (QR + Name).</p>
+  <p class="meta">Auf der Seite des Behälters: „Etiketten aller Teile drucken“ – vergibt fehlende ART-Codes, ein Etikett pro Teil (QR + Name).</p>
 </section>
 
 <section>

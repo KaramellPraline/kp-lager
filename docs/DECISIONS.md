@@ -28,3 +28,6 @@
 | 2026-10-26 | D30-Druck über XLSX-Export (Code, QR, Text, Zusatz); Download zählt als gedruckt | D30-App kann Excel-Batch; kein Treiber/Direktdruck nötig. |
 | 2026-10-26 | Hostname `lager.home.lan` (User-Entscheidung) | Steht in jedem QR-Code; DNS-Eintrag im Router nötig. |
 | 2026-10-26 | App-Name „KP Lager“, zentral als `APP_NAME` in `app/web.py` | Ein Ort für Titel, Kopfzeile, Etiketten, Homescreen-Name. |
+| 2026-10-26 | Etikettendruck immer über Vorschau-Tabelle mit editierbarem Text; Namen nur auf Wunsch ins Lager übernehmen | User-Wunsch; Etikettentext oft kürzer als der volle Name. |
+| 2026-10-26 | A8-Etiketten (A4 quer, 4×4, dünne Schnittlinien, QR links, Name, Code) ersetzen den A4-Bogen 48,5×25,4 | User-Vorgabe; groß genug für Euroboxen, kein Spezialpapier nötig. |
+| 2026-10-26 | Vorrats-Codes erst beim Export reservieren | Abgebrochene Vorschau verbraucht keine Nummern. |

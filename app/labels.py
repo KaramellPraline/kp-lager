@@ -1,4 +1,4 @@
-"""Etiketten: QR-Inhalt, XLSX für den D30-Etikettendrucker (40×12 mm) und A4-Bögen.
+"""Etiketten: QR-Inhalt, XLSX für den D30-Etikettendrucker (40×12 mm) und A8-Bögen (A4 quer).
 
 QR-Inhalt komplett in Großbuchstaben (HTTP://LAGER.HOME.LAN/C/EUR-001): Dann nutzt der QR den
 Alphanumerik-Modus, wird eine Version kleiner und auf 10 mm besser scannbar. /C/ = /c/.
@@ -11,9 +11,10 @@ from dataclasses import dataclass
 import segno
 from openpyxl import Workbook
 
-from app import codes
+from app import codes, repo
 
 TEXT_MAX = 24  # Zeichen, die auf 40×12 mm neben den QR passen
+A8_PER_PAGE = 16  # A4 quer = 4×4 A8 quer (74×52 mm)
 
 
 @dataclass(frozen=True)
@@ -58,10 +59,11 @@ def to_xlsx(rows: list[Label]) -> bytes:
 
 
 def blank(conn: sqlite3.Connection, base_url: str, prefix: str, count: int) -> list[Label]:
-    """Vorrat: reserviert neue Codes; beim ersten Scan wird der Behälter angelegt."""
+    """Vorrat: die nächsten freien Codes (reserviert erst beim Export)."""
+    start = codes.next_number(conn, prefix)
     return [
         Label(c, qr_content(base_url, c), codes.PREFIX_LABELS[prefix])
-        for c in codes.reserve(conn, prefix, count)
+        for c in (codes.format_code(prefix, n) for n in range(start, start + count))
     ]
 
 
@@ -118,24 +120,36 @@ def for_container(conn: sqlite3.Connection, base_url: str, container_id: int) ->
     ]
 
 
-def mark_printed(conn: sqlite3.Connection, rows: list[Label]) -> None:
+def finalize(
+    conn: sqlite3.Connection,
+    base_url: str,
+    entries: list[tuple[str, str, str]],
+    save_names: bool,
+) -> list[Label]:
+    """Export aus der Vorschau: (Code, Text, Zusatz) prüfen, ggf. Namen speichern,
+    als gedruckt markieren und Zähler je Präfix nachziehen (reserviert Vorrats-Codes)."""
+    rows: list[Label] = []
+    for raw, text, extra in entries:
+        code = codes.normalize(raw)
+        if code is None:
+            continue
+        text = text.strip()
+        if save_names and text:
+            item = conn.execute("SELECT id, name FROM item WHERE code = ?", (code,)).fetchone()
+            if item and item["name"] != text:
+                repo.update_item(conn, item["id"], name=text)
+            with conn:
+                conn.execute(
+                    "UPDATE container SET name = ?, updated_at = datetime('now')"
+                    " WHERE code = ? AND name != ?",
+                    (text, code, text),
+                )
+        rows.append(Label(code, qr_content(base_url, code), text, extra.strip()))
     printed = [(r.code,) for r in rows]
     with conn:
         conn.executemany("UPDATE container SET label_printed = 1 WHERE code = ?", printed)
         conn.executemany("UPDATE item SET label_printed = 1 WHERE code = ?", printed)
-
-
-@dataclass(frozen=True)
-class Sheet:
-    """A4-Bogen als Alternative zum D30. Standard: 4×10 à 48,5×25,4 mm."""
-
-    cols: int = 4
-    rows: int = 10
-    width: float = 48.5
-    height: float = 25.4
-    top: float = 21.5
-    left: float = 8.0
-
-    @property
-    def per_page(self) -> int:
-        return self.cols * self.rows
+    for prefix in {r.code[:3] for r in rows}:
+        last = max(int(r.code[4:]) for r in rows if r.code.startswith(prefix))
+        codes.mark_used_until(conn, prefix, last)
+    return rows

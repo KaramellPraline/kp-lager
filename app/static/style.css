@@ -56,3 +56,10 @@ mark { background: var(--warn); color: inherit; }
 .codes { align-items: center; justify-content: space-between; }
 .check { display: flex; gap: 10px; align-items: center; }
 .check input { min-height: 24px; width: 24px; }
+.table-wrap { overflow-x: auto; }
+table.labels { width: 100%; border-collapse: collapse; }
+table.labels th { text-align: left; font-size: .8em; color: var(--sub); }
+table.labels td { padding: 3px 4px 3px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.labels td:nth-child(2) { width: 100%; }
+table.labels td:nth-child(2) input { width: 100%; min-width: 10em; }
+input.too-long { border-color: var(--danger); }

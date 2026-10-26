@@ -22,8 +22,9 @@
 </section>
 
 {% if items or kids %}
-<form method="post" action="/n/{{ node.id }}/labels.xlsx">
-  <button>Etiketten aller Teile (XLSX für D30)</button>
+<form method="post" action="/labels/preview">
+  <input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}">
+  <button>Etiketten aller Teile drucken</button>
 </form>
 {% endif %}
 
