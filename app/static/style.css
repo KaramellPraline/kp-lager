@@ -1,0 +1,10 @@
+:root { --bg: #fff; --fg: #1a1a1a; --accent: #2563eb; --muted: #f1f5f9; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #111; --fg: #eee; --accent: #60a5fa; --muted: #1e293b; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 18px/1.4 system-ui, sans-serif; background: var(--bg); color: var(--fg); }
+header { padding: 12px 16px; background: var(--muted); }
+header a { color: var(--fg); font-weight: 700; text-decoration: none; }
+main { padding: 16px; max-width: 640px; margin: 0 auto; }
+button, input { font: inherit; min-height: 44px; }
