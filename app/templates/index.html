@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<nav class="tiles">
-  <a href="/scan">⌗ Scannen</a>
-  <a href="/verliehen">Verliehen{% if n_lent %} <b>{{ n_lent }}</b>{% endif %}</a>
-  <a href="/einkauf">Einkaufsliste{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
-  <a href="/platz">Freie Plätze</a>
-  <a href="/verlauf">Verlauf</a>
-  <a href="/labels">Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
+<nav class="tiles" aria-label="Schnellzugriff">
+  <a href="/scan"><span class="ico">⌗</span>Scannen</a>
+  <a href="/labels"><span class="ico">🏷</span>Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
+  <a href="/verliehen"><span class="ico">↗</span>Verliehen{% if n_lent %} <b>{{ n_lent }}</b>{% endif %}</a>
+  <a href="/einkauf"><span class="ico">🛒</span>Einkauf{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
+  <a href="/platz"><span class="ico">▢</span>Freie Plätze</a>
+  <a href="/verlauf"><span class="ico">↶</span>Verlauf</a>
 </nav>
 
 {% if favorites %}
@@ -23,10 +23,17 @@
 {% if roots %}
 {% with kids=roots, cols=0 %}{% include "_kids.html" %}{% endwith %}
 {% else %}
-<p>Noch leer. Lege zuerst einen Raum an – oder scanne ein Etikett.</p>
+<div class="card">
+  <p><b>Willkommen!</b> So geht's los:</p>
+  <ol>
+    <li>Raum anlegen (unten), z. B. „Werkstatt“.</li>
+    <li>Darin Regale, Boxen oder einen Sortierkasten anlegen – oder Etiketten drucken und scannen.</li>
+    <li>Inhalte eintragen: tippen, sprechen oder per Inventur-Chat importieren.</li>
+  </ol>
+</div>
 {% endif %}
 
-<details>
+<details {% if not roots %}open{% endif %}>
   <summary>Neuer Raum / Ort</summary>
   <form method="post" action="/containers" class="stack">
     <input name="name" placeholder="Name, z. B. Keller" required>
@@ -35,10 +42,4 @@
     <button class="primary">Anlegen</button>
   </form>
 </details>
-
-<nav class="links">
-  <a href="/import">Import</a>
-  <a href="/export.json">Export</a>
-  <a href="/settings">Einstellungen</a>
-</nav>
 {% endblock %}

@@ -1,6 +1,6 @@
 <label>Kastenmodell (nur Sortierkasten)
   <select name="model">
     <option value="">– eigenes Raster –</option>
-    {% for key, m in MODELS.items() %}<option value="{{ key }}">{{ m.name }} ({{ m.cols }}×{{ m.rows }} mit Einsätzen)</option>{% endfor %}
+    {% for key, m in MODELS.items() %}<option value="{{ key }}" {% if P and P.default_model == key %}selected{% endif %}>{{ m.name }} ({{ m.cols }}×{{ m.rows }} mit Einsätzen)</option>{% endfor %}
   </select>
 </label>

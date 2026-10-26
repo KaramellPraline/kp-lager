@@ -2,21 +2,58 @@
 {% block title %}Einstellungen · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Einstellungen</h1>
-<form method="post" action="/settings" class="stack">
-  <label class="check">
-    <input type="checkbox" name="auto_item_code" value="1" {% if auto_item_code %}checked{% endif %}>
-    Neue Teile bekommen automatisch einen ART-Code (Etikett)
-  </label>
-  <p class="meta">Aus: Code nur per Knopf „Etikett vergeben“ am Teil. Teile in Sortierkasten-Fächern bekommen beim Export „Etiketten aller Teile“ immer einen Code.</p>
-  <label>Synonyme für die Suche (eine Gruppe pro Zeile, mit „=“ getrennt)
-    <textarea name="synonyms" rows="8">{{ synonyms }}</textarea>
-  </label>
-  <button class="primary">Speichern</button>
+<div class="layout-2">
+<form method="post" action="/settings">
+  {% for group, items in groups.items() %}
+  <section class="card">
+    <h2 style="margin-top:0">{{ group }}</h2>
+    <div class="stack">
+    {% for p in items %}
+      {% if p.kind == 'bool' %}
+      <label class="check"><input type="checkbox" name="{{ p.key }}" value="1" {% if values[p.key] == '1' %}checked{% endif %}> {{ p.label }}</label>
+      {% elif p.kind == 'choice' %}
+      <label>{{ p.label }}
+        <select name="{{ p.key }}">{% for v, t in p.choices %}<option value="{{ v }}" {% if values[p.key] == v %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+      {% elif p.kind == 'int' %}
+      <label>{{ p.label }} <input name="{{ p.key }}" value="{{ values[p.key] }}" inputmode="numeric" type="number" min="{{ p.min }}" max="{{ p.max }}"></label>
+      {% elif p.kind == 'textarea' %}
+      <label>{{ p.label }} <textarea name="{{ p.key }}" rows="7">{{ values[p.key] }}</textarea></label>
+      {% else %}
+      <label>{{ p.label }} <input name="{{ p.key }}" value="{{ values[p.key] }}"></label>
+      {% endif %}
+      {% if p.help %}<small>{{ p.help }}</small>{% endif %}
+    {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+  <button class="primary" style="width:100%">Einstellungen speichern</button>
 </form>
-<h2>Server</h2>
-<ul class="history">
-  <li>Adresse in QR-Codes: <b>{{ base_url }}</b> (Umgebungsvariable <code>LAGER_BASE_URL</code>)</li>
-  <li>Spracheingabe: {% if whisper_url %}aktiv über {{ whisper_url }}{% else %}aus – <code>LAGER_WHISPER_URL</code> setzen; alternativ das Mikrofon der Handy-Tastatur nutzen{% endif %}</li>
-</ul>
-<p><a href="/labels">Etiketten</a> · <a href="/import">Import</a> · <a href="/export.json">Export</a></p>
+
+<aside>
+  <section class="card">
+    <h2 style="margin-top:0">Handy einrichten</h2>
+    <ol class="history" style="color:var(--fg)">
+      <li>Im selben WLAN <a href="http://lager.home.lan/ca.crt">Zertifikat laden</a>{% if not has_ca %} (noch keins – <code>tools/devcert.py</code>){% endif %}.</li>
+      <li>Android: Einstellungen › Sicherheit › Zertifikat installieren › CA. iPhone: Profil installieren, dann Info › Zertifikatsvertrauen einschalten.</li>
+      <li><a href="{{ base_url }}">{{ base_url }}</a> öffnen → „Zum Startbildschirm“.</li>
+    </ol>
+  </section>
+  <section class="card">
+    <h2 style="margin-top:0">Server</h2>
+    <ul class="history">
+      <li>Adresse in QR-Codes: <b>{{ base_url }}</b> (<code>LAGER_BASE_URL</code>)</li>
+      <li>Spracheingabe: {% if whisper_url %}aktiv über {{ whisper_url }}{% else %}aus – <code>LAGER_WHISPER_URL</code> setzen, sonst Tastatur-Mikrofon nutzen{% endif %}</li>
+    </ul>
+  </section>
+  <section class="card">
+    <h2 style="margin-top:0">Nächste Codes</h2>
+    <ul class="history">{% for p, label in prefixes.items() %}<li><b>{{ next_codes[p] }}</b> · {{ label }}</li>{% endfor %}</ul>
+  </section>
+  <section class="card">
+    <h2 style="margin-top:0">Daten</h2>
+    <form method="post" action="/settings/backup"><button style="width:100%">💾 Backup jetzt erstellen</button></form>
+    <p class="row" style="margin-top:8px"><a class="button" href="/export.json">⇩ Export</a> <a class="button" href="/import">⇪ Import</a></p>
+  </section>
+</aside>
+</div>
 {% endblock %}

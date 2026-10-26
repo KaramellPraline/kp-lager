@@ -4,69 +4,82 @@
 <nav class="crumbs">
   <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
-<h1>{{ item.name }}</h1>
-{% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
-<ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
-<div class="row codes">
-  {% if item.code %}
-  <span class="meta">Code <b>{{ item.code }}</b>{% if not item.label_printed %} · Etikett offen{% endif %}</span>
-  <form method="post" action="/labels/preview">
-    <input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}">
-    <button>Etikett drucken</button>
-  </form>
-  <form method="post" action="/labels/queue/item/{{ item.id }}"><button>In Warteschlange</button></form>
-  {% else %}
-  <form method="post" action="/items/{{ item.id }}/code"><button>Etikett vergeben</button></form>
-  {% endif %}
-</div>
 
-{% if item.lent_to %}
-<div class="lent">Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
-  <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>
-</div>
-{% endif %}
-<div class="row">
-  <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">Umlagern (aufnehmen)</button></form>
-  <form method="post" action="/items/{{ item.id }}/list"><button>{% if item.on_list %}Von Einkaufsliste nehmen{% else %}Auf Einkaufsliste{% endif %}</button></form>
-</div>
-{% if not item.lent_to %}
-<form method="post" action="/items/{{ item.id }}/lend" class="add-item">
-  <input name="to" placeholder="Verleihen an / in Benutzung bei …">
-  <button>Verleihen</button>
-</form>
-{% endif %}
-
-<details>
-  <summary>Bearbeiten</summary>
-  <form method="post" action="/items/{{ item.id }}/edit" class="stack">
-    <input name="name" value="{{ item.name }}" required>
-    <div class="row">
-      <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="Anzahl (leer = ungezählt)" inputmode="numeric">
-      <input name="unit" value="{{ item.unit }}" placeholder="Einheit">
+<div class="layout-2">
+<div>
+  <div class="card head-card">
+    {% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo-thumb" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
+    <div class="grow">
+      <h1>{{ item.name }}</h1>
+      <div class="chips">
+        {% if item.code %}<span class="chip code">{{ item.code }}</span>{% if not item.label_printed %}<span class="chip">Etikett offen</span>{% endif %}{% endif %}
+        <span class="chip">📍 {{ path[-1].name }}</span>
+        {% if item.tags %}<span class="chip">{{ item.tags }}</span>{% endif %}
+      </div>
     </div>
-    <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="Mengenhinweis, z. B. viele">
-    <label>Mindestbestand (unterschritten → Einkaufsliste)
-      <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner">
-    </label>
-    <input name="tags" value="{{ item.tags }}" placeholder="Suchbegriffe">
-    <textarea name="notes" placeholder="Notizen">{{ item.notes }}</textarea>
-    <button>Speichern</button>
-  </form>
-  <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data" class="stack">
-    <label>Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()"></label>
-  </form>
-  {% if item.code %}
-  <form method="post" action="/items/{{ item.id }}/code"><input type="hidden" name="remove" value="1"><button>Code entfernen</button></form>
-  {% endif %}
-  <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Teil entfernen?')">
-    <button class="danger">Entfernen</button>
-  </form>
-</details>
+  </div>
 
-<section>
+  <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
+
+  {% if item.lent_to %}
+  <div class="lent">↗ Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
+    <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>
+  </div>
+  {% else %}
+  <form method="post" action="/items/{{ item.id }}/lend" class="add-item card">
+    <input name="to" placeholder="Verleihen an / in Benutzung bei …" aria-label="Verleihen an">
+    <button>↗ Verleihen</button>
+  </form>
+  {% endif %}
+
+  {% if item.notes %}<div class="card notes">{{ item.notes }}</div>{% endif %}
+
   <h2>Verlauf</h2>
   <ul class="history">
     {% for e in events %}<li>{{ e.ts }} · {{ e.action }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %}</li>{% endfor %}
   </ul>
-</section>
+</div>
+
+<aside>
+  <div class="card">
+    <h2 style="margin-top:0">Aktionen</h2>
+    <div class="actions">
+      <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">📦 Umlagern</button></form>
+      <form method="post" action="/items/{{ item.id }}/list"><button>🛒 {% if item.on_list %}Von Liste{% else %}Auf Einkaufsliste{% endif %}</button></form>
+      {% if item.code %}
+      <form method="post" action="/labels/queue/item/{{ item.id }}"><button>🏷 In Warteschlange</button></form>
+      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}"><button>🖨 Etikett drucken</button></form>
+      {% else %}
+      <form method="post" action="/items/{{ item.id }}/code"><button>🏷 Etikett vergeben</button></form>
+      {% endif %}
+      <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
+        <label class="file-btn">📷 Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
+      </form>
+    </div>
+  </div>
+
+  <details>
+    <summary>Bearbeiten</summary>
+    <form method="post" action="/items/{{ item.id }}/edit" class="stack">
+      <label>Name <input name="name" value="{{ item.name }}" required></label>
+      <div class="row">
+        <label>Anzahl <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="leer = ungezählt" inputmode="numeric"></label>
+        <label>Einheit <input name="unit" value="{{ item.unit }}" placeholder="Stk"></label>
+      </div>
+      <label>Mengenhinweis <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="z. B. viele"></label>
+      <label>Mindestbestand (darunter → Einkaufsliste)
+        <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner"></label>
+      <label>Suchbegriffe <input name="tags" value="{{ item.tags }}"></label>
+      <label>Notizen <textarea name="notes">{{ item.notes }}</textarea></label>
+      <button class="primary">Speichern</button>
+    </form>
+    {% if item.code %}
+    <form method="post" action="/items/{{ item.id }}/code"><input type="hidden" name="remove" value="1"><button>Code entfernen</button></form>
+    {% endif %}
+    <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Teil entfernen?')">
+      <button class="danger">Entfernen</button>
+    </form>
+  </details>
+</aside>
+</div>
 {% endblock %}

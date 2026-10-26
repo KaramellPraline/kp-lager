@@ -33,10 +33,14 @@ Keller (raum)
 - `app/web.py`: alle Routen; Verbindung pro Request; Fehler (`LagerError`) → Redirect mit `?msg=`
 - `app/db.py`: Verbindung (FK an, WAL, `fold()` für Umlaut-LIKE) + Migrations-Runner (PRAGMA user_version)
 - `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster, Löschen), Items (Bestand), Protokoll, Suche
-- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus, `005_alltag` Rückgängig/Verleihen/Einkauf/Favoriten
+- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus, `005_alltag` Rückgängig/Verleihen/Einkauf/Favoriten, `006_einsaetze` Art „einsatz“, size/model, `label_queue`
 - `app/codes.py`: Code-Schema PRÄFIX-NNN, Normalisieren, Zähler je Präfix, Einstellungen (`meta`)
 - `app/labels.py`: QR-Inhalt (Großbuchstaben), XLSX für D30 (40×12), Etikettenlisten, `finalize()` (Export: Namen speichern, gedruckt markieren, Codes reservieren)
 - `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
+- `app/kasten.py`: Kastenmodelle (NORB16 5×7, Griff C1–E1), Einsätze platzieren/prüfen, Draufsicht-Daten, Schnelleingabe-Ziele
+- `app/prefs.py`: Einstellungsregister (Typ, Standard, Gruppe) → `/settings` generiert, Werte in `meta`
+- `tools/devcert.py`, `tools/serve.ps1`: lokale CA + HTTPS-Start unter Windows
+- `cad/norb_bins.py`: parametrischer Bin-Generator (build123d, Gruppe `cad`)
 - `app/quick.py`: Schnelleingabe-Parser („3 Rollen Lötzinn“), Standard-Synonyme
 - `app/prompt.py`: Inventur-Prompt für den Haiku-Chat (Quelle der Wahrheit)
 - `app/backup.py`: `python -m app.backup` – SQLite-Kopie + Foto-Archiv, Aufräumen

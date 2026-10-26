@@ -1,6 +1,17 @@
-// Kleine Helfer ohne Build-Schritt: Kopieren und Spracheingabe.
+// Kleine Helfer ohne Build-Schritt: Toasts, Kopieren und Spracheingabe.
 (function () {
   "use strict";
+
+  // Meldung aus der URL entfernen (Neuladen zeigt sie nicht erneut), Toast ohne Rückgängig ausblenden
+  document.addEventListener("DOMContentLoaded", function () {
+    var url = new URL(location.href);
+    if (url.searchParams.has("msg") || url.searchParams.has("undo")) {
+      url.searchParams.delete("msg"); url.searchParams.delete("undo");
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
+    var toast = document.querySelector(".toast");
+    if (toast) setTimeout(function () { toast.remove(); }, toast.hasAttribute("data-autohide") ? 4000 : 10000);
+  });
 
   // Text eines Feldes kopieren (Zwischenablage-API gibt es nur unter HTTPS -> Fallback)
   document.addEventListener("click", function (ev) {

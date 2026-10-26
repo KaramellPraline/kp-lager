@@ -1,13 +1,18 @@
+{%- set cur = request.url.path -%}
+{%- macro nav_link(href, ico, text, count=0) -%}
+<a class="nav {% if cur == href or (href != '/' and cur.startswith(href)) %}active{% endif %}" href="{{ href }}">
+  <span class="ico">{{ ico }}</span>{{ text }}{% if count %}<b class="count">{{ count }}</b>{% endif %}</a>
+{%- endmacro -%}
 <!doctype html>
-<html lang="de">
+<html lang="de" data-theme="{{ THEME or 'auto' }}">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="application-name" content="{{ APP_NAME }}">
   <meta name="apple-mobile-web-app-title" content="{{ APP_NAME }}">
-  <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
-  <meta name="theme-color" content="#2563eb">
+  <meta name="theme-color" content="#dc2626">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/static/icon-180.png">
   <link rel="icon" href="/static/icon-192.png">
@@ -15,26 +20,53 @@
   <script src="/static/htmx.min.js" defer></script>
   <script src="/static/app.js" defer></script>
 </head>
-<body>
-  <header>
-    <a class="home" href="/">{{ APP_NAME }}</a>
-    <form action="/suche" method="get" class="search">
-      <input type="search" name="q" placeholder="Suchen…" value="{{ q or '' }}" aria-label="Suchen">
-    </form>
-    <a class="scan-btn" href="/scan" aria-label="Scannen" title="Scannen">⌗</a>
-  </header>
-  {% if msg %}<div class="msg" role="status"><span>{{ msg }}</span>
-    {% if undo %}<form method="post" action="/undo/{{ undo }}"><button class="link">Rückgängig</button></form>{% endif %}
-  </div>{% endif %}
-  {% if carry %}
-  <div class="carry">
-    <span>Unterwegs: <b>{{ carry.name }}</b></span>
-    {% if node and not (carry.kind == 'node' and carry.id == node.id) %}
-    <form method="post" action="/drop/{{ node.id }}"><button class="primary">Hier ablegen</button></form>
+<body class="{% if COMPACT %}compact{% endif %}">
+<div class="app">
+  <aside class="sidenav" aria-label="Navigation">
+    <a class="brand" href="/">{{ APP_NAME }}</a>
+    {{ nav_link('/', '🏠', 'Übersicht') }}
+    {{ nav_link('/scan', '⌗', 'Scannen') }}
+    {{ nav_link('/suche', '🔍', 'Suche') }}
+    {{ nav_link('/labels', '🏷', 'Etiketten', NQUEUE) }}
+    {{ nav_link('/verliehen', '↗', 'Verliehen') }}
+    {{ nav_link('/einkauf', '🛒', 'Einkaufsliste') }}
+    {{ nav_link('/platz', '▢', 'Freie Plätze') }}
+    {{ nav_link('/verlauf', '↶', 'Verlauf') }}
+    {{ nav_link('/import', '⇪', 'Import') }}
+    {{ nav_link('/settings', '⚙', 'Einstellungen') }}
+  </aside>
+  <div class="main-col">
+    <header class="topbar">
+      <a class="brand" href="/">{{ APP_NAME }}</a>
+      <form action="/suche" method="get" class="search" role="search">
+        <input type="search" name="q" placeholder="Suchen: Teil, Box, Code…" value="{{ q or '' }}" aria-label="Suchen">
+      </form>
+    </header>
+    {% if carry %}
+    <div class="carry">
+      <span>📦 Unterwegs: <b>{{ carry.name }}</b></span>
+      {% if node and not (carry.kind == 'node' and carry.id == node.id) %}
+      <form method="post" action="/drop/{{ node.id }}"><button class="primary">Hier ablegen</button></form>
+      {% endif %}
+      <form method="post" action="/carry/cancel"><button>Abbrechen</button></form>
+    </div>
     {% endif %}
-    <form method="post" action="/carry/cancel"><button>Abbrechen</button></form>
+    <main>{% block content %}{% endblock %}</main>
   </div>
-  {% endif %}
-  <main>{% block content %}{% endblock %}</main>
+</div>
+<nav class="bottomnav mobile-only" aria-label="Navigation">
+  <a href="/" class="{% if cur == '/' %}active{% endif %}"><span class="ico">🏠</span>Start</a>
+  <a href="/suche" class="{% if cur.startswith('/suche') %}active{% endif %}"><span class="ico">🔍</span>Suche</a>
+  <a href="/scan" class="scan"><span class="ico">⌗</span>Scannen</a>
+  <a href="/labels" class="{% if cur.startswith('/labels') %}active{% endif %}"><span class="ico">🏷</span>Etiketten{% if NQUEUE %}<b class="count">{{ NQUEUE }}</b>{% endif %}</a>
+  <a href="/mehr" class="{% if cur == '/mehr' %}active{% endif %}"><span class="ico">☰</span>Mehr</a>
+</nav>
+{% if msg %}
+<div class="toast" role="status" {% if not undo %}data-autohide{% endif %}>
+  <span>{{ msg }}</span>
+  {% if undo %}<form method="post" action="/undo/{{ undo }}"><button class="link">Rückgängig</button></form>{% endif %}
+  <button type="button" class="x" aria-label="Schließen" onclick="this.parentElement.remove()">✕</button>
+</div>
+{% endif %}
 </body>
 </html>

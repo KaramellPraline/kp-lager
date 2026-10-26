@@ -3,10 +3,10 @@
 Stand: 2026-10-26
 
 ## Aktuell
-- App „KP Lager“, alle Funktionen in `main`, 86 Tests grün. Dev-Server auf dem Windows-PC (http://192.168.74.5:8000), QR-Codes zeigen auf `https://lager.home.lan`.
-- Hosting: Docker-Compose fertig (`deploy/`), **noch nicht gebaut/getestet, Host offen** (kp-pi3 verworfen 2026-10-26).
-- DNS: AdGuard Home lief auf altem Pi 192.168.74.90 – derzeit offline. Eintrag `lager.home.lan` → Docker-Host fehlt noch.
-- Offen: Probedruck D30 40×12 + A8 testen (QR-Scan mit Handy).
+- App „KP Lager“ läuft auf dem Windows-PC unter **https://lager.home.lan** (DNS in AdGuard auf 192.168.74.6 → 192.168.74.5). Start: `tools/serve.ps1` (443 HTTPS + 80 für `/ca.crt`).
+- Neu: NORB16-Draufsicht mit Einsätzen (EIN-Codes), Schnelleingabe im Kasten, Etiketten-Warteschlange (XLSX/A8/A4 40×12), responsives Layout (Handy: untere Navigation, Desktop: Seitenleiste), Einstellungsregister (`app/prefs.py`).
+- Bin-Generator `cad/norb_bins.py`: Rillen (Spitzbogen), Greifmulde R15, Innenrundungen, Etikettenablage. **Testdruck steht aus** (Passung, Rippenrichtung).
+- Offen: Windows-Firewall eingehend 80/443 erlauben (Handy-Zugriff), Probedruck D30 + QR-Scan, Docker-Host für Dauerbetrieb.
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.
@@ -23,12 +23,14 @@ Stand: 2026-10-26
 - [x] **M7c Druckvorschau & A8**: editierbare Tabelle vor Export, A8-Bogen (A4 quer, 16 Stück).
 - [x] **M7 Fotos**: Upload per Handykamera, EXIF-Drehung, 1600 px + Thumbnail, Löschen räumt Dateien auf.
 - [x] **M8 Alltag**: Rückgängig + Verlauf, Favoriten, Zuletzt angesehen, PWA-Icon, Verliehen-Status, Mindestbestand/Einkaufsliste, Freie Plätze, Synonyme + Tippfehler-Suche, Schnelleingabe „3 Rollen Lötzinn“, Haiku-Prompt pro Behälter, Scan-Modus (Öffnen/Einräumen), Spracheingabe über externen Whisper (`LAGER_WHISPER_URL`), Docker + Backup-Modul.
+- [x] **M9a NORB16 & Bins**: Kastenmodell, Draufsicht, Einsätze, Warteschlange, CAD-Generator.
+- [x] **M9b UX & Einstellungen**: responsives Layout, Toasts, Einstellungsregister, Backup-Knopf, HTTPS im LAN.
 - [ ] **M8b Whisper-Dienst** auf stärkerem Host (Proxmox) starten und URL setzen.
 - [ ] **M9 Optional**: semantische Suche (lokale Embeddings), Claude-API- oder Ollama-Extraktion aus Foto+Transkript, Status „ausgeliehen“ für Werkzeug.
 
 ## Offen / zu klären
-- [ ] DNS-Eintrag `lager.home.lan` → Container-IP im Router anlegen (Hostname festgelegt, steht in jedem QR).
-- [ ] Etikettenbogen: Standardmaß 48,5×25,4 mm (4×10) – bei anderem Bogen Maße im Formular anpassen, Probedruck auf Normalpapier.
+- [x] DNS `lager.home.lan` → 192.168.74.5 (AdGuard auf kp-pi3).
+- [ ] Firewall: eingehend TCP 80/443 (Profil Privat) freigeben – nur durch den Nutzer.
 
 ## Bekannte Probleme
 - pytest-Warnung: Starlette empfiehlt `httpx2` statt `httpx` für TestClient. Harmlos; Wechsel erst nach Prüfung des Pakets.

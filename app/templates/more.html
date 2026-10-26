@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Mehr · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Mehr</h1>
+<ul class="list menu">
+  <li><a href="/verliehen"><span>↗ Verliehen{% if n_lent %} · <b>{{ n_lent }}</b>{% endif %}</span></a></li>
+  <li><a href="/einkauf"><span>🛒 Einkaufsliste{% if n_shopping %} · <b>{{ n_shopping }}</b>{% endif %}</span></a></li>
+  <li><a href="/platz"><span>▢ Freie Plätze</span></a></li>
+  <li><a href="/verlauf"><span>↶ Verlauf &amp; Rückgängig</span></a></li>
+  <li><a href="/import"><span>⇪ Import (Inventur-Chat)</span></a></li>
+  <li><a href="/export.json"><span>⇩ Export (JSON)</span></a></li>
+  <li><a href="/settings"><span>⚙ Einstellungen</span></a></li>
+</ul>
+{% endblock %}

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Druckvorschau · {{ APP_NAME }}{% endblock %}
+{% block title %}{% if source == "queue" %}Warteschlange{% else %}Druckvorschau{% endif %} · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <nav class="crumbs"><a href="/labels">Etiketten</a> › Vorschau</nav>
-<h1>Druckvorschau ({{ rows|length }})</h1>
+<h1>{% if source == "queue" %}Warteschlange{% else %}Druckvorschau{% endif %} ({{ rows|length }})</h1>
 <p class="meta">Text bearbeiten, dann exportieren. Auf dem D30 (40×12) passen ca. {{ text_max }} Zeichen – längere werden gekürzt.</p>
 
 <form method="post" action="/labels/export" class="stack" id="export">
@@ -26,9 +26,9 @@
   <label class="check"><input type="checkbox" name="save_names" value="1"> Geänderte Texte auch als Namen im Lager speichern</label>
   {% endif %}
   <div class="row">
-    <button name="fmt" value="xlsx" class="primary">XLSX für D30 (40×12)</button>
-    <button name="fmt" value="a8">A8-Bogen drucken (16 pro A4 quer)</button>
-    <button name="fmt" value="a4">A4-Bogen 40×12 (110 Stück)</button>
+    {% set fmts = [('xlsx', 'XLSX für D30 (40×12)'), ('a8', 'A8-Bogen (16 pro A4 quer)'), ('a4', 'A4-Bogen 40×12 (110 Stück)')] %}
+    {% for f, t in fmts if f == P.label_format %}<button name="fmt" value="{{ f }}" class="primary">{{ t }}</button>{% endfor %}
+    {% for f, t in fmts if f != P.label_format %}<button name="fmt" value="{{ f }}">{{ t }}</button>{% endfor %}
   </div>
   <p class="meta">Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
 </form>

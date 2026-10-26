@@ -4,88 +4,111 @@
 <nav class="crumbs">
   <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
-<div class="title-row">
-  <h1>{{ node.name }}</h1>
-  <form method="post" action="/n/{{ node.id }}/favorite"><button class="star" aria-label="Favorit" title="Favorit">{% if node.favorite %}★{% else %}☆{% endif %}</button></form>
-</div>
-<p class="meta">{{ KIND_LABELS[node.kind] }}{% if node.code %} · Code {{ node.code }}{% endif %}{% if node.grid %} · {{ node.grid }}{% endif %}</p>
-{% if node.photo %}<a href="/photos/{{ node.photo }}"><img class="photo" src="/photos/thumb_{{ node.photo }}" alt="Foto {{ node.name }}"></a>{% endif %}
-{% if node.notes %}<p class="notes">{{ node.notes }}</p>{% endif %}
-{% if node.code %}
-<form method="post" action="/labels/queue/node/{{ node.id }}"><button>Etikett in die Warteschlange</button></form>
-{% endif %}
-{% if node.kind == 'einsatz' %}
-<p class="meta">Einsatz {{ node.size }}{% if node.grid %}, Fächer {{ node.grid }}{% endif %} · 3D-Druck: <code>{{ cad }}</code></p>
-{% endif %}
-{% if topview %}{% include "_topview.html" %}{% endif %}
 
-<section>
-  <h2>Inhalt</h2>
-  {% if items %}
-  <ul class="list items">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
-  {% else %}<p class="empty">Keine Teile direkt hier.</p>{% endif %}
-  <form method="post" action="/n/{{ node.id }}/items" class="add-item">
-    <input name="name" placeholder="Teil, z. B. 3 Rollen Lötzinn" required id="add-name">
+<div class="layout-2">
+<div>
+  <div class="card head-card">
+    {% if node.photo %}<a href="/photos/{{ node.photo }}"><img class="photo-thumb" src="/photos/thumb_{{ node.photo }}" alt="Foto {{ node.name }}"></a>{% endif %}
+    <div class="grow">
+      <div class="title-row">
+        <h1>{{ node.name }}</h1>
+        <form method="post" action="/n/{{ node.id }}/favorite"><button class="star" aria-label="Favorit" title="Favorit">{% if node.favorite %}★{% else %}☆{% endif %}</button></form>
+      </div>
+      <div class="chips">
+        <span class="chip">{{ KIND_LABELS[node.kind] }}</span>
+        {% if node.code %}<span class="chip code">{{ node.code }}</span>{% endif %}
+        {% if node.size %}<span class="chip">{{ node.size }}</span>{% endif %}
+        {% if node.grid %}<span class="chip">Fächer {{ node.grid }}</span>{% endif %}
+        {% if items %}<span class="chip">{{ items|length }} Teile</span>{% endif %}
+      </div>
+      {% if node.notes %}<p class="notes">{{ node.notes }}</p>{% endif %}
+    </div>
+  </div>
+
+  {% if not node.model %}
+  <form method="post" action="/n/{{ node.id }}/items" class="add-item card" aria-label="Teil eintragen">
+    <input name="name" placeholder="Teil eintragen, z. B. 3 Rollen Lötzinn" required id="add-name" autocomplete="off">
     {% if voice %}<button type="button" class="mic" data-target="add-name" aria-label="Spracheingabe">🎤</button>{% endif %}
-    <input name="qty" placeholder="Anz." inputmode="numeric" class="short">
-    <button class="primary">+</button>
+    <input name="qty" placeholder="Anz." inputmode="numeric" class="short" aria-label="Anzahl">
+    <button class="primary" aria-label="Eintragen">＋</button>
   </form>
-</section>
+  {% endif %}
 
-{% if items or kids %}
-<form method="post" action="/labels/preview">
-  <input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}">
-  <button>Etiketten aller Teile drucken</button>
-</form>
-{% endif %}
+  {% if topview %}{% include "_topview.html" %}{% endif %}
 
-{% if kids and not topview %}
-<section>
-  <h2>{% if cols %}Fächer{% else %}Unterbehälter{% endif %}</h2>
+  {% if items %}
+  <h2>Inhalt</h2>
+  <ul class="list items">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
+  {% elif not node.model and not kids %}
+  <p class="empty">Noch leer – oben eintragen, scannen oder per Chat-Inventur importieren.</p>
+  {% endif %}
+
+  {% if kids and not topview %}
+  <h2>{% if cols %}Fächer{% else %}Darin{% endif %}</h2>
   {% include "_kids.html" %}
-</section>
-{% endif %}
-
-<details>
-  <summary>Inventur per Chat (Haiku)</summary>
-  <p class="meta">Prompt kopieren, im Chat einfügen, Foto dazu → JSON-Antwort unter <a href="/import">Import</a> einfügen.</p>
-  <textarea id="chat-prompt" rows="6" readonly>{{ chat_prompt }}</textarea>
-  <button type="button" class="copy" data-target="chat-prompt">Prompt kopieren</button>
-</details>
-
-<details>
-  <summary>Unterbehälter anlegen</summary>
-  <form method="post" action="/containers" class="stack">
-    <input type="hidden" name="parent_id" value="{{ node.id }}">
-    <input name="name" placeholder="Name" required>
-    {% include "_kind_select.html" %}
-    <input name="code" placeholder="Code, z. B. EUR-001 (optional)" autocapitalize="characters">
-    <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
-    <input name="grid" placeholder="Raster bei Sortierkasten, z. B. 6x8">
-    {% include "_model_select.html" %}
-    <button class="primary">Anlegen</button>
-  </form>
-</details>
-
-<details>
-  <summary>Bearbeiten / Umlagern</summary>
-  <form method="post" action="/n/{{ node.id }}/edit" class="stack">
-    <input name="name" value="{{ node.name }}" required>
-    <input name="code" value="{{ node.code or '' }}" placeholder="Code, z. B. EUR-001" autocapitalize="characters">
-    <textarea name="notes" placeholder="Notizen">{{ node.notes }}</textarea>
-    <button>Speichern</button>
-  </form>
-  <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data" class="stack">
-    <label>Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()"></label>
-  </form>
-  {% if not node.code and KIND_PREFIX.get(node.kind) %}
-  <form method="post" action="/n/{{ node.id }}/code"><button>Nächsten {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
   {% endif %}
-  {% if node.kind != 'fach' %}
-  <form method="post" action="/carry/node/{{ node.id }}"><button>Behälter umlagern (aufnehmen)</button></form>
+</div>
+
+<aside>
+  <div class="card">
+    <h2 style="margin-top:0">Aktionen</h2>
+    <div class="actions">
+      {% if node.code %}
+      <form method="post" action="/labels/queue/node/{{ node.id }}"><button>🏷 In Warteschlange</button></form>
+      {% elif KIND_PREFIX.get(node.kind) %}
+      <form method="post" action="/n/{{ node.id }}/code"><button>🏷 {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
+      {% endif %}
+      {% if items or kids %}
+      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>🖨 Teile-Etiketten</button></form>
+      {% endif %}
+      {% if node.kind != 'fach' %}
+      <form method="post" action="/carry/node/{{ node.id }}"><button>📦 Umlagern</button></form>
+      {% endif %}
+      <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
+        <label class="file-btn">📷 Foto
+          <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
+      </form>
+    </div>
+    {% if node.kind == 'einsatz' %}
+    <p class="meta">3D-Druck dieses Einsatzes:<br><code>{{ cad }}</code></p>
+    {% endif %}
+  </div>
+
+  <details>
+    <summary>Bearbeiten</summary>
+    <form method="post" action="/n/{{ node.id }}/edit" class="stack">
+      <label>Name <input name="name" value="{{ node.name }}" required></label>
+      <label>Code <input name="code" value="{{ node.code or '' }}" placeholder="z. B. EUR-001" autocapitalize="characters"></label>
+      <label>Notizen <textarea name="notes">{{ node.notes }}</textarea></label>
+      <button class="primary">Speichern</button>
+    </form>
+    <form method="post" action="/n/{{ node.id }}/delete" onsubmit="return confirm('Behälter löschen?')">
+      <button class="danger">Löschen (nur wenn leer)</button>
+    </form>
+  </details>
+
+  {% if node.kind not in ('fach', 'einsatz') %}
+  <details>
+    <summary>Darin anlegen</summary>
+    <form method="post" action="/containers" class="stack">
+      <input type="hidden" name="parent_id" value="{{ node.id }}">
+      <input name="name" placeholder="Name" required>
+      {% include "_kind_select.html" %}
+      <input name="code" placeholder="Code, z. B. EUR-001 (optional)" autocapitalize="characters">
+      <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
+      {% include "_model_select.html" %}
+      <input name="grid" placeholder="Eigenes Raster, z. B. 6x8 (ohne Modell)">
+      <button class="primary">Anlegen</button>
+    </form>
+  </details>
   {% endif %}
-  <form method="post" action="/n/{{ node.id }}/delete" onsubmit="return confirm('Behälter löschen?')">
-    <button class="danger">Löschen (nur wenn leer)</button>
-  </form>
-</details>
+
+  <details>
+    <summary>Inventur per Chat (Haiku)</summary>
+    <p class="meta">Prompt kopieren, im Chat einfügen, Foto dazu → Antwort unter <a href="/import">Import</a> einfügen.</p>
+    <textarea id="chat-prompt" rows="6" readonly>{{ chat_prompt }}</textarea>
+    <button type="button" class="copy" data-target="chat-prompt">Prompt kopieren</button>
+  </details>
+</aside>
+</div>
 {% endblock %}

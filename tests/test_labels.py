@@ -46,7 +46,7 @@ def test_qr_uppercase_is_alphanumeric_and_small() -> None:
 
 def test_uppercase_qr_url_resolves(client: TestClient) -> None:
     r = client.post("/containers", data={"name": "Box", "kind": "eurobox", "code": "eur1"})
-    assert "Code EUR-001" in r.text
+    assert 'chip code">EUR-001' in r.text
     assert node_of(client.get("/C/EUR-001")) == node_of(r)
     assert node_of(client.get("/c/eur001")) == node_of(r)
 
@@ -113,10 +113,10 @@ def test_scan_reserved_code_preselects_kind(client: TestClient) -> None:
 def test_create_item_from_scanned_code(client: TestClient) -> None:
     box = node_of(client.post("/containers", data={"name": "Box", "kind": "kiste"}))
     r = client.post("/items/new", data={"code": "art-7", "container_id": box, "name": "Bohrer"})
-    assert "Code <b>ART-0007</b>" in r.text
+    assert 'chip code">ART-0007' in r.text
     r = client.post(f"/n/{box}/items", data={"name": "Zange"})
     zange = re.findall(r'id="item-(\d+)"', r.text)[-1]
-    assert "Code <b>ART-0008</b>" in client.get(f"/items/{zange}").text  # Zähler läuft weiter
+    assert 'chip code">ART-0008' in client.get(f"/items/{zange}").text  # Zähler läuft weiter
     fields = preview(client, source="item", item_id=zange)
     assert fields["code"] == ["ART-0008"]
 

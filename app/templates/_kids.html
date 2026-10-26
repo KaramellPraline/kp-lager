@@ -7,12 +7,12 @@
   {% endfor %}
 </div>
 {% else %}
-<ul class="list">
+<div class="kids-grid">
   {% for k in kids %}
-  <li><a href="/n/{{ k.id }}">
-    <span class="name">{{ k.name }}</span>
+  <a href="/n/{{ k.id }}">
+    <b>{{ k.name }}</b>
     <small>{{ KIND_LABELS[k.kind] }}{% if k.code %} · {{ k.code }}{% endif %}{% if k.n_items %} · {{ k.n_items }} Teile{% endif %}</small>
-  </a></li>
+  </a>
   {% endfor %}
-</ul>
+</div>
 {% endif %}

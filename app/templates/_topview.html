@@ -44,7 +44,7 @@
       {% if voice %}<button type="button" class="mic" data-target="quick-text" aria-label="Spracheingabe">🎤</button>{% endif %}
       <button class="primary">Eintragen</button>
     </div>
-    <label class="check"><input type="checkbox" name="queue" value="1" checked> Einsatz-Etikett in die Warteschlange</label>
+    <label class="check"><input type="checkbox" name="queue" value="1" {% if P.queue_on_quickadd == '1' %}checked{% endif %}> Einsatz-Etikett in die Warteschlange</label>
   </form>
 </section>
 {% endif %}
@@ -64,7 +64,7 @@
         <select name="div">{% for d in divs %}<option>{{ d }}</option>{% endfor %}</select>
       </label>
     </div>
-    <label class="check"><input type="checkbox" name="queue" value="1" checked> Etikett in die Warteschlange</label>
+    <label class="check"><input type="checkbox" name="queue" value="1" {% if P.queue_on_place == '1' %}checked{% endif %}> Etikett in die Warteschlange</label>
     <button class="primary">Einsetzen</button>
   </form>
   <form method="post" action="/n/{{ node.id }}/fill"><button>Alle freien Zellen mit 1×1 füllen</button></form>

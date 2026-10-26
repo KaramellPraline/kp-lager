@@ -35,11 +35,11 @@ def qr_svg(content: str) -> str:
     return svg
 
 
-def short(text: str) -> str:
-    return text if len(text) <= TEXT_MAX else text[: TEXT_MAX - 1] + "…"
+def short(text: str, limit: int = TEXT_MAX) -> str:
+    return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
-def to_xlsx(rows: list[Label]) -> bytes:
+def to_xlsx(rows: list[Label], text_max: int = TEXT_MAX) -> bytes:
     """Spalten für die D30-App: A Code, B QR-Inhalt, C Text, D Zusatz."""
     wb = Workbook()
     ws = wb.active
@@ -47,7 +47,7 @@ def to_xlsx(rows: list[Label]) -> bytes:
     ws.title = "Etiketten"
     ws.append(["Code", "QR", "Text", "Zusatz"])
     for r in rows:
-        ws.append([r.code, r.qr, short(r.text), r.extra])
+        ws.append([r.code, r.qr, short(r.text, text_max), r.extra])
     for col, width in zip("ABCD", (12, 40, 26, 14), strict=True):
         ws.column_dimensions[col].width = width
     buf = io.BytesIO()

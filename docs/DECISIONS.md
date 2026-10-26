@@ -37,3 +37,11 @@
 | 2026-10-26 | Scan im Browser: BarcodeDetector, Fallback jsQR (vendored) | iOS Safari hat keinen BarcodeDetector; keine CDNs im LAN. |
 | 2026-10-26 | Zuletzt angesehen per Cookie (pro Gerät), Favoriten in der DB (für alle) | Verlauf ist persönlich, Favoriten geteilt. |
 | 2026-10-26 | Rückgängig für Entnehmen/Einlagern/Umlagern/Hinzufügen über Event-Log (`prev_container_id`, `undone`) | Fehlbedienung am Handy schnell korrigierbar; Löschen bleibt mit Bestätigung. |
+| 2026-10-26 | Bin-Generator mit build123d (statt CadQuery), eigene Abhängigkeitsgruppe `cad` | User hatte build123d; App-Image bleibt schlank. |
+| 2026-10-26 | Raster 54,77 mm, Höhe fest 45,5, Rillen nur bei Tiefe > 1 (Rippen laufen in Breitenrichtung) | Vermessung eigener STEP- und Original-STL-Bins; User-Aussage zu Rillen. |
+| 2026-10-26 | Rille mit 45°-Spitzbogen, Greifmulde R15 vorn, Innenecken R5 | User-Wunsch; support-frei druckbar. |
+| 2026-10-26 | Einsätze als Behälterart `einsatz` (EIN-Codes) mit Größe BxT in einem Kasten-Modell | Bins tragen das Etikett (40×12-Ablage); Fächer bleiben Kind-Behälter. |
+| 2026-10-26 | Etiketten-Warteschlange (`label_queue`), gleicher Code = Text aktualisieren | Batch-Druck; Bin-Etikett folgt dem Inhalt. |
+| 2026-10-26 | HTTPS im LAN per eigener CA (`tools/devcert.py`) direkt in uvicorn statt Caddy unter Windows | Keine Fremd-Binärdateien; Docker-Variante nutzt weiter Caddy. |
+| 2026-10-26 | Einstellungen als Register (`app/prefs.py`) statt Einzel-Routen | Neue Optionen = eine Zeile, Seite generiert sich. |
+| 2026-10-26 | Layout: Handy untere Navigation + Scan-Knopf, ab 900 px Seitenleiste + 2 Spalten | Daumenbedienung; Desktop nutzt Breite. |

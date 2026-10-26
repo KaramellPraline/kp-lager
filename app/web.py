@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import codes, importer, kasten, labels, photos, prompt, quick, repo
+from app import backup, codes, importer, kasten, labels, photos, prefs, prompt, quick, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -122,10 +122,15 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["msg"] = request.query_params.get("msg", "")
         undo = request.query_params.get("undo", "")
         ctx["undo"] = int(undo) if undo.isdigit() else None
+        ctx["APP_NAME"] = prefs.raw(conn, "app_name")
+        ctx["THEME"] = prefs.raw(conn, "theme")
+        ctx["COMPACT"] = prefs.flag(conn, "compact")
+        ctx["NQUEUE"] = labels.queue_count(conn)
+        ctx["P"] = prefs.values(conn)
         return templates.TemplateResponse(request, name, ctx)
 
     def synonyms(conn: sqlite3.Connection) -> dict[str, list[str]]:
-        return repo.parse_synonyms(codes.get_setting(conn, "synonyms", quick.DEFAULT_SYNONYMS))
+        return repo.parse_synonyms(prefs.raw(conn, "synonyms"))
 
     def need_node(conn: sqlite3.Connection, node_id: int) -> repo.Row:
         node = repo.get_container(conn, node_id)
@@ -167,7 +172,9 @@ def create_app(settings: Settings) -> FastAPI:
             "index.html",
             roots=repo.children(conn, None),
             favorites=repo.favorites(conn),
-            recent=repo.containers_by_ids(conn, recent_ids(request)),
+            recent=repo.containers_by_ids(conn, recent_ids(request))[
+                : prefs.number(conn, "home_recent")
+            ],
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
             n_queue=labels.queue_count(conn),
@@ -224,7 +231,7 @@ def create_app(settings: Settings) -> FastAPI:
         )
         recent = [node_id] + [i for i in recent_ids(request) if i != node_id]
         resp.set_cookie(
-            RECENT_COOKIE, ",".join(map(str, recent[:8])), max_age=31_536_000, samesite="lax"
+            RECENT_COOKIE, ",".join(map(str, recent[:20])), max_age=31_536_000, samesite="lax"
         )
         return resp
 
@@ -250,7 +257,8 @@ def create_app(settings: Settings) -> FastAPI:
             return redirect(f"/items/{item['id']}")
         items = repo.search_synonyms(conn, q, synonyms(conn))
         corrected = None
-        if q and not items and (fixed := repo.suggest(conn, q)):
+        typo = prefs.flag(conn, "typo_correction")
+        if q and not items and typo and (fixed := repo.suggest(conn, q)):
             items, corrected = repo.search_synonyms(conn, fixed, synonyms(conn)), fixed
         return render(
             request,
@@ -337,7 +345,7 @@ def create_app(settings: Settings) -> FastAPI:
             "labels_preview.html",
             rows=rows,
             source=source,
-            text_max=labels.TEXT_MAX,
+            text_max=prefs.number(conn, "label_text_max"),
         )
 
     @app.post("/labels/export", response_model=None)
@@ -377,7 +385,7 @@ def create_app(settings: Settings) -> FastAPI:
             )
         name = rows[0].code if len(rows) == 1 else f"{rows[0].code}_bis_{rows[-1].code}"
         return Response(
-            labels.to_xlsx(rows),
+            labels.to_xlsx(rows, prefs.number(conn, "label_text_max")),
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'},
         )
@@ -390,22 +398,37 @@ def create_app(settings: Settings) -> FastAPI:
             request,
             conn,
             "settings.html",
-            auto_item_code=codes.auto_item_code(conn),
+            groups=prefs.groups(),
+            values=prefs.values(conn),
+            next_codes={
+                p: codes.format_code(p, codes.next_number(conn, p)) for p in codes.PREFIX_LABELS
+            },
             prefixes=codes.PREFIX_LABELS,
-            synonyms=codes.get_setting(conn, "synonyms", quick.DEFAULT_SYNONYMS),
             base_url=settings.base_url,
             whisper_url=settings.whisper_url,
+            has_ca=settings.ca_cert.exists(),
         )
 
     @app.post("/settings")
-    def settings_save(
-        conn: Conn,
-        auto_item_code: Annotated[str, Form()] = "",
-        synonyms: Annotated[str, Form()] = quick.DEFAULT_SYNONYMS,
-    ) -> RedirectResponse:
-        codes.set_setting(conn, "auto_item_code", "1" if auto_item_code else "0")
-        codes.set_setting(conn, "synonyms", synonyms.strip())
-        return redirect("/settings", "Gespeichert")
+    async def settings_save(request: Request, conn: Conn) -> RedirectResponse:
+        form = await request.form()
+        prefs.save(conn, {k: str(v) for k, v in form.items()})
+        return redirect("/settings", "Einstellungen gespeichert")
+
+    @app.post("/settings/backup")
+    def settings_backup(conn: Conn) -> RedirectResponse:
+        files = backup.run(settings.data_dir, settings.data_dir / "backups")
+        return redirect("/settings", "Backup: " + ", ".join(f.name for f in files))
+
+    @app.get("/mehr", response_class=HTMLResponse)
+    def more_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request,
+            conn,
+            "more.html",
+            n_lent=len(repo.lent_items(conn)),
+            n_shopping=len(repo.shopping_list(conn)),
+        )
 
     # --- Alltag: Rückgängig, Verlauf, Verliehen, Einkauf, Platz -------------------
 
@@ -520,11 +543,11 @@ def create_app(settings: Settings) -> FastAPI:
         return JSONResponse({"text": str(resp.json().get("text", "")).strip()})
 
     @app.get("/manifest.webmanifest")
-    def manifest() -> JSONResponse:
+    def manifest(conn: Conn) -> JSONResponse:
         return JSONResponse(
             {
-                "name": APP_NAME,
-                "short_name": APP_NAME,
+                "name": prefs.raw(conn, "app_name"),
+                "short_name": prefs.raw(conn, "app_name"),
                 "start_url": "/",
                 "display": "standalone",
                 "background_color": "#ffffff",
@@ -603,7 +626,12 @@ def create_app(settings: Settings) -> FastAPI:
         dest = need_node(conn, target)
         if not text.strip():
             raise LagerError("Was soll rein?")
-        amount, unit, name = quick.parse(text)
+        if prefs.flag(conn, "quick_parse"):
+            amount, unit, name = quick.parse(text)
+        else:
+            amount, unit, name = None, "", text.strip()
+        if amount is not None and not unit:
+            unit = prefs.raw(conn, "default_unit")
         repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
                       code=codes.new_item_code(conn))  # fmt: skip
         undo = repo.last_event_id(conn)
@@ -650,7 +678,7 @@ def create_app(settings: Settings) -> FastAPI:
             "labels_preview.html",
             rows=labels.queue(conn, settings.base_url),
             source="queue",
-            text_max=labels.TEXT_MAX,
+            text_max=prefs.number(conn, "label_text_max"),
         )
 
     @app.post("/labels/queue/remove")
@@ -705,9 +733,11 @@ def create_app(settings: Settings) -> FastAPI:
         if not name.strip():
             raise LagerError("Name fehlt")
         amount = opt_int(qty)
-        if amount is None:  # Schnelleingabe "3 Rollen Lötzinn"
+        if amount is None and prefs.flag(conn, "quick_parse"):  # "3 Rollen Lötzinn"
             amount, parsed_unit, name = quick.parse(name)
             unit = unit or parsed_unit
+        if amount is not None and not unit:
+            unit = prefs.raw(conn, "default_unit")
         repo.add_item(
             conn,
             node_id,
