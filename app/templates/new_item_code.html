@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Neues Teil {{ code }}{% endblock %}
+{% block content %}
+<h1>Etikett {{ code }} ist noch frei</h1>
+<p>Neuen Gegenstand mit diesem Code anlegen:</p>
+<form method="post" action="/items/new" class="stack">
+  <input type="hidden" name="code" value="{{ code }}">
+  <input name="name" placeholder="Name, z. B. Akkuschrauber" required autofocus>
+  <input name="qty" placeholder="Anzahl (optional)" inputmode="numeric">
+  <label>Liegt in
+    <select name="container_id" required>
+      {% for p in paths %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <button class="primary">Anlegen</button>
+</form>
+{% endblock %}

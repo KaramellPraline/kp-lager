@@ -9,6 +9,7 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import Any
 
+from app import codes as code_schema
 from app import repo
 from app.db import connect
 
@@ -51,6 +52,10 @@ def _str(v: Any) -> str:
 
 def validate(conn: sqlite3.Connection, data: list[dict[str, Any]], report: Report) -> None:
     codes = [_str(c.get("code")) for c in data]
+    for raw in codes:
+        norm = code_schema.normalize(raw) if raw else None
+        if raw and (norm is None or norm.startswith(code_schema.ITEM_PREFIX)):
+            report.errors.append(f"Code {raw} passt nicht zum Schema (z. B. EUR-001)")
     for i, c in enumerate(data, 1):
         label = f"Behälter {codes[i - 1] or '#' + str(i)}"
         if not codes[i - 1]:
@@ -139,6 +144,7 @@ def _apply_container(conn: sqlite3.Connection, c: dict[str, Any], report: Report
             tags=_str(item.get("tags")),
             notes=_str(item.get("notes")),
             action="import",
+            code=code_schema.new_item_code(conn),
         )
         report.items_added += 1
 
@@ -149,6 +155,10 @@ def run(conn: sqlite3.Connection, text: str, commit: bool) -> Report:
     if not data:
         report.errors.append("Kein JSON-Objekt gefunden")
         return report
+    for c in data:  # 'eur1' -> 'EUR-001'
+        for key in ("code", "parent"):
+            if (raw := _str(c.get(key))) and (norm := code_schema.normalize(raw)):
+                c[key] = norm
     validate(conn, data, report)
     if report.errors:
         return report

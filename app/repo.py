@@ -186,7 +186,8 @@ def assign_code(conn: sqlite3.Connection, container_id: int, code: str | None) -
     """Etikett nachträglich zuordnen (z. B. Sortierkasten bekommt QR)."""
     with conn:
         conn.execute(
-            "UPDATE container SET code = ?, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE container SET code = ?, label_printed = 0, updated_at = datetime('now')"
+            " WHERE id = ?",
             (code, container_id),
         )
 
@@ -221,19 +222,37 @@ def add_item(
     tags: str = "",
     notes: str = "",
     action: str = "add",
+    code: str | None = None,
 ) -> int:
     if qty is not None and qty < 0:
         raise LagerError("Menge darf nicht negativ sein")
     with conn:
         cur = conn.execute(
-            "INSERT INTO item (container_id, name, qty, qty_hint, unit, tags, notes)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (container_id, name.strip(), qty, qty_hint, unit, tags, notes),
+            "INSERT INTO item (container_id, name, qty, qty_hint, unit, tags, notes, code)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (container_id, name.strip(), qty, qty_hint, unit, tags, notes, code),
         )
         item_id = cur.lastrowid
         assert item_id is not None
         _log(conn, get_item(conn, item_id), action, qty)
     return item_id
+
+
+def get_item_by_code(conn: sqlite3.Connection, code: str) -> Row | None:
+    row: Row | None = conn.execute("SELECT * FROM item WHERE code = ?", (code,)).fetchone()
+    return row
+
+
+def set_item_code(conn: sqlite3.Connection, item_id: int, code: str | None) -> None:
+    """Etikett-Code setzen/entfernen; neuer Code gilt als noch nicht gedruckt."""
+    item = get_item(conn, item_id)
+    with conn:
+        conn.execute(
+            "UPDATE item SET code = ?, label_printed = 0, updated_at = datetime('now')"
+            " WHERE id = ?",
+            (code, item_id),
+        )
+        _log(conn, item, "edit", note=f"Code {code or 'entfernt'}")
 
 
 def items_in(conn: sqlite3.Connection, container_id: int) -> list[Row]:

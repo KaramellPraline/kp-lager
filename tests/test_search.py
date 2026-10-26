@@ -12,7 +12,7 @@ from app.db import connect
 def conn() -> Iterator[sqlite3.Connection]:
     c = connect(":memory:")
     keller = repo.create_container(c, "Keller", "raum")
-    box = repo.create_container(c, "Werkstatt", "eurobox", parent_id=keller, code="0042")
+    box = repo.create_container(c, "Werkstatt", "eurobox", parent_id=keller, code="EUR-042")
     kasten = repo.create_container(c, "Kleinteile", "sortierkasten", parent_id=keller, grid="2x2")
     fach = repo.children(c, kasten)[2]["id"]
     repo.add_item(c, fach, "Holzschrauben 4x40", qty_hint="viele", tags="befestigung holz")
@@ -61,15 +61,15 @@ def test_index_follows_updates_and_deletes(conn: sqlite3.Connection) -> None:
 
 def test_containers_by_name_and_code(conn: sqlite3.Connection) -> None:
     assert names(repo.search_containers(conn, "werk")) == ["Werkstatt"]
-    assert names(repo.search_containers(conn, "0042")) == ["Werkstatt"]
+    assert names(repo.search_containers(conn, "EUR-042")) == ["Werkstatt"]
     assert repo.search_containers(conn, "Fach") == []  # Standard-Fächer nicht als Treffer
 
 
 def test_search_page(client: TestClient) -> None:
-    r = client.post("/containers", data={"name": "Box", "kind": "kiste", "code": "0007"})
+    r = client.post("/containers", data={"name": "Box", "kind": "kiste", "code": "KIS-007"})
     box = r.url.path.rsplit("/", 1)[1]
     client.post(f"/n/{box}/items", data={"name": "Akkuschrauber", "qty": "1"})
     r = client.get("/suche", params={"q": "schrauber"})
     assert "Akkuschrauber" in r.text and "Box" in r.text
-    assert client.get("/suche", params={"q": "0007"}).url.path == f"/n/{box}"
+    assert client.get("/suche", params={"q": "KIS-007"}).url.path == f"/n/{box}"
     assert "Nichts gefunden" in client.get("/suche", params={"q": "xyz"}).text

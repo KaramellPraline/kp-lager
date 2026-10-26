@@ -53,3 +53,6 @@ details form + form { margin-top: 8px; }
 .history { color: var(--sub); font-size: .85em; padding-left: 1.2em; }
 .result small { display: block; }
 mark { background: var(--warn); color: inherit; }
+.codes { align-items: center; justify-content: space-between; }
+.check { display: flex; gap: 10px; align-items: center; }
+.check input { min-height: 24px; width: 24px; }

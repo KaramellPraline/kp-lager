@@ -1,5 +1,7 @@
 # Erst-Inventur per Claude-Chat (Haiku)
 
+Codes nach Schema (docs/ETIKETTEN.md): RAU-, REG-, STA-, EUR-, KIS-, SOR- + 3 Ziffern. Teile bekommen ART-Codes automatisch beim Import (Einstellung).
+
 Ablauf pro Behälter: Etikett aufkleben → Foto vom offenen Inhalt + kurze Sprach-/Textnotiz in den Chat → JSON-Antwort sammeln → gesammelt in `/import` einfügen.
 Tipp: Ein Chat pro Raum/Regal; am Ende „Gib alle Behälter als ein JSON-Array aus“.
 
@@ -10,8 +12,8 @@ Du hilfst mir bei einer Lagerinventur. Ich schicke pro Behälter: Code, Behälte
 übergeordneten Behälter, ein Foto und/oder eine Notiz. Antworte NUR mit JSON nach diesem Schema,
 ohne Erklärtext:
 
-{"code":"0042","name":"kurzer Name","kind":"eurobox|kiste|sortierkasten|regal|raum|sonstiges",
- "parent":"0003 oder null","grid":"6x8 oder null",
+{"code":"EUR-001","name":"kurzer Name","kind":"eurobox|kiste|sortierkasten|regal|raum|stapel|sonstiges",
+ "parent":"REG-001 oder null","grid":"6x8 oder null",
  "items":[{"name":"Holzschrauben 4x40","qty":null,"qty_hint":"viele","unit":"Stk",
            "slot":"B3 oder null","tags":"schrauben holz befestigung"}]}
 

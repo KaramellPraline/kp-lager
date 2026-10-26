@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Einstellungen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Einstellungen</h1>
+<form method="post" action="/settings" class="stack">
+  <label class="check">
+    <input type="checkbox" name="auto_item_code" value="1" {% if auto_item_code %}checked{% endif %}>
+    Neue Teile bekommen automatisch einen ART-Code (Etikett)
+  </label>
+  <p class="meta">Aus: Code nur per Knopf „Etikett vergeben“ am Teil. Teile in Sortierkasten-Fächern bekommen beim Export „Etiketten aller Teile“ immer einen Code.</p>
+  <button class="primary">Speichern</button>
+</form>
+<p><a href="/labels">Etiketten</a> · <a href="/import">Import</a> · <a href="/export.json">Export</a></p>
+{% endblock %}

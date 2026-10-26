@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import importer, labels, photos, repo
+from app import codes, importer, labels, photos, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -28,6 +28,7 @@ KIND_LABELS = {
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["KIND_LABELS"] = KIND_LABELS
 templates.env.globals["APP_NAME"] = APP_NAME
+templates.env.globals["KIND_PREFIX"] = codes.KIND_PREFIX
 
 
 def opt_int(value: str | None) -> int | None:
@@ -44,6 +45,19 @@ def redirect(url: str, msg: str = "") -> RedirectResponse:
     if msg:
         url += ("&" if "?" in url else "?") + "msg=" + quote(msg)
     return RedirectResponse(url, status_code=303)
+
+
+def container_code(raw: str) -> str | None:
+    """Leer -> None; Schema-Code normalisieren; ART-Codes gehören zu Gegenständen."""
+    raw = raw.strip()
+    if not raw:
+        return None
+    norm = codes.normalize(raw)
+    if norm is None:
+        raise LagerError(f"'{raw}' passt nicht zum Code-Schema (z. B. EUR-001)")
+    if norm.startswith(codes.ITEM_PREFIX):
+        raise LagerError("ART-Codes sind für Gegenstände, nicht für Behälter")
+    return norm
 
 
 def node_url(container_id: int | None) -> str:
@@ -113,11 +127,26 @@ def create_app(settings: Settings) -> FastAPI:
         return render(request, conn, "index.html", roots=repo.children(conn, None))
 
     @app.get("/c/{code}", response_model=None)
+    @app.get("/C/{code}", response_model=None)  # QR-Inhalt in Großbuchstaben
     def by_code(request: Request, code: str, conn: Conn) -> Response:
-        node = repo.get_container_by_code(conn, code)
-        if node:
-            return redirect(f"/n/{node['id']}", request.query_params.get("msg", ""))
-        return render(request, conn, "new_code.html", code=code, paths=repo.all_paths(conn))
+        code = codes.normalize(code) or code.strip()
+        msg = request.query_params.get("msg", "")
+        if node := repo.get_container_by_code(conn, code):
+            return redirect(f"/n/{node['id']}", msg)
+        if item := repo.get_item_by_code(conn, code):
+            return redirect(f"/items/{item['id']}", msg)
+        prefix = codes.prefix_of(code)
+        if prefix is None:
+            raise HTTPException(404, f"'{code}' passt nicht zum Code-Schema (z. B. EUR-001)")
+        template = "new_item_code.html" if prefix == codes.ITEM_PREFIX else "new_code.html"
+        return render(
+            request,
+            conn,
+            template,
+            code=code,
+            default_kind=codes.PREFIX_KIND[prefix],
+            paths=repo.all_paths(conn),
+        )
 
     @app.get("/n/{node_id}", response_class=HTMLResponse)
     def node_page(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
@@ -149,8 +178,11 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/suche", response_model=None)
     def search(request: Request, conn: Conn, q: str = "") -> Response:
         q = q.strip()
-        if q and (node := repo.get_container_by_code(conn, q)):
+        code = codes.normalize(q) or q
+        if q and (node := repo.get_container_by_code(conn, code)):
             return redirect(f"/n/{node['id']}")
+        if q and (item := repo.get_item_by_code(conn, code)):
+            return redirect(f"/items/{item['id']}")
         return render(
             request,
             conn,
@@ -185,14 +217,69 @@ def create_app(settings: Settings) -> FastAPI:
             headers={"Content-Disposition": 'attachment; filename="lager-export.json"'},
         )
 
-    # --- Etiketten -------------------------------------------------------------
+    # --- Etiketten (D30-XLSX, A4) ---------------------------------------------
+
+    def xlsx_response(rows: list[labels.Label], name: str) -> Response:
+        return Response(
+            labels.to_xlsx(rows),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'},
+        )
 
     @app.get("/labels", response_class=HTMLResponse)
+    def labels_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request,
+            conn,
+            "labels.html",
+            prefixes=codes.PREFIX_LABELS,
+            next_codes={
+                p: codes.format_code(p, codes.next_number(conn, p)) for p in codes.PREFIX_LABELS
+            },
+            pending=labels.pending(conn, settings.base_url),
+        )
+
+    @app.post("/labels/blank.xlsx")
+    def labels_blank(
+        conn: Conn, prefix: Annotated[str, Form()], count: Annotated[int, Form()]
+    ) -> Response:
+        if prefix not in codes.PREFIX_KIND:
+            raise LagerError(f"Unbekanntes Präfix {prefix}")
+        rows = labels.blank(conn, settings.base_url, prefix, max(1, min(count, 500)))
+        return xlsx_response(rows, f"{rows[0].code}_bis_{rows[-1].code}")
+
+    @app.post("/labels/pending.xlsx")
+    def labels_pending(conn: Conn) -> Response:
+        rows = labels.pending(conn, settings.base_url)
+        if not rows:
+            raise LagerError("Keine ungedruckten Etiketten")
+        labels.mark_printed(conn, rows)
+        return xlsx_response(rows, "etiketten_neu")
+
+    @app.post("/n/{node_id}/labels.xlsx")
+    def labels_container(node_id: int, conn: Conn) -> Response:
+        node = need_node(conn, node_id)
+        rows = labels.for_container(conn, settings.base_url, node_id)
+        if not rows:
+            raise LagerError("Keine Gegenstände in diesem Behälter")
+        labels.mark_printed(conn, rows)
+        return xlsx_response(rows, f"etiketten_{node['code'] or node_id}")
+
+    @app.get("/items/{item_id}/label.xlsx")
+    def label_item(item_id: int, conn: Conn) -> Response:
+        item = repo.get_item(conn, item_id)
+        if not item["code"]:
+            raise LagerError("Teil hat noch keinen Code")
+        rows = [labels.item_label(conn, settings.base_url, item)]
+        labels.mark_printed(conn, rows)
+        return xlsx_response(rows, item["code"])
+
+    @app.get("/labels/sheet", response_class=HTMLResponse)
     def label_sheet(
         request: Request,
         conn: Conn,
-        start: int | None = None,
-        count: int | None = None,
+        prefix: str = "EUR",
+        count: int = 40,
         cols: int = labels.Sheet.cols,
         rows: int = labels.Sheet.rows,
         width: float = labels.Sheet.width,
@@ -200,20 +287,22 @@ def create_app(settings: Settings) -> FastAPI:
         top: float = labels.Sheet.top,
         left: float = labels.Sheet.left,
     ) -> HTMLResponse:
+        if prefix not in codes.PREFIX_KIND:
+            raise HTTPException(404, "Unbekanntes Präfix")
         sheet = labels.Sheet(cols, rows, width, height, top, left)
-        start = start if start is not None else labels.next_free_number(conn)
-        count = max(1, min(count or sheet.per_page, 400))
+        start = codes.next_number(conn, prefix)
+        count = max(1, min(count, 400))
         cells = [
-            (code, labels.qr_svg(f"{settings.base_url}/c/{code}"))
-            for code in map(labels.format_code, range(start, start + count))
+            (code, labels.qr_svg(labels.qr_content(settings.base_url, code)))
+            for code in (codes.format_code(prefix, n) for n in range(start, start + count))
         ]
         pages = [cells[i : i + sheet.per_page] for i in range(0, len(cells), sheet.per_page)]
         return templates.TemplateResponse(
             request,
-            "labels.html",
+            "labels_sheet.html",
             {
                 "s": sheet,
-                "start": start,
+                "prefix": prefix,
                 "count": count,
                 "last": start + count - 1,
                 "codes": [c for c, _ in cells],
@@ -221,10 +310,29 @@ def create_app(settings: Settings) -> FastAPI:
             },
         )
 
-    @app.post("/labels/printed")
-    def labels_printed(conn: Conn, last: Annotated[int, Form()]) -> RedirectResponse:
-        labels.mark_printed(conn, last)
-        return redirect("/labels", f"Gemerkt – nächster Bogen beginnt bei {last + 1}")
+    @app.post("/labels/sheet/printed")
+    def sheet_printed(
+        conn: Conn, prefix: Annotated[str, Form()], last: Annotated[int, Form()]
+    ) -> RedirectResponse:
+        codes.mark_used_until(conn, prefix, last)
+        return redirect("/labels", f"Gemerkt – nächster Code {codes.format_code(prefix, last + 1)}")
+
+    # --- Einstellungen ----------------------------------------------------------
+
+    @app.get("/settings", response_class=HTMLResponse)
+    def settings_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request,
+            conn,
+            "settings.html",
+            auto_item_code=codes.auto_item_code(conn),
+            prefixes=codes.PREFIX_LABELS,
+        )
+
+    @app.post("/settings")
+    def settings_save(conn: Conn, auto_item_code: Annotated[str, Form()] = "") -> RedirectResponse:
+        codes.set_setting(conn, "auto_item_code", "1" if auto_item_code else "0")
+        return redirect("/settings", "Gespeichert")
 
     # --- Behälter -------------------------------------------------------------
 
@@ -245,7 +353,7 @@ def create_app(settings: Settings) -> FastAPI:
             name.strip(),
             kind,
             parent_id=opt_int(parent_id),
-            code=code.strip() or None,
+            code=container_code(code),
             grid=grid.strip() or None,
             position=position.strip() or None,
         )
@@ -261,9 +369,20 @@ def create_app(settings: Settings) -> FastAPI:
     ) -> RedirectResponse:
         node = need_node(conn, node_id)
         repo.update_container(conn, node_id, name, notes)
-        if code.strip() != (node["code"] or ""):
-            repo.assign_code(conn, node_id, code.strip() or None)
+        new_code = container_code(code)
+        if new_code != node["code"]:
+            repo.assign_code(conn, node_id, new_code)
         return redirect(f"/n/{node_id}", "Gespeichert")
+
+    @app.post("/n/{node_id}/code")
+    def container_next_code(node_id: int, conn: Conn) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        prefix = codes.KIND_PREFIX.get(node["kind"])
+        if prefix is None:
+            raise LagerError("Für diese Art gibt es kein Präfix – Code von Hand eintragen")
+        code = codes.reserve(conn, prefix, 1)[0]
+        repo.assign_code(conn, node_id, code)
+        return redirect(f"/n/{node_id}", f"Code {code} vergeben")
 
     @app.post("/n/{node_id}/delete")
     def delete_container(node_id: int, conn: Conn) -> RedirectResponse:
@@ -286,8 +405,45 @@ def create_app(settings: Settings) -> FastAPI:
         need_node(conn, node_id)
         if not name.strip():
             raise LagerError("Name fehlt")
-        repo.add_item(conn, node_id, name, qty=opt_int(qty), unit=unit.strip(), tags=tags.strip())
+        repo.add_item(
+            conn,
+            node_id,
+            name,
+            qty=opt_int(qty),
+            unit=unit.strip(),
+            tags=tags.strip(),
+            code=codes.new_item_code(conn),
+        )
         return redirect(f"/n/{node_id}", f"„{name.strip()}“ eingelagert")
+
+    @app.post("/items/new")
+    def add_item_with_code(
+        conn: Conn,
+        code: Annotated[str, Form()],
+        container_id: Annotated[int, Form()],
+        name: Annotated[str, Form()],
+        qty: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        norm = codes.normalize(code)
+        if norm is None or not norm.startswith(codes.ITEM_PREFIX):
+            raise LagerError(f"'{code}' ist kein Gegenstands-Code (ART-0001)")
+        if not name.strip():
+            raise LagerError("Name fehlt")
+        need_node(conn, container_id)
+        item_id = repo.add_item(conn, container_id, name, qty=opt_int(qty), code=norm)
+        codes.mark_used_until(conn, codes.ITEM_PREFIX, int(norm[4:]))
+        return redirect(f"/items/{item_id}", f"„{name.strip()}“ angelegt")
+
+    @app.post("/items/{item_id}/code")
+    def item_code(
+        item_id: int, conn: Conn, remove: Annotated[str, Form()] = ""
+    ) -> RedirectResponse:
+        if remove:
+            repo.set_item_code(conn, item_id, None)
+            return redirect(f"/items/{item_id}", "Code entfernt")
+        code = codes.reserve(conn, codes.ITEM_PREFIX, 1)[0]
+        repo.set_item_code(conn, item_id, code)
+        return redirect(f"/items/{item_id}", f"Code {code} vergeben")
 
     @app.post("/items/{item_id}/qty", response_class=HTMLResponse)
     def change_qty(

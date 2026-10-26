@@ -5,6 +5,7 @@ Stand: 2026-10-26
 ## Aktuell
 - App heißt „KP Lager“. M0–M7 erledigt und in `main` (53 Tests grün, UI im Handy-Viewport geprüft).
 - Dev-Version auf dem Windows-PC: `LAGER_BASE_URL=http://<PC-IP>:8000 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000` (Daten in `data/`). Test-Etiketten von dort zeigen auf den PC, nicht für den Dauerbetrieb drucken.
+- Code-Schema + D30-Etiketten (XLSX) fertig, siehe `docs/ETIKETTEN.md`. Offen: Probedruck 40×12 mit Handy-Scan testen.
 - **Nächster Schritt: Deployment auf dem Proxmox-LXC** nach `deploy/README.md` (braucht Zugriff auf den Server → manuell oder in einer Session mit SSH-Zugang).
 - Danach: Etiketten drucken, Erst-Inventur per Haiku-Chat (`docs/HAIKU_PROMPT.md`) → `/import`.
 
@@ -19,6 +20,7 @@ Stand: 2026-10-26
 - [x] **M4 QR-Etiketten**: `/labels` A4-Bögen (Standard 4×10 à 48,5×25,4 mm, anpassbar), Zähler „als gedruckt merken“.
 - [x] **M5 Import/Export**: `/import` mit Vorschau (läuft auf DB-Kopie), Idempotenz, `slot` → Fach; `/export.json` voller Dump.
 - [x] **M6 Deployment-Dateien**: `deploy/` (install.sh, systemd, Caddy `tls internal` + `/ca.crt`, Backup-Timer). **Auf echtem Server noch nicht getestet.**
+- [x] **M7b Code-Schema & D30**: PRÄFIX-NNN, ART-Codes für Teile, XLSX-Export 40×12, Einstellungen.
 - [x] **M7 Fotos**: Upload per Handykamera, EXIF-Drehung, 1600 px + Thumbnail, Löschen räumt Dateien auf.
 - [ ] **M8 Sprache (niedrige Prio)**: separater Dienst faster-whisper (`small`, int8, CPU), Aufnahme per MediaRecorder → Transkript ins Eingabefeld. Abschaltbar per Config. Erst sinnvoll, wenn HTTPS im LAN läuft (Mikrofon).
 - [ ] **M9 Optional**: semantische Suche (lokale Embeddings), Claude-API- oder Ollama-Extraktion aus Foto+Transkript, Status „ausgeliehen“ für Werkzeug.

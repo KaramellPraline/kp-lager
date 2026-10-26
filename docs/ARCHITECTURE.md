@@ -22,7 +22,7 @@ Keller (raum)
 ```
 
 - `container`: `id` (intern), `code` (QR-ID, UNIQUE, nur etikettierte Knoten), `parent_id`, `kind` (raum|regal|ebene|stapel|eurobox|kiste|sortierkasten|fach|sonstiges), `name`, `position` (Platz im Eltern, z. B. `B3`), `grid` (`SpaltenxZeilen` → Fächer A1… als Kind-Knoten), `notes`, `photo`, Zeitstempel. Löschen nur wenn leer (RESTRICT).
-- `item`: `id`, `container_id`, `name`, `qty` (NULL = ungezählt, nie < 0), `qty_hint` („ca. 20“, „viele“), `unit`, `tags`, `notes`, `photo`, Zeitstempel.
+- `item`: `id`, `code` (ART-0001, UNIQUE, optional), `label_printed`, `container_id`, `name`, `qty` (NULL = ungezählt, nie < 0), `qty_hint` („ca. 20“, „viele“), `unit`, `tags`, `notes`, `photo`, Zeitstempel.
 - `event`: Protokoll (`add|take|put|move|edit|delete|import`, `delta`, `note`); `item_name` als Kopie, bleibt nach Löschen erhalten.
 - Ab M3: `item_fts` (FTS5 trigram) über Name, Tags, Notizen.
 - Codes werden vorab gedruckt; Code ohne Zeile in `container` = noch frei.
@@ -33,8 +33,9 @@ Keller (raum)
 - `app/web.py`: alle Routen; Verbindung pro Request; Fehler (`LagerError`) → Redirect mit `?msg=`
 - `app/db.py`: Verbindung (FK an, WAL, `fold()` für Umlaut-LIKE) + Migrations-Runner (PRAGMA user_version)
 - `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster, Löschen), Items (Bestand), Protokoll, Suche
-- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler
-- `app/labels.py`: Codes, QR-SVG, Bogenformat, Druck-Zähler
+- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus
+- `app/codes.py`: Code-Schema PRÄFIX-NNN, Normalisieren, Zähler je Präfix, Einstellungen (`meta`)
+- `app/labels.py`: QR-Inhalt (Großbuchstaben), XLSX für D30 (40×12), Etikettenlisten, A4-Bogen
 - `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
 - `app/photos.py`: Foto speichern (EXIF-Drehung, 1600 px + Thumbnail), löschen
 - `app/templates/`: `node.html` (Behälter), `item.html`, `search.html`, `import.html`, `labels.html` (Druck), Partials `_*.html`
@@ -42,7 +43,8 @@ Keller (raum)
 - `tests/`: pytest (`conftest.py` liefert `client` mit Temp-Datenverzeichnis)
 
 ## Wichtige Routen
-- `/c/{code}` QR-Einstieg · `/n/{id}` Behälter · `/items/{id}` Teil · `/suche?q=` · `/labels` · `/import` · `/export.json`
+- `/c/{code}` bzw. `/C/{code}` QR-Einstieg (Behälter oder Teil) · `/n/{id}` Behälter · `/items/{id}` Teil · `/suche?q=` · `/labels` · `/settings` · `/import` · `/export.json`
+- Etiketten: `POST /labels/blank.xlsx`, `POST /labels/pending.xlsx`, `POST /n/{id}/labels.xlsx`, `GET /items/{id}/label.xlsx`, `GET /labels/sheet`
 - Umlagern: `POST /carry/{item|node}/{id}` setzt Cookie, `POST /drop/{id}` legt ab.
 
 ## Schnittstellen

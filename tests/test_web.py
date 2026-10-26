@@ -16,11 +16,11 @@ def make(client: TestClient, **form: str) -> int:
 
 
 def test_unknown_code_offers_creation_then_redirects(client: TestClient) -> None:
-    r = client.get("/c/0042")
-    assert "Etikett 0042 ist noch frei" in r.text
+    r = client.get("/c/EUR-042")
+    assert "Etikett EUR-042 ist noch frei" in r.text
     keller = make(client, name="Keller", kind="raum")
-    box = make(client, name="Elektronik", kind="eurobox", code="0042", parent_id=str(keller))
-    r = client.get("/c/0042")
+    box = make(client, name="Elektronik", kind="eurobox", code="EUR-042", parent_id=str(keller))
+    r = client.get("/c/EUR-042")
     assert node_id(r) == box
     assert "Keller" in r.text and "Elektronik" in r.text
 
@@ -76,9 +76,11 @@ def test_carry_container_into_itself_rejected(client: TestClient) -> None:
 
 
 def test_duplicate_code_message(client: TestClient) -> None:
-    make(client, name="A", kind="kiste", code="0001")
+    make(client, name="A", kind="kiste", code="KIS-001")
     r = client.post(
-        "/containers", data={"name": "B", "kind": "kiste", "code": "0001"}, headers={"referer": "/"}
+        "/containers",
+        data={"name": "B", "kind": "kiste", "code": "KIS-001"},
+        headers={"referer": "/"},
     )
     assert "Code ist schon vergeben" in r.text
 

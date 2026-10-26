@@ -10,13 +10,13 @@ from app.db import connect
 
 CHAT = """Hier ist das JSON:
 ```json
-{"code":"0001","name":"Keller","kind":"raum","parent":null,"items":[]}
+{"code":"RAU-001","name":"Keller","kind":"raum","parent":null,"items":[]}
 ```
 und die nächste Box:
-[{"code":"0042","name":"Elektronik","kind":"eurobox","parent":"0001",
+[{"code":"EUR-001","name":"Elektronik","kind":"eurobox","parent":"RAU-001",
   "items":[{"name":"Lötzinn","qty":2,"unit":"Rolle","tags":["löten","elektronik"]},
            {"name":"Kabelbinder","qty":null,"qty_hint":"viele"}]},
- {"code":"0043","name":"Schrauben","kind":"sortierkasten","parent":"0001","grid":"4x2",
+ {"code":"SOR-001","name":"Schrauben","kind":"sortierkasten","parent":"RAU-001","grid":"4x2",
   "items":[{"name":"Holzschrauben 4x40","qty_hint":"viele","slot":"b3"},
            {"name":"Dübel 6mm","slot":"Z9"}]}]
 """
@@ -30,7 +30,7 @@ def conn() -> Iterator[sqlite3.Connection]:
 
 
 def test_parse_multiple_answers_with_fences() -> None:
-    assert [c["code"] for c in importer.parse(CHAT)] == ["0001", "0042", "0043"]
+    assert [c["code"] for c in importer.parse(CHAT)] == ["RAU-001", "EUR-001", "SOR-001"]
     assert importer.parse("kein json") == []
 
 
@@ -53,12 +53,14 @@ def test_commit_builds_tree_slots_and_is_idempotent(conn: sqlite3.Connection) ->
 
 
 def test_existing_parent_and_move(conn: sqlite3.Connection) -> None:
-    keller = repo.create_container(conn, "Keller", "raum", code="0001")
-    repo.create_container(conn, "Dachboden", "raum", code="0002")
-    repo.create_container(conn, "Box", "kiste", code="0050", parent_id=keller)
-    r = importer.run(conn, '{"code":"0050","name":"Box","kind":"kiste","parent":"0002"}', True)
-    assert r.containers_moved == ["0050 Box"]
-    node = repo.get_container_by_code(conn, "0050")
+    keller = repo.create_container(conn, "Keller", "raum", code="RAU-001")
+    repo.create_container(conn, "Dachboden", "raum", code="RAU-002")
+    repo.create_container(conn, "Box", "kiste", code="KIS-050", parent_id=keller)
+    r = importer.run(
+        conn, '{"code":"KIS-050","name":"Box","kind":"kiste","parent":"RAU-002"}', True
+    )
+    assert r.containers_moved == ["KIS-050 Box"]
+    node = repo.get_container_by_code(conn, "KIS-050")
     assert node is not None and repo.path_label(conn, node["id"]) == "Dachboden › Box"
 
 
@@ -66,11 +68,14 @@ def test_existing_parent_and_move(conn: sqlite3.Connection) -> None:
     ("payload", "error"),
     [
         ('{"name":"X"}', "'code' fehlt"),
-        ('{"code":"1"}', "'name' fehlt"),
-        ('{"code":"1","name":"X","parent":"9"}', "unbekannt"),
-        ('{"code":"1","name":"X","items":[{"name":"Y","qty":-1}]}', "ungültig"),
-        ('[{"code":"1","name":"X"},{"code":"1","name":"Y"}]', "mehrfach"),
-        ('[{"code":"1","name":"X","parent":"2"},{"code":"2","name":"Y","parent":"1"}]', "Zirkul"),
+        ('{"code":"KIS-1"}', "'name' fehlt"),
+        ('{"code":"KIS-1","name":"X","parent":"KIS-9"}', "unbekannt"),
+        ('{"code":"KIS-1","name":"X","items":[{"name":"Y","qty":-1}]}', "ungültig"),
+        ('[{"code":"KIS-1","name":"X"},{"code":"KIS-1","name":"Y"}]', "mehrfach"),
+        (
+            '[{"code":"KIS-1","name":"X","parent":"KIS-2"},{"code":"KIS-2","name":"Y","parent":"KIS-1"}]',
+            "Zirkul",
+        ),
     ],
 )
 def test_errors_leave_db_untouched(conn: sqlite3.Connection, payload: str, error: str) -> None:
@@ -80,8 +85,8 @@ def test_errors_leave_db_untouched(conn: sqlite3.Connection, payload: str, error
 
 
 def test_unknown_kind_warns(conn: sqlite3.Connection) -> None:
-    r = importer.run(conn, '{"code":"1","name":"Schrank","kind":"schrank"}', commit=True)
-    assert r.warnings and repo.get_container_by_code(conn, "1")["kind"] == "sonstiges"  # type: ignore[index]
+    r = importer.run(conn, '{"code":"KIS-1","name":"Schrank","kind":"schrank"}', commit=True)
+    assert r.warnings and repo.get_container_by_code(conn, "KIS-001")["kind"] == "sonstiges"  # type: ignore[index]
 
 
 def test_import_page_and_export(client: TestClient) -> None:
@@ -90,5 +95,5 @@ def test_import_page_and_export(client: TestClient) -> None:
     r = client.post("/import", data={"text": CHAT, "action": "commit"})
     assert "Übernommen" in r.text
     data = json.loads(client.get("/export.json").text)
-    assert {c["code"] for c in data["container"]} >= {"0001", "0042", "0043"}
+    assert {c["code"] for c in data["container"]} >= {"RAU-001", "EUR-001", "SOR-001"}
     assert len(data["item"]) == 4 and len(data["event"]) >= 4

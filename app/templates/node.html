@@ -21,6 +21,12 @@
   </form>
 </section>
 
+{% if items or kids %}
+<form method="post" action="/n/{{ node.id }}/labels.xlsx">
+  <button>Etiketten aller Teile (XLSX für D30)</button>
+</form>
+{% endif %}
+
 {% if kids %}
 <section>
   <h2>{% if cols %}Fächer{% else %}Unterbehälter{% endif %}</h2>
@@ -34,7 +40,7 @@
     <input type="hidden" name="parent_id" value="{{ node.id }}">
     <input name="name" placeholder="Name" required>
     {% include "_kind_select.html" %}
-    <input name="code" placeholder="QR-Code (optional)" inputmode="numeric">
+    <input name="code" placeholder="Code, z. B. EUR-001 (optional)" autocapitalize="characters">
     <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
     <input name="grid" placeholder="Raster bei Sortierkasten, z. B. 6x8">
     <button class="primary">Anlegen</button>
@@ -45,13 +51,16 @@
   <summary>Bearbeiten / Umlagern</summary>
   <form method="post" action="/n/{{ node.id }}/edit" class="stack">
     <input name="name" value="{{ node.name }}" required>
-    <input name="code" value="{{ node.code or '' }}" placeholder="QR-Code" inputmode="numeric">
+    <input name="code" value="{{ node.code or '' }}" placeholder="Code, z. B. EUR-001" autocapitalize="characters">
     <textarea name="notes" placeholder="Notizen">{{ node.notes }}</textarea>
     <button>Speichern</button>
   </form>
   <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data" class="stack">
     <label>Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()"></label>
   </form>
+  {% if not node.code and KIND_PREFIX.get(node.kind) %}
+  <form method="post" action="/n/{{ node.id }}/code"><button>Nächsten {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
+  {% endif %}
   {% if node.kind != 'fach' %}
   <form method="post" action="/carry/node/{{ node.id }}"><button>Behälter umlagern (aufnehmen)</button></form>
   {% endif %}

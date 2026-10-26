@@ -19,4 +19,4 @@ Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite 
 - Schema-Änderungen nur als nummerierte SQL-Dateien in `app/migrations/`.
 - Keine externen CDNs (läuft offline im LAN).
 
-Mehr: `docs/STATUS.md` (Stand + Meilensteine), `docs/ARCHITECTURE.md` (Datenmodell), `docs/DECISIONS.md`, `docs/HAIKU_PROMPT.md` (Erst-Inventur per Chat)
+Mehr: `docs/STATUS.md` (Stand + Meilensteine), `docs/ARCHITECTURE.md` (Datenmodell), `docs/DECISIONS.md`, `docs/HAIKU_PROMPT.md` (Erst-Inventur per Chat), `docs/ETIKETTEN.md` (Code-Schema, D30)

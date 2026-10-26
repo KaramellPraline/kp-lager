@@ -7,6 +7,14 @@
 <h1>{{ item.name }}</h1>
 {% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
 <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
+<div class="row codes">
+  {% if item.code %}
+  <span class="meta">Code <b>{{ item.code }}</b>{% if not item.label_printed %} · Etikett offen{% endif %}</span>
+  <a href="/items/{{ item.id }}/label.xlsx">Etikett (XLSX)</a>
+  {% else %}
+  <form method="post" action="/items/{{ item.id }}/code"><button>Etikett vergeben</button></form>
+  {% endif %}
+</div>
 
 <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">Umlagern (aufnehmen)</button></form>
 
@@ -26,6 +34,9 @@
   <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data" class="stack">
     <label>Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()"></label>
   </form>
+  {% if item.code %}
+  <form method="post" action="/items/{{ item.id }}/code"><input type="hidden" name="remove" value="1"><button>Code entfernen</button></form>
+  {% endif %}
   <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Teil entfernen?')">
     <button class="danger">Entfernen</button>
   </form>
