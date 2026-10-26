@@ -135,9 +135,29 @@ def create_app(settings: Settings) -> FastAPI:
 
     # --- Seiten --------------------------------------------------------------
 
+    @app.middleware("http")
+    async def force_https(request: Request, call_next: Any) -> Response:
+        """HTTP-Instanz (Port 80): nur /ca.crt und /health ausliefern, sonst auf HTTPS."""
+        if settings.https_redirect and request.url.path not in ("/ca.crt", "/health"):
+            target = request.url.replace(scheme="https", port=None)
+            return RedirectResponse(str(target), status_code=308)
+        resp: Response = await call_next(request)
+        return resp
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok"}
+
+    @app.get("/ca.crt")
+    def ca_cert() -> Response:
+        """Root-Zertifikat zum Installieren auf dem Handy (für HTTPS ohne Warnung)."""
+        if not settings.ca_cert.exists():
+            raise HTTPException(404, "Kein Zertifikat – tools/devcert.py ausführen")
+        return Response(
+            settings.ca_cert.read_bytes(),
+            media_type="application/x-x509-ca-cert",
+            headers={"Content-Disposition": 'attachment; filename="kp-lager-ca.crt"'},
+        )
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request, conn: Conn) -> HTMLResponse:

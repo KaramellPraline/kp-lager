@@ -19,6 +19,7 @@ cad = [
     "build123d==0.13.0",
 ]
 dev = [
+    "cryptography>=50.0.2",
     "mypy>=1.11",
     "pytest>=8",
     "ruff>=0.6",
