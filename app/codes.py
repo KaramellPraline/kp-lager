@@ -15,11 +15,12 @@ PREFIX_KIND: dict[str, str | None] = {
     "EUR": "eurobox",
     "KIS": "kiste",
     "SOR": "sortierkasten",
+    "EIN": "einsatz",
     ITEM_PREFIX: None,
 }
 PREFIX_LABELS = {
     "RAU": "Raum", "REG": "Regal", "STA": "Stellplatz/Kistenberg", "EUR": "Eurobox",
-    "KIS": "Kiste/Box", "SOR": "Sortierkasten", ITEM_PREFIX: "Gegenstand",
+    "KIS": "Kiste/Box", "SOR": "Sortierkasten", "EIN": "Einsatz (Bin)", ITEM_PREFIX: "Gegenstand",
 }  # fmt: skip
 KIND_PREFIX = {kind: p for p, kind in PREFIX_KIND.items() if kind} | {"sonstiges": "KIS"}
 CODE_RE = re.compile(r"^([A-Z]{3})-?0*(\d{1,6})$")

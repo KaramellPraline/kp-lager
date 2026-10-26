@@ -6,7 +6,8 @@ from string import ascii_uppercase
 Row = sqlite3.Row
 
 KINDS = (
-    "raum", "regal", "ebene", "stapel", "eurobox", "kiste", "sortierkasten", "fach", "sonstiges",
+    "raum", "regal", "ebene", "stapel", "eurobox", "kiste", "sortierkasten", "einsatz", "fach",
+    "sonstiges",
 )  # fmt: skip
 
 
@@ -37,6 +38,8 @@ def create_container(
     position: str | None = None,
     grid: str | None = None,
     notes: str = "",
+    size: str | None = None,
+    model: str | None = None,
 ) -> int:
     """Legt einen Behälter an. Mit `grid` werden die Fächer als Kind-Behälter erzeugt."""
     if kind not in KINDS:
@@ -44,9 +47,9 @@ def create_container(
     slots = parse_grid(grid) if grid else []
     with conn:
         cur = conn.execute(
-            "INSERT INTO container (code, parent_id, kind, name, position, grid, notes)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (code, parent_id, kind, name, position, grid, notes),
+            "INSERT INTO container (code, parent_id, kind, name, position, grid, notes, size,"
+            " model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (code, parent_id, kind, name, position, grid, notes, size, model),
         )
         cid = cur.lastrowid
         assert cid is not None

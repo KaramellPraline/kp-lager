@@ -14,6 +14,7 @@
     <input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}">
     <button>Etikett drucken</button>
   </form>
+  <form method="post" action="/labels/queue/item/{{ item.id }}"><button>In Warteschlange</button></form>
   {% else %}
   <form method="post" action="/items/{{ item.id }}/code"><button>Etikett vergeben</button></form>
   {% endif %}

@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>A4-Etiketten 40×12 {{ rows[0].code }}–{{ rows[-1].code }}</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* A4 hoch, 5 × 22 Etiketten à 40×12 mm, dünne Schnittlinien */
+    @page { size: A4; margin: 0; }
+    .sheet { width: 210mm; height: 297mm; padding: 16.5mm 5mm; display: grid; background: #fff; color: #000;
+      grid-template-columns: repeat(5, 40mm); grid-auto-rows: 12mm; break-after: page;
+      margin: 0 auto 16px; box-shadow: 0 0 4px #0004; }
+    .l12 { border: 0.1mm solid #aaa; display: flex; align-items: center; gap: 1mm; padding: 0.8mm 1mm; overflow: hidden; }
+    .l12 svg { width: 10mm; height: 10mm; flex: none; }
+    .l12 .t { min-width: 0; line-height: 1.1; }
+    .l12 b { display: block; font: 700 2.6mm/1.1 ui-monospace, monospace; }
+    .l12 span { display: block; font: 2.3mm/1.15 system-ui, sans-serif; overflow: hidden; max-height: 5.4mm; }
+    @media print { .no-print { display: none; } body { background: #fff; } .sheet { box-shadow: none; margin: 0; } }
+  </style>
+</head>
+<body>
+  <main class="no-print">
+    <a href="/labels">← Etiketten</a>
+    <h1>A4-Bogen 40×12 ({{ rows|length }} Etiketten)</h1>
+    <p>A4 hoch, Skalierung 100 %, Ränder „keine“. Entlang der Linien schneiden.</p>
+    <button class="primary" onclick="window.print()">Drucken</button>
+  </main>
+  {% for page in pages %}
+  <div class="sheet">
+    {% for r, svg in page %}<div class="l12">{{ svg|safe }}<div class="t"><b>{{ r.code }}</b><span>{{ r.text }}</span></div></div>{% endfor %}
+  </div>
+  {% endfor %}
+</body>
+</html>

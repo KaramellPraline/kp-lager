@@ -26,8 +26,15 @@ def migrate(conn: sqlite3.Connection) -> int:
         number = int(file.name[:3])
         if number <= version:
             continue
-        conn.executescript(
-            f"BEGIN;\n{file.read_text(encoding='utf-8')}\nPRAGMA user_version = {number};\nCOMMIT;"
-        )
+        sql = file.read_text(encoding="utf-8")
+        # Tabellen-Neuaufbau (z. B. CHECK ändern) geht nur ohne FK-Prüfung; danach prüfen.
+        rebuild = "-- foreign_keys: off" in sql
+        if rebuild:
+            conn.execute("PRAGMA foreign_keys = OFF")
+        conn.executescript(f"BEGIN;\n{sql}\nPRAGMA user_version = {number};\nCOMMIT;")
+        if rebuild:
+            conn.execute("PRAGMA foreign_keys = ON")
+            if conn.execute("PRAGMA foreign_key_check").fetchone():
+                raise RuntimeError(f"Fremdschlüssel nach {file.name} verletzt")
         version = number
     return version

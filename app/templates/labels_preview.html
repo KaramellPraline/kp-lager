@@ -6,15 +6,17 @@
 <p class="meta">Text bearbeiten, dann exportieren. Auf dem D30 (40×12) passen ca. {{ text_max }} Zeichen – längere werden gekürzt.</p>
 
 <form method="post" action="/labels/export" class="stack" id="export">
+  <input type="hidden" name="source" value="{{ source }}">
   <div class="table-wrap">
     <table class="labels">
-      <thead><tr><th>Code</th><th>Text / Name</th><th>Zusatz</th></tr></thead>
+      <thead><tr><th>Code</th><th>Text / Name</th><th>Zusatz</th>{% if source == 'queue' %}<th></th>{% endif %}</tr></thead>
       <tbody>
         {% for r in rows %}
         <tr>
           <td><input type="hidden" name="code" value="{{ r.code }}"><b>{{ r.code }}</b></td>
           <td><input name="text" value="{{ r.text }}" data-max="{{ text_max }}" aria-label="Text für {{ r.code }}"></td>
           <td><input name="extra" value="{{ r.extra }}" class="short" aria-label="Zusatz für {{ r.code }}"></td>
+          {% if source == 'queue' %}<td><button formaction="/labels/queue/remove?code={{ r.code }}" formnovalidate aria-label="{{ r.code }} entfernen">✕</button></td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>
@@ -26,6 +28,7 @@
   <div class="row">
     <button name="fmt" value="xlsx" class="primary">XLSX für D30 (40×12)</button>
     <button name="fmt" value="a8">A8-Bogen drucken (16 pro A4 quer)</button>
+    <button name="fmt" value="a4">A4-Bogen 40×12 (110 Stück)</button>
   </div>
   <p class="meta">Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
 </form>

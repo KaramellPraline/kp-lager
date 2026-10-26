@@ -153,3 +153,45 @@ def finalize(
         last = max(int(r.code[4:]) for r in rows if r.code.startswith(prefix))
         codes.mark_used_until(conn, prefix, last)
     return rows
+
+
+# --- Warteschlange: Etiketten sammeln, später als Batch exportieren -------------------
+
+A4_COLS, A4_ROWS = 5, 22  # 40×12 mm auf A4 hoch (200 × 264 mm), Schnittlinien
+
+
+def enqueue(conn: sqlite3.Connection, code: str, text: str, extra: str = "") -> None:
+    """Gleicher Code nochmal = Text aktualisieren (z. B. Bin-Inhalt geändert)."""
+    with conn:
+        conn.execute(
+            "INSERT INTO label_queue (code, text, extra) VALUES (?, ?, ?) ON CONFLICT(code)"
+            " DO UPDATE SET text = excluded.text, extra = excluded.extra",
+            (code, text, extra),
+        )
+
+
+def queue(conn: sqlite3.Connection, base_url: str) -> list[Label]:
+    return [
+        Label(r["code"], qr_content(base_url, r["code"]), r["text"], r["extra"])
+        for r in conn.execute("SELECT * FROM label_queue ORDER BY added_at, code")
+    ]
+
+
+def queue_count(conn: sqlite3.Connection) -> int:
+    return int(conn.execute("SELECT COUNT(*) FROM label_queue").fetchone()[0])
+
+
+def dequeue(conn: sqlite3.Connection, codes_: list[str]) -> None:
+    with conn:
+        conn.executemany("DELETE FROM label_queue WHERE code = ?", [(c,) for c in codes_])
+
+
+def container_label(conn: sqlite3.Connection, node: sqlite3.Row) -> tuple[str, str]:
+    """(Text, Zusatz) für ein Behälter-Etikett; Einsatz: Inhalt + Kasten/Position."""
+    if node["kind"] == "einsatz":
+        from app import kasten  # zirkulärer Import vermeiden
+
+        parent = repo.get_container(conn, node["parent_id"]) if node["parent_id"] else None
+        where = (parent["code"] or parent["name"]) if parent else ""
+        return kasten.bin_label_text(conn, node), f"{where} {node['position']}".strip()
+    return node["name"], node["kind"]

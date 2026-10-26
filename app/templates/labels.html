@@ -7,6 +7,14 @@
 D30-Vorlage einmal anlegen: QR-Feld ← Spalte <b>QR</b>, Text ← <b>Code</b>/<b>Text</b>.</p>
 
 <section>
+  <h2>Warteschlange ({{ queue|length }})</h2>
+  {% if queue %}
+  <ul class="list">{% for l in queue[:10] %}<li class="item"><span class="name">{{ l.code }} · {{ l.text }}</span><small>{{ l.extra }}</small></li>{% endfor %}</ul>
+  <p><a class="button primary" href="/labels/queue">Warteschlange drucken</a></p>
+  {% else %}<p class="empty">Leer. Etiketten per „In die Warteschlange“ an Teilen, Einsätzen und Kästen sammeln.</p>{% endif %}
+</section>
+
+<section>
   <h2>Neue Codes auf Vorrat</h2>
   <p class="meta">Für Boxen, Kisten, Regale: Etikett aufkleben, scannen → Behälter wird angelegt.</p>
   <form method="post" action="/labels/preview" class="stack">

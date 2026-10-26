@@ -6,7 +6,7 @@
   <a href="/einkauf">Einkaufsliste{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
   <a href="/platz">Freie Plätze</a>
   <a href="/verlauf">Verlauf</a>
-  <a href="/labels">Etiketten</a>
+  <a href="/labels">Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
 </nav>
 
 {% if favorites %}

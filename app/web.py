@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import codes, importer, labels, photos, prompt, quick, repo
+from app import codes, importer, kasten, labels, photos, prompt, quick, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -22,14 +22,15 @@ APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
 KIND_LABELS = {
     "raum": "Raum", "regal": "Regal", "ebene": "Ebene", "stapel": "Stapel/Kistenberg",
-    "eurobox": "Eurobox", "kiste": "Kiste", "sortierkasten": "Sortierkasten", "fach": "Fach",
-    "sonstiges": "Sonstiges",
+    "eurobox": "Eurobox", "kiste": "Kiste", "sortierkasten": "Sortierkasten",
+    "einsatz": "Einsatz", "fach": "Fach", "sonstiges": "Sonstiges",
 }  # fmt: skip
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["KIND_LABELS"] = KIND_LABELS
 templates.env.globals["APP_NAME"] = APP_NAME
 templates.env.globals["KIND_PREFIX"] = codes.KIND_PREFIX
+templates.env.globals["MODELS"] = kasten.MODELS
 
 
 def opt_int(value: str | None) -> int | None:
@@ -43,11 +44,12 @@ def opt_int(value: str | None) -> int | None:
 
 
 def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectResponse:
+    url, hash_, anchor = url.partition("#")  # Query muss vor den Anker
     if msg:
         url += ("&" if "?" in url else "?") + "msg=" + quote(msg)
     if undo:
         url += ("&" if "?" in url else "?") + f"undo={undo}"
-    return RedirectResponse(url, status_code=303)
+    return RedirectResponse(url + hash_ + anchor, status_code=303)
 
 
 RECENT_COOKIE = "recent"
@@ -148,6 +150,7 @@ def create_app(settings: Settings) -> FastAPI:
             recent=repo.containers_by_ids(conn, recent_ids(request)),
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
+            n_queue=labels.queue_count(conn),
         )
 
     @app.get("/c/{code}", response_model=None)
@@ -191,6 +194,13 @@ def create_app(settings: Settings) -> FastAPI:
                 node["code"] or "(Code)", node["kind"], node["name"], parent_code, node["grid"]
             ),
             voice=bool(settings.whisper_url),
+            topview=kasten.topview(conn, node),
+            targets=kasten.quick_targets(conn, node) if node["model"] else [],
+            free=kasten.free_cells(conn, node),
+            place=request.query_params.get("place", ""),
+            sizes=kasten.SIZES,
+            divs=kasten.DIVS,
+            cad=kasten.cad_command(node) if node["kind"] == "einsatz" else "",
         )
         recent = [node_id] + [i for i in recent_ids(request) if i != node_id]
         resp.set_cookie(
@@ -270,6 +280,7 @@ def create_app(settings: Settings) -> FastAPI:
                 p: codes.format_code(p, codes.next_number(conn, p)) for p in codes.PREFIX_LABELS
             },
             pending=labels.pending(conn, settings.base_url),
+            queue=labels.queue(conn, settings.base_url),
         )
 
     @app.post("/labels/preview", response_class=HTMLResponse)
@@ -318,6 +329,7 @@ def create_app(settings: Settings) -> FastAPI:
         text: Annotated[list[str], Form()],
         extra: Annotated[list[str], Form()],
         save_names: Annotated[str, Form()] = "",
+        source: Annotated[str, Form()] = "",
     ) -> Response:
         if not (len(code) == len(text) == len(extra)):
             raise HTTPException(400, "Tabelle unvollständig")
@@ -326,6 +338,15 @@ def create_app(settings: Settings) -> FastAPI:
         )
         if not rows:
             raise LagerError("Keine gültigen Codes")
+        if source == "queue":
+            labels.dequeue(conn, [r.code for r in rows])
+        if fmt == "a4":
+            cells = [(r, labels.qr_svg(r.qr)) for r in rows]
+            per = labels.A4_COLS * labels.A4_ROWS
+            pages = [cells[i : i + per] for i in range(0, len(cells), per)]
+            return templates.TemplateResponse(
+                request, "labels_a4.html", {"pages": pages, "rows": rows, "per": per}
+            )
         if fmt == "a8":
             cells = [(r, labels.qr_svg(r.qr)) for r in rows]
             pages = [
@@ -507,19 +528,115 @@ def create_app(settings: Settings) -> FastAPI:
         code: Annotated[str, Form()] = "",
         grid: Annotated[str, Form()] = "",
         position: Annotated[str, Form()] = "",
+        model: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         if not name.strip():
             raise LagerError("Name fehlt")
+        model_key = model if kind == "sortierkasten" and model in kasten.MODELS else None
         cid = repo.create_container(
             conn,
             name.strip(),
             kind,
             parent_id=opt_int(parent_id),
             code=container_code(code),
-            grid=grid.strip() or None,
+            grid=None if model_key else (grid.strip() or None),
             position=position.strip() or None,
+            model=model_key,
         )
         return redirect(f"/n/{cid}")
+
+    # --- Sortierkasten mit Einsätzen (NORB16) ----------------------------------------
+
+    @app.post("/n/{node_id}/bins")
+    def place_bin(
+        node_id: int,
+        conn: Conn,
+        position: Annotated[str, Form()],
+        size: Annotated[str, Form()] = "1x1",
+        div: Annotated[str, Form()] = "1x1",
+        queue: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        bin_id = kasten.place_bin(conn, node_id, position, size, div)
+        node = need_node(conn, bin_id)
+        if queue:
+            labels.enqueue(conn, node["code"], *labels.container_label(conn, node))
+        return redirect(f"/n/{node_id}", f"Einsatz {node['code']} ({size}) bei {node['position']}")
+
+    @app.post("/n/{node_id}/fill")
+    def fill_bins(node_id: int, conn: Conn) -> RedirectResponse:
+        """Alle freien Zellen mit 1x1-Einsätzen belegen (schnelle Ersteinrichtung)."""
+        node = need_node(conn, node_id)
+        cells = kasten.free_cells(conn, node)
+        for cell in cells:
+            kasten.place_bin(conn, node_id, cell, "1x1")
+        return redirect(f"/n/{node_id}", f"{len(cells)} Einsätze 1x1 angelegt")
+
+    @app.post("/n/{node_id}/quickadd")
+    def quick_add(
+        node_id: int,
+        conn: Conn,
+        target: Annotated[int, Form()],
+        text: Annotated[str, Form()],
+        queue: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        """Schnelleingabe im Kasten: Teil ins gewählte Fach, Bin-Etikett in die Warteschlange."""
+        dest = need_node(conn, target)
+        if not text.strip():
+            raise LagerError("Was soll rein?")
+        amount, unit, name = quick.parse(text)
+        repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
+                      code=codes.new_item_code(conn))  # fmt: skip
+        undo = repo.last_event_id(conn)
+        msg = f"„{name}“ → {dest['name']}"
+        if queue and (b := kasten.bin_of(conn, dest["id"])) is not None and b["code"]:
+            labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
+            msg += f" · Etikett {b['code']} in Warteschlange"
+        return redirect(f"/n/{node_id}#schnell", msg, undo)
+
+    # --- Etiketten-Warteschlange ------------------------------------------------------
+
+    @app.post("/labels/queue/node/{node_id}")
+    def queue_node(request: Request, node_id: int, conn: Conn) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        if not node["code"]:
+            raise LagerError("Behälter hat noch keinen Code")
+        labels.enqueue(conn, node["code"], *labels.container_label(conn, node))
+        back = request.headers.get("referer", f"/n/{node_id}").split("?")[0]
+        return redirect(back, f"Etikett {node['code']} in Warteschlange")
+
+    @app.post("/labels/queue/kasten/{node_id}")
+    def queue_kasten(request: Request, node_id: int, conn: Conn) -> RedirectResponse:
+        """Alle Einsätze eines Kastens in die Warteschlange."""
+        n = 0
+        for b in kasten.bins(conn, node_id):
+            labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
+            n += 1
+        return redirect(f"/n/{node_id}", f"{n} Einsatz-Etiketten in Warteschlange")
+
+    @app.post("/labels/queue/item/{item_id}")
+    def queue_item(request: Request, item_id: int, conn: Conn) -> RedirectResponse:
+        item = repo.get_item(conn, item_id)
+        if not item["code"]:
+            raise LagerError("Teil hat noch keinen Code")
+        lab = labels.item_label(conn, settings.base_url, item)
+        labels.enqueue(conn, lab.code, lab.text, lab.extra)
+        return redirect(f"/items/{item_id}", f"Etikett {lab.code} in Warteschlange")
+
+    @app.get("/labels/queue", response_class=HTMLResponse)
+    def queue_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request,
+            conn,
+            "labels_preview.html",
+            rows=labels.queue(conn, settings.base_url),
+            source="queue",
+            text_max=labels.TEXT_MAX,
+        )
+
+    @app.post("/labels/queue/remove")
+    def queue_remove(conn: Conn, code: str) -> RedirectResponse:
+        labels.dequeue(conn, [code])
+        return redirect("/labels/queue", f"{code} entfernt")
 
     @app.post("/n/{node_id}/edit")
     def edit_container(

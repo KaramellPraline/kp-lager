@@ -1,0 +1,75 @@
+{# Draufsicht eines Sortierkastens mit Einsätzen (topview aus app/kasten.py) #}
+<section class="topview-wrap">
+  <h2>{{ topview.model.name }} – Draufsicht</h2>
+  <svg class="topview" viewBox="-12 -12 {{ topview.width + 24 }} {{ topview.height + 24 }}" role="img"
+       aria-label="Draufsicht {{ node.name }}">
+    <rect x="-10" y="-10" width="{{ topview.width + 20 }}" height="{{ topview.height + 20 }}" rx="14" class="tv-box"/>
+    {% for f in topview.free %}
+    <a href="/n/{{ node.id }}?place={{ f.cell }}#einsetzen">
+      <rect x="{{ f.x + 4 }}" y="{{ f.y + 4 }}" width="92" height="92" rx="8" class="tv-free {% if place == f.cell %}tv-sel{% endif %}"/>
+      <text x="{{ f.x + 50 }}" y="{{ f.y + 56 }}" class="tv-cell">{{ f.cell }}</text>
+    </a>
+    {% endfor %}
+    {% for b in topview.blocked %}
+    <rect x="{{ b.x + 4 }}" y="{{ b.y + 4 }}" width="92" height="92" rx="8" class="tv-blocked"/>
+    {% endfor %}
+    {% if topview.blocked %}
+    <text x="{{ topview.blocked[0].x + 50 }}" y="{{ topview.blocked[1].y + 56 if topview.blocked|length > 1 else topview.blocked[0].y + 56 }}" class="tv-cell">{{ topview.model.blocked_label }}</text>
+    {% endif %}
+    {% for b in topview.bins %}
+    <a href="/n/{{ b.id }}">
+      <rect x="{{ b.x + 4 }}" y="{{ b.y + 4 }}" width="{{ b.w - 8 }}" height="{{ b.h - 8 }}" rx="8" class="tv-bin"/>
+    </a>
+    {% for c in b.comps %}
+    <a href="/n/{{ c.id }}">
+      <rect x="{{ c.x + 8 }}" y="{{ c.y + 8 }}" width="{{ c.w - 16 }}" height="{{ c.h - 16 }}" rx="5" class="tv-comp {% if c.names %}tv-full{% endif %}"/>
+      {% for line in c.lines %}<text x="{{ c.x + 14 }}" y="{{ c.y + 30 + loop.index0 * 17 }}" class="tv-name">{{ line }}</text>{% endfor %}
+    </a>
+    {% endfor %}
+    <text x="{{ b.x + b.w - 10 }}" y="{{ b.y + b.h - 12 }}" class="tv-code">{{ b.code }}</text>
+    {% endfor %}
+  </svg>
+  <p class="meta">Freie Zelle antippen → Einsatz einsetzen · Fach antippen → Inhalt</p>
+</section>
+
+{% if targets %}
+<section id="schnell" class="card">
+  <h2>Schnell eintragen</h2>
+  <form method="post" action="/n/{{ node.id }}/quickadd" class="stack">
+    <select name="target" aria-label="Fach">
+      {% for t in targets %}<option value="{{ t.id }}">{{ t.label }}</option>{% endfor %}
+    </select>
+    <div class="add-item">
+      <input name="text" id="quick-text" placeholder="z. B. 50 M3 Muttern" required>
+      {% if voice %}<button type="button" class="mic" data-target="quick-text" aria-label="Spracheingabe">🎤</button>{% endif %}
+      <button class="primary">Eintragen</button>
+    </div>
+    <label class="check"><input type="checkbox" name="queue" value="1" checked> Einsatz-Etikett in die Warteschlange</label>
+  </form>
+</section>
+{% endif %}
+
+<section id="einsetzen" class="card">
+  <h2>Einsatz einsetzen</h2>
+  {% if free %}
+  <form method="post" action="/n/{{ node.id }}/bins" class="stack">
+    <div class="row">
+      <label>Zelle (oben links)
+        <select name="position">{% for c in free %}<option {% if c == place %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      </label>
+      <label>Größe B×T
+        <select name="size">{% for s in sizes %}<option>{{ s }}</option>{% endfor %}</select>
+      </label>
+      <label>Fächer
+        <select name="div">{% for d in divs %}<option>{{ d }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <label class="check"><input type="checkbox" name="queue" value="1" checked> Etikett in die Warteschlange</label>
+    <button class="primary">Einsetzen</button>
+  </form>
+  <form method="post" action="/n/{{ node.id }}/fill"><button>Alle freien Zellen mit 1×1 füllen</button></form>
+  {% else %}<p class="empty">Kasten ist voll belegt.</p>{% endif %}
+  {% if topview.bins %}
+  <form method="post" action="/labels/queue/kasten/{{ node.id }}"><button>Alle Einsatz-Etiketten in die Warteschlange</button></form>
+  {% endif %}
+</section>

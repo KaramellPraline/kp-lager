@@ -11,6 +11,13 @@
 <p class="meta">{{ KIND_LABELS[node.kind] }}{% if node.code %} · Code {{ node.code }}{% endif %}{% if node.grid %} · {{ node.grid }}{% endif %}</p>
 {% if node.photo %}<a href="/photos/{{ node.photo }}"><img class="photo" src="/photos/thumb_{{ node.photo }}" alt="Foto {{ node.name }}"></a>{% endif %}
 {% if node.notes %}<p class="notes">{{ node.notes }}</p>{% endif %}
+{% if node.code %}
+<form method="post" action="/labels/queue/node/{{ node.id }}"><button>Etikett in die Warteschlange</button></form>
+{% endif %}
+{% if node.kind == 'einsatz' %}
+<p class="meta">Einsatz {{ node.size }}{% if node.grid %}, Fächer {{ node.grid }}{% endif %} · 3D-Druck: <code>{{ cad }}</code></p>
+{% endif %}
+{% if topview %}{% include "_topview.html" %}{% endif %}
 
 <section>
   <h2>Inhalt</h2>
@@ -32,7 +39,7 @@
 </form>
 {% endif %}
 
-{% if kids %}
+{% if kids and not topview %}
 <section>
   <h2>{% if cols %}Fächer{% else %}Unterbehälter{% endif %}</h2>
   {% include "_kids.html" %}
@@ -55,6 +62,7 @@
     <input name="code" placeholder="Code, z. B. EUR-001 (optional)" autocapitalize="characters">
     <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
     <input name="grid" placeholder="Raster bei Sortierkasten, z. B. 6x8">
+    {% include "_model_select.html" %}
     <button class="primary">Anlegen</button>
   </form>
 </details>

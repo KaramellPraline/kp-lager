@@ -84,3 +84,18 @@ button.link { background: none; border: none; color: var(--accent); text-decorat
 #cam { width: 100%; max-height: 50vh; border-radius: 8px; background: #000; object-fit: cover; }
 .mic.recording { background: var(--danger); color: #fff; }
 [hidden] { display: none !important; }
+.topview { width: 100%; max-width: 520px; display: block; margin: 0 auto; }
+.tv-box { fill: #1f2937; }
+.tv-free { fill: transparent; stroke: #64748b; stroke-dasharray: 6 5; stroke-width: 2; }
+.tv-free:hover, .tv-sel { fill: #2563eb33; stroke: #2563eb; }
+.tv-blocked { fill: #374151; }
+.tv-bin { fill: #dc2626; }
+.tv-comp { fill: #b91c1c; }
+.tv-comp.tv-full { fill: #fca5a5; }
+.tv-cell { fill: #94a3b8; font: 600 22px system-ui, sans-serif; text-anchor: middle; }
+.tv-name { fill: #1f2937; font: 600 14px system-ui, sans-serif; pointer-events: none; }
+.tv-code { fill: #fff; font: 700 12px ui-monospace, monospace; text-anchor: end; pointer-events: none; }
+.card { border: 1px solid var(--line); border-radius: 12px; padding: 8px 14px; margin: 14px 0; }
+a.button { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 8px;
+  background: var(--muted); color: var(--fg); text-decoration: none; }
+a.button.primary { background: var(--accent); color: #fff; }
