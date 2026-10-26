@@ -53,6 +53,15 @@ def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectRespon
 
 
 RECENT_COOKIE = "recent"
+TARGET_COOKIE = "qa_target"  # zuletzt gewähltes Ziel der Schnelleingabe auf der Startseite
+
+
+def last_target(request: Request) -> int | None:
+    raw = request.cookies.get(TARGET_COOKIE, "")
+    if raw.isdigit():
+        return int(raw)
+    ids = recent_ids(request)
+    return ids[0] if ids else None
 
 
 def recent_ids(request: Request) -> list[int]:
@@ -185,7 +194,34 @@ def create_app(settings: Settings) -> FastAPI:
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
             n_queue=labels.queue_count(conn),
+            targets=repo.all_paths(conn),
+            target=last_target(request),
+            voice=bool(settings.whisper_url),
         )
+
+    @app.post("/quickadd")
+    def home_quick_add(
+        conn: Conn,
+        target: Annotated[int, Form()],
+        text: Annotated[str, Form()],
+    ) -> RedirectResponse:
+        """Schnell eintragen von der Startseite (getippt oder diktiert), Ziel wird gemerkt."""
+        dest = need_node(conn, target)
+        if not text.strip():
+            raise LagerError("Was soll eingetragen werden?")
+        names = []
+        for amount, unit, name in entries(conn, text):
+            repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
+                          code=codes.new_item_code(conn))  # fmt: skip
+            names.append(name)
+        undo = repo.last_event_id(conn)
+        b = kasten.bin_of(conn, dest["id"])
+        if b is not None and b["code"] and prefs.flag(conn, "queue_on_quickadd"):
+            labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
+        msg = f"{', '.join(f'„{n}“' for n in names)} → {repo.path_label(conn, dest['id'])}"
+        resp = redirect("/", msg, undo)
+        resp.set_cookie(TARGET_COOKIE, str(dest["id"]), max_age=31_536_000, samesite="lax")
+        return resp
 
     @app.get("/c/{code}", response_model=None)
     @app.get("/C/{code}", response_model=None)  # QR-Inhalt in Großbuchstaben

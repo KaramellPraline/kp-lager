@@ -82,7 +82,7 @@ def test_lend_and_return(client: TestClient) -> None:
     r = client.post(f"/items/{item}/lend", data={"to": "Nachbar Tom"})
     assert "Verliehen an <b>Nachbar Tom</b>" in r.text
     assert "bei Nachbar Tom" in client.get(f"/n/{b}").text
-    assert "Verliehen <b>1</b>" in client.get("/").text
+    assert "Verliehen · <b>1</b>" in client.get("/mehr").text
     assert "Bohrmaschine" in client.get("/verliehen").text
     client.post(f"/items/{item}/return")
     assert "Bohrmaschine" not in client.get("/verliehen").text
@@ -265,3 +265,22 @@ def test_transcribe_uses_model_pref_and_token(
             "/api/transcribe", files={"audio": ("a.webm", b"x", "audio/webm")}
         ).json() == {"text": "50 M3 Muttern"}
     assert seen["auth"] == "Bearer t0k" and 'name="model"\r\n\r\nparakeet' in seen["body"]
+
+
+def test_home_quick_add_remembers_target(client: TestClient) -> None:
+    keller = box(client, "Keller")
+    werk = box(client, "Werkstatt")
+    page = client.get("/").text
+    assert (
+        'action="/quickadd"' in page
+        and ">Verliehen" not in page.split("</nav>")[1].split("schnell")[0]
+    )
+    r = client.post("/quickadd", data={"target": keller, "text": "2 Zangen und 5 m Kabel"})
+    assert "„Zangen“, „Kabel“ → Keller" in r.text and "Rückgängig" in r.text
+    assert re.search(rf'<option value="{keller}" selected>', r.text)  # Ziel gemerkt
+    assert (
+        "Zangen" in client.get(f"/n/{keller}").text
+        and "Zangen" not in client.get(f"/n/{werk}").text
+    )
+    r = client.post("/quickadd", data={"target": werk, "text": " "}, headers={"referer": "/"})
+    assert "Was soll eingetragen werden?" in r.text

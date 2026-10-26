@@ -3,11 +3,26 @@
 <nav class="tiles" aria-label="Schnellzugriff">
   <a href="/scan"><span class="ico">⌗</span>Scannen</a>
   <a href="/labels"><span class="ico">🏷</span>Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
-  <a href="/verliehen"><span class="ico">↗</span>Verliehen{% if n_lent %} <b>{{ n_lent }}</b>{% endif %}</a>
+  {% if targets %}<a href="#schnell" class="{% if voice %}mic-tile{% endif %}" data-target="quick-home" aria-label="Schnell eintragen{% if voice %} per Sprache{% endif %}"><span class="ico">🎤</span>Eintragen</a>{% endif %}
   <a href="/einkauf"><span class="ico">🛒</span>Einkauf{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
   <a href="/platz"><span class="ico">▢</span>Freie Plätze</a>
   <a href="/verlauf"><span class="ico">↶</span>Verlauf</a>
 </nav>
+
+{% if targets %}
+<form method="post" action="/quickadd" id="schnell" class="card stack" aria-label="Schnell eintragen">
+  <div class="add-item" style="margin:0">
+    <input name="text" id="quick-home" placeholder="z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off">
+    {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">🎤</button>{% endif %}
+    <button class="primary" aria-label="Eintragen">＋</button>
+  </div>
+  <label>Wohin
+    <select name="target">
+      {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+    </select>
+  </label>
+</form>
+{% endif %}
 
 {% if favorites %}
 <h2>★ Favoriten</h2>

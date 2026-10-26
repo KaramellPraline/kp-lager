@@ -28,6 +28,17 @@
     }
   });
 
+  // Kachel „Eintragen“ auf der Startseite: zum Formular springen und direkt die Aufnahme starten
+  document.addEventListener("click", function (ev) {
+    var tile = ev.target.closest("a.mic-tile");
+    if (!tile) return;
+    ev.preventDefault();
+    var form = document.getElementById("schnell");
+    form.scrollIntoView({ behavior: "smooth", block: "center" });
+    var mic = form.querySelector("button.mic");
+    if (mic) mic.click(); else document.getElementById(tile.dataset.target).focus();
+  });
+
   // Mikrofon-Knopf: aufnehmen, an /api/transcribe schicken, Text ins Feld schreiben
   document.addEventListener("click", function (ev) {
     var btn = ev.target.closest("button.mic");
