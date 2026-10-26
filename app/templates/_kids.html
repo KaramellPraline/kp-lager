@@ -1,0 +1,18 @@
+{% if cols %}
+<div class="grid" style="grid-template-columns: repeat({{ cols }}, 1fr)">
+  {% for k in kids %}
+  <a href="/n/{{ k.id }}" class="cell {% if k.n_items %}full{% endif %}" title="{{ k.item_names }}">
+    <b>{{ k.position or k.name }}</b><small>{{ k.item_names|truncate(18, True, '…') }}</small>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<ul class="list">
+  {% for k in kids %}
+  <li><a href="/n/{{ k.id }}">
+    <span class="name">{{ k.name }}</span>
+    <small>{{ KIND_LABELS[k.kind] }}{% if k.code %} · {{ k.code }}{% endif %}{% if k.n_items %} · {{ k.n_items }} Teile{% endif %}</small>
+  </a></li>
+  {% endfor %}
+</ul>
+{% endif %}

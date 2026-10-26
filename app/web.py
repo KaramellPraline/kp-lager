@@ -1,0 +1,277 @@
+"""HTTP-Oberfläche: Seiten für Behälter (/n/{id}), QR-Einstieg (/c/{code}), Items und Umlagern."""
+
+import sqlite3
+from collections.abc import Iterator
+from pathlib import Path
+from typing import Annotated, Any
+from urllib.parse import quote
+
+from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from app import repo
+from app.config import Settings
+from app.db import connect
+from app.repo import LagerError
+
+APP_DIR = Path(__file__).parent
+CARRY_COOKIE = "carry"
+KIND_LABELS = {
+    "raum": "Raum", "regal": "Regal", "ebene": "Ebene", "stapel": "Stapel/Kistenberg",
+    "eurobox": "Eurobox", "kiste": "Kiste", "sortierkasten": "Sortierkasten", "fach": "Fach",
+    "sonstiges": "Sonstiges",
+}  # fmt: skip
+
+templates = Jinja2Templates(directory=APP_DIR / "templates")
+templates.env.globals["KIND_LABELS"] = KIND_LABELS
+
+
+def opt_int(value: str | None) -> int | None:
+    value = (value or "").strip()
+    if not value:
+        return None
+    try:
+        return int(value)
+    except ValueError:
+        raise LagerError(f"'{value}' ist keine ganze Zahl") from None
+
+
+def redirect(url: str, msg: str = "") -> RedirectResponse:
+    if msg:
+        url += ("&" if "?" in url else "?") + "msg=" + quote(msg)
+    return RedirectResponse(url, status_code=303)
+
+
+def node_url(container_id: int | None) -> str:
+    return f"/n/{container_id}" if container_id else "/"
+
+
+def create_app(settings: Settings) -> FastAPI:
+    app = FastAPI(title="Sortiersystem")
+    app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
+    connect(settings.db_path).close()  # Migrationen beim Start
+
+    def get_conn() -> Iterator[sqlite3.Connection]:
+        conn = connect(settings.db_path)
+        try:
+            yield conn
+        finally:
+            conn.close()
+
+    Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
+
+    @app.exception_handler(LagerError)
+    def lager_error(request: Request, exc: LagerError) -> RedirectResponse:
+        back = request.headers.get("referer", "/").split("?")[0]
+        return redirect(back, str(exc))
+
+    @app.exception_handler(sqlite3.IntegrityError)
+    def integrity_error(request: Request, exc: sqlite3.IntegrityError) -> RedirectResponse:
+        back = request.headers.get("referer", "/").split("?")[0]
+        msg = "Code ist schon vergeben" if "code" in str(exc) else "Konflikt mit bestehenden Daten"
+        return redirect(back, msg)
+
+    def carry_info(request: Request, conn: sqlite3.Connection) -> dict[str, Any] | None:
+        raw = request.cookies.get(CARRY_COOKIE, "")
+        kind, _, sid = raw.partition(":")
+        if kind not in ("item", "node") or not sid.isdigit():
+            return None
+        row = (
+            conn.execute("SELECT name FROM item WHERE id = ?", (int(sid),)).fetchone()
+            if kind == "item"
+            else repo.get_container(conn, int(sid))
+        )
+        return {"kind": kind, "id": int(sid), "name": row["name"]} if row else None
+
+    def render(request: Request, conn: sqlite3.Connection, name: str, **ctx: Any) -> HTMLResponse:
+        ctx.setdefault("node", None)
+        ctx["carry"] = carry_info(request, conn)
+        ctx["msg"] = request.query_params.get("msg", "")
+        return templates.TemplateResponse(request, name, ctx)
+
+    def need_node(conn: sqlite3.Connection, node_id: int) -> repo.Row:
+        node = repo.get_container(conn, node_id)
+        if node is None:
+            raise HTTPException(404, "Behälter nicht gefunden")
+        return node
+
+    # --- Seiten --------------------------------------------------------------
+
+    @app.get("/health")
+    def health() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/", response_class=HTMLResponse)
+    def index(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "index.html", roots=repo.children(conn, None))
+
+    @app.get("/c/{code}", response_model=None)
+    def by_code(request: Request, code: str, conn: Conn) -> Response:
+        node = repo.get_container_by_code(conn, code)
+        if node:
+            return redirect(f"/n/{node['id']}", request.query_params.get("msg", ""))
+        return render(request, conn, "new_code.html", code=code, paths=repo.all_paths(conn))
+
+    @app.get("/n/{node_id}", response_class=HTMLResponse)
+    def node_page(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
+        node = need_node(conn, node_id)
+        cols = int(node["grid"].split("x")[0]) if node["grid"] else 0
+        return render(
+            request,
+            conn,
+            "node.html",
+            node=node,
+            path=repo.container_path(conn, node_id)[:-1],
+            kids=repo.children(conn, node_id),
+            items=repo.items_in(conn, node_id),
+            cols=cols,
+        )
+
+    @app.get("/items/{item_id}", response_class=HTMLResponse)
+    def item_page(request: Request, item_id: int, conn: Conn) -> HTMLResponse:
+        item = repo.get_item(conn, item_id)
+        return render(
+            request,
+            conn,
+            "item.html",
+            item=item,
+            path=repo.container_path(conn, item["container_id"]),
+            events=repo.history(conn, item_id)[:30],
+        )
+
+    # --- Behälter -------------------------------------------------------------
+
+    @app.post("/containers")
+    def create_container(
+        conn: Conn,
+        name: Annotated[str, Form()],
+        kind: Annotated[str, Form()],
+        parent_id: Annotated[str, Form()] = "",
+        code: Annotated[str, Form()] = "",
+        grid: Annotated[str, Form()] = "",
+        position: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        if not name.strip():
+            raise LagerError("Name fehlt")
+        cid = repo.create_container(
+            conn,
+            name.strip(),
+            kind,
+            parent_id=opt_int(parent_id),
+            code=code.strip() or None,
+            grid=grid.strip() or None,
+            position=position.strip() or None,
+        )
+        return redirect(f"/n/{cid}")
+
+    @app.post("/n/{node_id}/edit")
+    def edit_container(
+        node_id: int,
+        conn: Conn,
+        name: Annotated[str, Form()],
+        notes: Annotated[str, Form()] = "",
+        code: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        repo.update_container(conn, node_id, name, notes)
+        if code.strip() != (node["code"] or ""):
+            repo.assign_code(conn, node_id, code.strip() or None)
+        return redirect(f"/n/{node_id}", "Gespeichert")
+
+    @app.post("/n/{node_id}/delete")
+    def delete_container(node_id: int, conn: Conn) -> RedirectResponse:
+        parent = repo.delete_container(conn, node_id)
+        return redirect(node_url(parent), "Behälter gelöscht")
+
+    # --- Items ----------------------------------------------------------------
+
+    @app.post("/n/{node_id}/items")
+    def add_item(
+        node_id: int,
+        conn: Conn,
+        name: Annotated[str, Form()],
+        qty: Annotated[str, Form()] = "",
+        unit: Annotated[str, Form()] = "",
+        tags: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        need_node(conn, node_id)
+        if not name.strip():
+            raise LagerError("Name fehlt")
+        repo.add_item(conn, node_id, name, qty=opt_int(qty), unit=unit.strip(), tags=tags.strip())
+        return redirect(f"/n/{node_id}", f"„{name.strip()}“ eingelagert")
+
+    @app.post("/items/{item_id}/qty", response_class=HTMLResponse)
+    def change_qty(
+        request: Request, item_id: int, conn: Conn, delta: Annotated[int, Form()]
+    ) -> HTMLResponse:
+        repo.change_qty(conn, item_id, delta)
+        return templates.TemplateResponse(
+            request, "_item.html", {"i": repo.get_item(conn, item_id)}
+        )
+
+    @app.post("/items/{item_id}/edit")
+    def edit_item(
+        item_id: int,
+        conn: Conn,
+        name: Annotated[str, Form()],
+        qty: Annotated[str, Form()] = "",
+        qty_hint: Annotated[str, Form()] = "",
+        unit: Annotated[str, Form()] = "",
+        tags: Annotated[str, Form()] = "",
+        notes: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        repo.update_item(
+            conn,
+            item_id,
+            name=name.strip(),
+            qty=opt_int(qty),
+            qty_hint=qty_hint.strip(),
+            unit=unit.strip(),
+            tags=tags.strip(),
+            notes=notes,
+        )
+        return redirect(f"/items/{item_id}", "Gespeichert")
+
+    @app.post("/items/{item_id}/delete")
+    def delete_item(item_id: int, conn: Conn) -> RedirectResponse:
+        item = repo.get_item(conn, item_id)
+        repo.delete_item(conn, item_id)
+        return redirect(f"/n/{item['container_id']}", f"„{item['name']}“ entfernt")
+
+    # --- Umlagern: aufnehmen (Cookie), am Ziel-Behälter ablegen ------------------
+
+    @app.post("/carry/{kind}/{obj_id}")
+    def carry(kind: str, obj_id: int, conn: Conn) -> RedirectResponse:
+        if kind == "item":
+            back = node_url(repo.get_item(conn, obj_id)["container_id"])
+        elif kind == "node":
+            back = node_url(need_node(conn, obj_id)["parent_id"])
+        else:
+            raise HTTPException(404)
+        resp = redirect(back, "Aufgenommen – Ziel-Behälter scannen und „Hier ablegen“ tippen")
+        resp.set_cookie(CARRY_COOKIE, f"{kind}:{obj_id}", max_age=3600, samesite="lax")
+        return resp
+
+    @app.post("/drop/{node_id}")
+    def drop(request: Request, node_id: int, conn: Conn) -> RedirectResponse:
+        need_node(conn, node_id)
+        c = carry_info(request, conn)
+        if c is None:
+            raise LagerError("Nichts aufgenommen")
+        if c["kind"] == "item":
+            repo.move_item(conn, c["id"], node_id)
+        else:
+            repo.move_container(conn, c["id"], node_id)
+        resp = redirect(f"/n/{node_id}", f"„{c['name']}“ abgelegt")
+        resp.delete_cookie(CARRY_COOKIE)
+        return resp
+
+    @app.post("/carry/cancel")
+    def carry_cancel(request: Request) -> RedirectResponse:
+        resp = redirect(request.headers.get("referer", "/").split("?")[0])
+        resp.delete_cookie(CARRY_COOKIE)
+        return resp
+
+    return app

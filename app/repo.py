@@ -71,9 +71,69 @@ def get_container_by_code(conn: sqlite3.Connection, code: str) -> Row | None:
 
 def children(conn: sqlite3.Connection, container_id: int | None) -> list[Row]:
     """Direkte Unterbehälter; `None` = oberste Ebene (Räume)."""
+    """Direkte Unterbehälter mit Item-Anzahl (`n_items`) und Item-Namen (`item_names`)."""
     return conn.execute(
-        "SELECT * FROM container WHERE parent_id IS ? ORDER BY position, name", (container_id,)
+        """
+        SELECT c.*, COUNT(i.id) AS n_items, COALESCE(GROUP_CONCAT(i.name, ', '), '') AS item_names
+        FROM container c LEFT JOIN item i ON i.container_id = c.id
+        WHERE c.parent_id IS ?
+        GROUP BY c.id
+        ORDER BY CASE WHEN c.kind = 'fach' THEN printf('%09d', c.id) ELSE lower(c.name) END
+        """,
+        (container_id,),
     ).fetchall()
+
+
+def all_paths(conn: sqlite3.Connection) -> list[Row]:
+    """Alle Behälter außer Fächern als (id, label) mit vollem Pfad – für Auswahllisten."""
+    return conn.execute(
+        """
+        WITH RECURSIVE t(id, label, kind) AS (
+            SELECT id, name, kind FROM container WHERE parent_id IS NULL
+            UNION ALL
+            SELECT c.id, t.label || ' › ' || c.name, c.kind
+            FROM container c JOIN t ON c.parent_id = t.id
+        )
+        SELECT id, label FROM t WHERE kind != 'fach' ORDER BY lower(label)
+        """
+    ).fetchall()
+
+
+def update_container(conn: sqlite3.Connection, container_id: int, name: str, notes: str) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE container SET name = ?, notes = ?, updated_at = datetime('now') WHERE id = ?",
+            (name.strip(), notes, container_id),
+        )
+
+
+def delete_container(conn: sqlite3.Connection, container_id: int) -> int | None:
+    """Löscht Behälter samt leerer Unterbehälter (z. B. Fächer); gibt Eltern-ID zurück."""
+    subtree = conn.execute(
+        """
+        WITH RECURSIVE down(id, depth) AS (
+            SELECT id, 0 FROM container WHERE id = ?
+            UNION ALL
+            SELECT c.id, depth + 1 FROM container c JOIN down ON c.parent_id = down.id
+        )
+        SELECT id FROM down ORDER BY depth DESC
+        """,
+        (container_id,),
+    ).fetchall()
+    ids = [r["id"] for r in subtree]
+    marks = ",".join("?" * len(ids))
+    if conn.execute(f"SELECT 1 FROM item WHERE container_id IN ({marks})", ids).fetchone():
+        raise LagerError("Behälter ist nicht leer")
+    if any(c["kind"] != "fach" for c in children(conn, container_id)):
+        raise LagerError("Behälter enthält noch Unterbehälter")
+    parent = get_container(conn, container_id)
+    with conn:
+        conn.executemany("DELETE FROM container WHERE id = ?", [(i,) for i in ids])
+        conn.execute(
+            "INSERT INTO event (action, note) VALUES ('delete', ?)",
+            (f"Behälter {parent['name'] if parent else container_id}",),
+        )
+    return parent["parent_id"] if parent else None
 
 
 def container_path(conn: sqlite3.Connection, container_id: int) -> list[Row]:
@@ -114,7 +174,7 @@ def move_container(conn: sqlite3.Connection, container_id: int, new_parent_id: i
         )
 
 
-def assign_code(conn: sqlite3.Connection, container_id: int, code: str) -> None:
+def assign_code(conn: sqlite3.Connection, container_id: int, code: str | None) -> None:
     """Etikett nachträglich zuordnen (z. B. Sortierkasten bekommt QR)."""
     with conn:
         conn.execute(

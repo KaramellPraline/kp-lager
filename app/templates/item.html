@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/">Lager</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
+</nav>
+<h1>{{ item.name }}</h1>
+{% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
+<ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
+
+<form method="post" action="/carry/item/{{ item.id }}"><button class="primary">Umlagern (aufnehmen)</button></form>
+
+<details>
+  <summary>Bearbeiten</summary>
+  <form method="post" action="/items/{{ item.id }}/edit" class="stack">
+    <input name="name" value="{{ item.name }}" required>
+    <div class="row">
+      <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="Anzahl (leer = ungezählt)" inputmode="numeric">
+      <input name="unit" value="{{ item.unit }}" placeholder="Einheit">
+    </div>
+    <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="Mengenhinweis, z. B. viele">
+    <input name="tags" value="{{ item.tags }}" placeholder="Suchbegriffe">
+    <textarea name="notes" placeholder="Notizen">{{ item.notes }}</textarea>
+    <button>Speichern</button>
+  </form>
+  <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data" class="stack">
+    <label>Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()"></label>
+  </form>
+  <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Teil entfernen?')">
+    <button class="danger">Entfernen</button>
+  </form>
+</details>
+
+<section>
+  <h2>Verlauf</h2>
+  <ul class="history">
+    {% for e in events %}<li>{{ e.ts }} · {{ e.action }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %}</li>{% endfor %}
+  </ul>
+</section>
+{% endblock %}

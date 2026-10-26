@@ -1,5 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Lager</h1>
-<p>QR-Code eines Behälters scannen oder suchen.</p>
+{% if roots %}
+{% with kids=roots, cols=0 %}{% include "_kids.html" %}{% endwith %}
+{% else %}
+<p>Noch leer. Lege zuerst einen Raum an – oder scanne ein Etikett.</p>
+{% endif %}
+
+<details>
+  <summary>Neuer Raum / Ort</summary>
+  <form method="post" action="/containers" class="stack">
+    <input name="name" placeholder="Name, z. B. Keller" required>
+    {% with default_kind='raum' %}{% include "_kind_select.html" %}{% endwith %}
+    <input name="code" placeholder="QR-Code (optional)" inputmode="numeric">
+    <button class="primary">Anlegen</button>
+  </form>
+</details>
+
+<nav class="links">
+  <a href="/labels">Etiketten drucken</a>
+  <a href="/import">Import</a>
+  <a href="/export.json">Export</a>
+</nav>
 {% endblock %}

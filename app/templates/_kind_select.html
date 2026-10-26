@@ -1,0 +1,5 @@
+<select name="kind" required>
+  {% for k, label in KIND_LABELS.items() if k != 'fach' %}
+  <option value="{{ k }}" {% if k == (default_kind or 'eurobox') %}selected{% endif %}>{{ label }}</option>
+  {% endfor %}
+</select>

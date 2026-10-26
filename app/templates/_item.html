@@ -1,0 +1,14 @@
+<li class="item" id="item-{{ i.id }}">
+  <a href="/items/{{ i.id }}" class="name">{{ i.name }}</a>
+  {% if i.qty is not none %}
+  <span class="qty-ctl">
+    <button hx-post="/items/{{ i.id }}/qty" hx-vals='{"delta": -1}' hx-target="#item-{{ i.id }}"
+            hx-swap="outerHTML" {% if i.qty == 0 %}disabled{% endif %} aria-label="Eins entnehmen">−</button>
+    <span class="qty {% if i.qty == 0 %}empty{% endif %}">{{ i.qty }}{% if i.unit %} {{ i.unit }}{% endif %}</span>
+    <button hx-post="/items/{{ i.id }}/qty" hx-vals='{"delta": 1}' hx-target="#item-{{ i.id }}"
+            hx-swap="outerHTML" aria-label="Eins einlagern">+</button>
+  </span>
+  {% else %}
+  <span class="qty hint">{{ i.qty_hint or 'ungezählt' }}</span>
+  {% endif %}
+</li>

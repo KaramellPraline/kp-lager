@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Neuer Behälter {{ code }}{% endblock %}
+{% block content %}
+<h1>Etikett {{ code }} ist noch frei</h1>
+<p>Neuen Behälter mit diesem Code anlegen:</p>
+<form method="post" action="/containers" class="stack">
+  <input type="hidden" name="code" value="{{ code }}">
+  <input name="name" placeholder="Name, z. B. Elektronik" required autofocus>
+  {% include "_kind_select.html" %}
+  <label>Steht in
+    <select name="parent_id">
+      <option value="">– oberste Ebene –</option>
+      {% for p in paths %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <input name="grid" placeholder="Raster bei Sortierkasten, z. B. 6x8 (Spalten x Zeilen)">
+  <button class="primary">Anlegen</button>
+</form>
+{% endblock %}

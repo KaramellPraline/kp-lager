@@ -8,7 +8,22 @@
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
-  <header><a href="/">Lager</a></header>
+  <header>
+    <a class="home" href="/">Lager</a>
+    <form action="/suche" method="get" class="search">
+      <input type="search" name="q" placeholder="Suchen…" value="{{ q or '' }}" aria-label="Suchen">
+    </form>
+  </header>
+  {% if msg %}<div class="msg" role="status">{{ msg }}</div>{% endif %}
+  {% if carry %}
+  <div class="carry">
+    <span>Unterwegs: <b>{{ carry.name }}</b></span>
+    {% if node and not (carry.kind == 'node' and carry.id == node.id) %}
+    <form method="post" action="/drop/{{ node.id }}"><button class="primary">Hier ablegen</button></form>
+    {% endif %}
+    <form method="post" action="/carry/cancel"><button>Abbrechen</button></form>
+  </div>
+  {% endif %}
   <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

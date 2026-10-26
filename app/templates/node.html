@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ node.name }}{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/">Lager</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
+</nav>
+<h1>{{ node.name }}</h1>
+<p class="meta">{{ KIND_LABELS[node.kind] }}{% if node.code %} · Code {{ node.code }}{% endif %}{% if node.grid %} · {{ node.grid }}{% endif %}</p>
+{% if node.photo %}<a href="/photos/{{ node.photo }}"><img class="photo" src="/photos/thumb_{{ node.photo }}" alt="Foto {{ node.name }}"></a>{% endif %}
+{% if node.notes %}<p class="notes">{{ node.notes }}</p>{% endif %}
+
+<section>
+  <h2>Inhalt</h2>
+  {% if items %}
+  <ul class="list items">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
+  {% else %}<p class="empty">Keine Teile direkt hier.</p>{% endif %}
+  <form method="post" action="/n/{{ node.id }}/items" class="add-item">
+    <input name="name" placeholder="Teil hinzufügen…" required>
+    <input name="qty" placeholder="Anz." inputmode="numeric" class="short">
+    <button class="primary">+</button>
+  </form>
+</section>
+
+{% if kids %}
+<section>
+  <h2>{% if cols %}Fächer{% else %}Unterbehälter{% endif %}</h2>
+  {% include "_kids.html" %}
+</section>
+{% endif %}
+
+<details>
+  <summary>Unterbehälter anlegen</summary>
+  <form method="post" action="/containers" class="stack">
+    <input type="hidden" name="parent_id" value="{{ node.id }}">
+    <input name="name" placeholder="Name" required>
+    {% include "_kind_select.html" %}
+    <input name="code" placeholder="QR-Code (optional)" inputmode="numeric">
+    <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
+    <input name="grid" placeholder="Raster bei Sortierkasten, z. B. 6x8">
+    <button class="primary">Anlegen</button>
+  </form>
+</details>
+
+<details>
+  <summary>Bearbeiten / Umlagern</summary>
+  <form method="post" action="/n/{{ node.id }}/edit" class="stack">
+    <input name="name" value="{{ node.name }}" required>
+    <input name="code" value="{{ node.code or '' }}" placeholder="QR-Code" inputmode="numeric">
+    <textarea name="notes" placeholder="Notizen">{{ node.notes }}</textarea>
+    <button>Speichern</button>
+  </form>
+  <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data" class="stack">
+    <label>Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()"></label>
+  </form>
+  {% if node.kind != 'fach' %}
+  <form method="post" action="/carry/node/{{ node.id }}"><button>Behälter umlagern (aufnehmen)</button></form>
+  {% endif %}
+  <form method="post" action="/n/{{ node.id }}/delete" onsubmit="return confirm('Behälter löschen?')">
+    <button class="danger">Löschen (nur wenn leer)</button>
+  </form>
+</details>
+{% endblock %}
