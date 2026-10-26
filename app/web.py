@@ -7,11 +7,11 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import labels, repo
+from app import importer, labels, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -153,6 +153,31 @@ def create_app(settings: Settings) -> FastAPI:
             q=q,
             items=repo.search(conn, q),
             containers=repo.search_containers(conn, q),
+        )
+
+    # --- Import / Export ------------------------------------------------------
+
+    @app.get("/import", response_class=HTMLResponse)
+    def import_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "import.html", report=None, text="", done=False)
+
+    @app.post("/import", response_class=HTMLResponse)
+    def import_run(
+        request: Request,
+        conn: Conn,
+        text: Annotated[str, Form()] = "",
+        action: Annotated[str, Form()] = "preview",
+    ) -> HTMLResponse:
+        commit = action == "commit"
+        report = importer.run(conn, text, commit=commit)
+        done = commit and not report.errors
+        return render(request, conn, "import.html", report=report, text=text, done=done)
+
+    @app.get("/export.json")
+    def export(conn: Conn) -> JSONResponse:
+        return JSONResponse(
+            importer.export(conn),
+            headers={"Content-Disposition": 'attachment; filename="lager-export.json"'},
         )
 
     # --- Etiketten -------------------------------------------------------------

@@ -22,4 +22,4 @@ mit "?" im Namen markieren. Wenn ich "alle" sage, gib alle bisherigen Behälter 
 ```
 
 ## Hinweis
-Das Format ist zugleich das Export-/Backup-Format der App (M5). Ein späterer API-Abruf (M9) nutzt denselben Prompt.
+Einfügen unter `/import` (Vorschau → Übernehmen). Mehrere Antworten am Stück, auch mit ```json-Zäunen, gehen. Doppelt importierte Teile werden übersprungen, `slot` legt das Fach an. Ein späterer API-Abruf (M9) nutzt denselben Prompt. Backup: `/export.json` (voller Dump) bzw. SQLite-Datei.
