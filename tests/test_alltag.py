@@ -219,3 +219,49 @@ def test_backup_copies_db_and_photos(tmp_path: Path) -> None:
     assert [p.name.split("-")[0] for p in written] == ["lager", "photos"]
     assert sqlite3.connect(written[0]).execute("PRAGMA user_version").fetchone()[0] >= 5
     assert not old.exists()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("3 Rollen Lötzinn und 50 M3 Muttern", [(3, "Rollen", "Lötzinn"), (50, "", "M3 Muttern")]),
+     ("Schrauben und Muttern", [(None, "", "Schrauben und Muttern")]),
+     ("2 Zangen, 1 Seitenschneider; 4 m Kabel.", [(2, "", "Zangen"), (1, "", "Seitenschneider"),
+                                                  (4, "m", "Kabel")]),
+     ("Grund 5 Platten", [(None, "", "Grund 5 Platten")])],
+)  # fmt: skip
+def test_parse_many(text: str, expected: list[tuple[int | None, str, str]]) -> None:
+    assert quick.parse_many(text) == expected
+
+
+def test_dictation_adds_several_items(client: TestClient) -> None:
+    b = box(client)
+    r = client.post(f"/n/{b}/items", data={"name": "3 Rollen Lötzinn und 50 M3 Muttern"})
+    assert "„Lötzinn“, „M3 Muttern“ eingelagert" in r.text
+    assert len(item_ids(r.text)) == 2
+
+
+def test_transcribe_uses_model_pref_and_token(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seen: dict[str, str] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["auth"] = request.headers["authorization"]
+        seen["body"] = request.content.decode(errors="ignore")
+        return httpx.Response(200, json={"text": "50 M3 Muttern"})
+
+    real = httpx.AsyncClient
+    monkeypatch.setattr(
+        web.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw)
+    )
+    s = Settings(
+        data_dir=tmp_path,
+        base_url="https://lager.test",
+        whisper_url="http://gw",
+        whisper_token="t0k",
+    )
+    with TestClient(create_app(s)) as c:
+        assert c.post(
+            "/api/transcribe", files={"audio": ("a.webm", b"x", "audio/webm")}
+        ).json() == {"text": "50 M3 Muttern"}
+    assert seen["auth"] == "Bearer t0k" and 'name="model"\r\n\r\nparakeet' in seen["body"]

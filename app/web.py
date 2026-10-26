@@ -129,6 +129,13 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["P"] = prefs.values(conn)
         return templates.TemplateResponse(request, name, ctx)
 
+    def entries(conn: sqlite3.Connection, text: str) -> list[tuple[int | None, str, str]]:
+        """Eingabe -> (Menge, Einheit, Name) je Teil, gemäß Einstellungen."""
+        if not prefs.flag(conn, "quick_parse"):
+            return [(None, "", text.strip())]
+        unit = prefs.raw(conn, "default_unit")
+        return [(a, u or (unit if a is not None else ""), n) for a, u, n in quick.parse_many(text)]
+
     def synonyms(conn: sqlite3.Connection) -> dict[str, list[str]]:
         return repo.parse_synonyms(prefs.raw(conn, "synonyms"))
 
@@ -525,17 +532,18 @@ def create_app(settings: Settings) -> FastAPI:
         return JSONResponse({"type": "unknown", "code": norm, "name": ""})
 
     @app.post("/api/transcribe")
-    async def transcribe(audio: UploadFile) -> JSONResponse:
-        """Leitet Sprachaufnahme an einen Whisper-Dienst (OpenAI-kompatibel) weiter."""
+    async def transcribe(audio: UploadFile, conn: Conn) -> JSONResponse:
+        """Leitet die Sprachaufnahme an den KI-Dienst (OpenAI-kompatibel) weiter."""
         if not settings.whisper_url:
-            return JSONResponse({"error": "Kein Whisper-Dienst konfiguriert"}, status_code=503)
+            return JSONResponse({"error": "Kein Sprachdienst konfiguriert"}, status_code=503)
         data = await audio.read()
-        try:
-            async with httpx.AsyncClient(timeout=120) as client:
+        try:  # Dienste starten bei Bedarf -> großzügiges Timeout
+            async with httpx.AsyncClient(timeout=300) as client:
                 resp = await client.post(
                     f"{settings.whisper_url}/v1/audio/transcriptions",
+                    headers={"Authorization": f"Bearer {settings.whisper_token}"},
                     files={"file": (audio.filename or "aufnahme.webm", data, audio.content_type)},
-                    data={"model": settings.whisper_model, "language": "de"},
+                    data={"model": prefs.raw(conn, "voice_model"), "language": "de"},
                 )
                 resp.raise_for_status()
         except httpx.HTTPError as exc:
@@ -626,16 +634,13 @@ def create_app(settings: Settings) -> FastAPI:
         dest = need_node(conn, target)
         if not text.strip():
             raise LagerError("Was soll rein?")
-        if prefs.flag(conn, "quick_parse"):
-            amount, unit, name = quick.parse(text)
-        else:
-            amount, unit, name = None, "", text.strip()
-        if amount is not None and not unit:
-            unit = prefs.raw(conn, "default_unit")
-        repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
-                      code=codes.new_item_code(conn))  # fmt: skip
+        names = []
+        for amount, unit, name in entries(conn, text):
+            repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
+                          code=codes.new_item_code(conn))  # fmt: skip
+            names.append(name)
         undo = repo.last_event_id(conn)
-        msg = f"„{name}“ → {dest['name']}"
+        msg = f"{', '.join(f'„{n}“' for n in names)} → {dest['name']}"
         if queue and (b := kasten.bin_of(conn, dest["id"])) is not None and b["code"]:
             labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
             msg += f" · Etikett {b['code']} in Warteschlange"
@@ -733,21 +738,17 @@ def create_app(settings: Settings) -> FastAPI:
         if not name.strip():
             raise LagerError("Name fehlt")
         amount = opt_int(qty)
-        if amount is None and prefs.flag(conn, "quick_parse"):  # "3 Rollen Lötzinn"
-            amount, parsed_unit, name = quick.parse(name)
-            unit = unit or parsed_unit
-        if amount is not None and not unit:
-            unit = prefs.raw(conn, "default_unit")
-        repo.add_item(
-            conn,
-            node_id,
-            name,
-            qty=amount,
-            unit=unit.strip(),
-            tags=tags.strip(),
-            code=codes.new_item_code(conn),
-        )
-        return redirect(f"/n/{node_id}", f"„{name.strip()}“ eingelagert", repo.last_event_id(conn))
+        if amount is not None:  # Menge ausdrücklich angegeben -> genau ein Teil
+            todo: list[tuple[int | None, str, str]] = [
+                (amount, unit.strip() or prefs.raw(conn, "default_unit"), name.strip())
+            ]
+        else:  # "3 Rollen Lötzinn und 50 M3 Muttern" -> mehrere Teile
+            todo = [(a, unit.strip() or u, n) for a, u, n in entries(conn, name)]
+        for a, u, n in todo:
+            repo.add_item(conn, node_id, n, qty=a, unit=u, tags=tags.strip(),
+                          code=codes.new_item_code(conn))  # fmt: skip
+        names = ", ".join(f"„{n}“" for _, _, n in todo)
+        return redirect(f"/n/{node_id}", f"{names} eingelagert", repo.last_event_id(conn))
 
     @app.post("/items/new")
     def add_item_with_code(

@@ -45,3 +45,5 @@
 | 2026-10-26 | HTTPS im LAN per eigener CA (`tools/devcert.py`) direkt in uvicorn statt Caddy unter Windows | Keine Fremd-Binärdateien; Docker-Variante nutzt weiter Caddy. |
 | 2026-10-26 | Einstellungen als Register (`app/prefs.py`) statt Einzel-Routen | Neue Optionen = eine Zeile, Seite generiert sich. |
 | 2026-10-26 | Layout: Handy untere Navigation + Scan-Knopf, ab 900 px Seitenleiste + 2 Spalten | Daumenbedienung; Desktop nutzt Breite. |
+| 2026-10-26 | Spracheingabe über eigenes KI-Gateway (OpenAI-kompatibel), auf demselben PC via localhost ohne Token; Standardmodell parakeet | Test: parakeet erkannte „Lötzinn“ korrekt und schneller als whisper-1; kein Secret nötig. Token per `LAGER_WHISPER_TOKEN` für andere Hosts. |
+| 2026-10-26 | Diktat mit „und“/Komma vor einer Zahl wird in mehrere Teile getrennt | Natürliche Spracheingabe „3 Rollen Lötzinn und 50 M3 Muttern“. |

@@ -9,8 +9,8 @@ from pathlib import Path
 class Settings:
     data_dir: Path
     base_url: str
-    whisper_url: str = ""  # OpenAI-kompatibler Whisper-Dienst, z. B. http://kp-proxmox:8001
-    whisper_model: str = "Systran/faster-whisper-small"
+    whisper_url: str = ""  # OpenAI-kompatibler Dienst, z. B. KI-Gateway http://localhost:8765
+    whisper_token: str = "local"  # Bearer-Token; auf dem Gateway-PC über localhost beliebig
     https_redirect: bool = False  # HTTP-Instanz: alles außer /ca.crt auf HTTPS umleiten
 
     @property
@@ -27,6 +27,6 @@ def load_settings() -> Settings:
         data_dir=Path(os.environ.get("LAGER_DATA_DIR", "data")),
         base_url=os.environ.get("LAGER_BASE_URL", "https://lager.home.lan").rstrip("/"),
         whisper_url=os.environ.get("LAGER_WHISPER_URL", "").rstrip("/"),
-        whisper_model=os.environ.get("LAGER_WHISPER_MODEL", "Systran/faster-whisper-small"),
+        whisper_token=os.environ.get("LAGER_WHISPER_TOKEN", "local"),
         https_redirect=os.environ.get("LAGER_HTTPS_REDIRECT", "") == "1",
     )

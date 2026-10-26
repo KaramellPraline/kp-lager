@@ -12,6 +12,19 @@ _RE = re.compile(
 )
 
 
+_SPLIT = re.compile(r"\s*(?:,|;|\bund\b|\bsowie\b)\s*(?=\d)", re.IGNORECASE)
+
+
+def parse_many(text: str) -> list[tuple[int | None, str, str]]:
+    """Diktat mit mehreren Teilen: '3 Rollen Lötzinn und 50 M3 Muttern' -> zwei Einträge.
+
+    Getrennt wird nur, wenn nach 'und'/','/';' eine Zahl folgt
+    ('Schrauben und Muttern' bleibt ein Teil).
+    """
+    parts = [p.strip(" .") for p in _SPLIT.split(text) if p.strip(" .")]
+    return [parse(p) for p in parts] or [parse(text)]
+
+
 def parse(text: str) -> tuple[int | None, str, str]:
     """(Menge, Einheit, Name). Ohne führende Zahl: (None, '', Text)."""
     m = _RE.match(text)
