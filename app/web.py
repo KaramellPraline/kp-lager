@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Request
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import importer, labels, repo
+from app import importer, labels, photos, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -52,6 +52,9 @@ def create_app(settings: Settings) -> FastAPI:
     app = FastAPI(title="Sortiersystem")
     app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
     connect(settings.db_path).close()  # Migrationen beim Start
+    photo_dir = settings.data_dir / "photos"
+    photo_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/photos", StaticFiles(directory=photo_dir), name="photos")
 
     def get_conn() -> Iterator[sqlite3.Connection]:
         conn = connect(settings.db_path)
@@ -262,7 +265,9 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.post("/n/{node_id}/delete")
     def delete_container(node_id: int, conn: Conn) -> RedirectResponse:
+        photo = need_node(conn, node_id)["photo"]
         parent = repo.delete_container(conn, node_id)
+        photos.delete(photo, photo_dir)
         return redirect(node_url(parent), "Behälter gelöscht")
 
     # --- Items ----------------------------------------------------------------
@@ -318,7 +323,26 @@ def create_app(settings: Settings) -> FastAPI:
     def delete_item(item_id: int, conn: Conn) -> RedirectResponse:
         item = repo.get_item(conn, item_id)
         repo.delete_item(conn, item_id)
+        photos.delete(item["photo"], photo_dir)
         return redirect(f"/n/{item['container_id']}", f"„{item['name']}“ entfernt")
+
+    # --- Fotos -----------------------------------------------------------------
+
+    @app.post("/n/{node_id}/photo")
+    async def container_photo(node_id: int, conn: Conn, photo: UploadFile) -> RedirectResponse:
+        old = need_node(conn, node_id)["photo"]
+        name = photos.save(await photo.read(), photo_dir)
+        repo.set_container_photo(conn, node_id, name)
+        photos.delete(old, photo_dir)
+        return redirect(f"/n/{node_id}", "Foto gespeichert")
+
+    @app.post("/items/{item_id}/photo")
+    async def item_photo(item_id: int, conn: Conn, photo: UploadFile) -> RedirectResponse:
+        old = repo.get_item(conn, item_id)["photo"]
+        name = photos.save(await photo.read(), photo_dir)
+        repo.update_item(conn, item_id, photo=name)
+        photos.delete(old, photo_dir)
+        return redirect(f"/items/{item_id}", "Foto gespeichert")
 
     # --- Umlagern: aufnehmen (Cookie), am Ziel-Behälter ablegen ------------------
 

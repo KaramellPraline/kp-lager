@@ -107,6 +107,14 @@ def update_container(conn: sqlite3.Connection, container_id: int, name: str, not
         )
 
 
+def set_container_photo(conn: sqlite3.Connection, container_id: int, photo: str | None) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE container SET photo = ?, updated_at = datetime('now') WHERE id = ?",
+            (photo, container_id),
+        )
+
+
 def delete_container(conn: sqlite3.Connection, container_id: int) -> int | None:
     """Löscht Behälter samt leerer Unterbehälter (z. B. Fächer); gibt Eltern-ID zurück."""
     subtree = conn.execute(
