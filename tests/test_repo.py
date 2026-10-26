@@ -4,7 +4,7 @@ from collections.abc import Iterator
 import pytest
 
 from app import repo
-from app.db import connect, migrate
+from app.db import MIGRATIONS_DIR, connect, migrate
 from app.repo import LagerError
 
 
@@ -27,8 +27,9 @@ def lager(conn: sqlite3.Connection) -> dict[str, int]:
 
 
 def test_migrate_is_idempotent(conn: sqlite3.Connection) -> None:
-    assert migrate(conn) == 1
-    assert migrate(conn) == 1
+    latest = len(list(MIGRATIONS_DIR.glob("*.sql")))
+    assert migrate(conn) == latest
+    assert migrate(conn) == latest
 
 
 def test_path_from_root(conn: sqlite3.Connection, lager: dict[str, int]) -> None:

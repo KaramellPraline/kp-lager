@@ -13,6 +13,8 @@ def connect(path: Path | str) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
+    # SQLites lower()/LIKE falten nur ASCII; fold() kann auch Umlaute.
+    conn.create_function("fold", 1, lambda s: s.casefold() if s else s, deterministic=True)
     migrate(conn)
     return conn
 

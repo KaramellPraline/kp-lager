@@ -141,6 +141,20 @@ def create_app(settings: Settings) -> FastAPI:
             events=repo.history(conn, item_id)[:30],
         )
 
+    @app.get("/suche", response_model=None)
+    def search(request: Request, conn: Conn, q: str = "") -> Response:
+        q = q.strip()
+        if q and (node := repo.get_container_by_code(conn, q)):
+            return redirect(f"/n/{node['id']}")
+        return render(
+            request,
+            conn,
+            "search.html",
+            q=q,
+            items=repo.search(conn, q),
+            containers=repo.search_containers(conn, q),
+        )
+
     # --- Behälter -------------------------------------------------------------
 
     @app.post("/containers")

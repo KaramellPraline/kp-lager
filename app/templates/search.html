@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Suche: {{ q }}{% endblock %}
+{% block content %}
+<h1>Suche{% if q %}: {{ q }}{% endif %}</h1>
+{% if not q %}
+<p class="empty">Suchwort eingeben – Teilwörter reichen („schraub“ findet „Holzschrauben“).</p>
+{% elif not items and not containers %}
+<p class="empty">Nichts gefunden.</p>
+{% endif %}
+
+{% if items %}
+<ul class="list">
+  {% for i in items %}
+  <li class="result"><a href="/items/{{ i.id }}">
+    <span class="name">{{ i.name }}{% if i.qty is not none %} · {{ i.qty }}{% if i.unit %} {{ i.unit }}{% endif %}{% elif i.qty_hint %} · {{ i.qty_hint }}{% endif %}</span>
+    <small>{{ i.path }}</small>
+  </a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if containers %}
+<h2>Behälter</h2>
+<ul class="list">
+  {% for c in containers %}
+  <li class="result"><a href="/n/{{ c.id }}">
+    <span class="name">{{ c.name }}{% if c.code %} · {{ c.code }}{% endif %}</span>
+    <small>{{ c.path }}</small>
+  </a></li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% endblock %}

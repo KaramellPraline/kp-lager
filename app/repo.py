@@ -286,3 +286,43 @@ def history(conn: sqlite3.Connection, item_id: int) -> list[Row]:
     return conn.execute(
         "SELECT * FROM event WHERE item_id = ? ORDER BY id DESC", (item_id,)
     ).fetchall()
+
+
+# --- Suche ----------------------------------------------------------------------
+
+
+def search(conn: sqlite3.Connection, q: str, limit: int = 50) -> list[dict[str, object]]:
+    """Items, deren Name/Tags/Notizen alle Suchwörter (Teilwörter) enthalten, mit Fundort-Pfad.
+
+    Wörter ab 3 Zeichen laufen über FTS5-trigram (Ranking), kürzere über LIKE.
+    """
+    terms = [t for t in q.replace('"', " ").split() if t]
+    if not terms:
+        return []
+    if all(len(t) >= 3 for t in terms):
+        rows = conn.execute(
+            "SELECT item.* FROM item_fts JOIN item ON item.id = item_fts.rowid"
+            " WHERE item_fts MATCH ? ORDER BY bm25(item_fts, 10.0, 5.0, 1.0) LIMIT ?",
+            (" AND ".join(f'"{t}"' for t in terms), limit),
+        ).fetchall()
+    else:
+        where = " AND ".join(["fold(name || ' ' || tags || ' ' || notes) LIKE ?"] * len(terms))
+        rows = conn.execute(
+            f"SELECT * FROM item WHERE {where} ORDER BY name LIMIT ?",
+            (*(f"%{t.casefold()}%" for t in terms), limit),
+        ).fetchall()
+    return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]
+
+
+def search_containers(conn: sqlite3.Connection, q: str, limit: int = 20) -> list[dict[str, object]]:
+    """Behälter nach Name/Notizen (Fächer nur mit eigenem Namen) oder exaktem Code."""
+    terms = q.split()
+    if not terms:
+        return []
+    where = " AND ".join(["fold(name || ' ' || notes) LIKE ?"] * len(terms))
+    rows = conn.execute(
+        f"SELECT * FROM container WHERE (code = ? OR ({where}))"
+        " AND NOT (kind = 'fach' AND name = 'Fach ' || position) ORDER BY name LIMIT ?",
+        (q.strip(), *(f"%{t.casefold()}%" for t in terms), limit),
+    ).fetchall()
+    return [{**dict(r), "path": path_label(conn, r["id"])} for r in rows]
