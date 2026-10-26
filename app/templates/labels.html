@@ -19,7 +19,7 @@
 </head>
 <body>
   <main class="no-print">
-    <a href="/">← Lager</a>
+    <a href="/">← {{ APP_NAME }}</a>
     <h1>Etiketten drucken</h1>
     <form method="get" class="stack">
       <div class="row">
@@ -54,7 +54,7 @@
   {% for page in pages %}
   <div class="sheet">
     {% for code, svg in page %}
-    <div class="label">{{ svg|safe }}<div><b>{{ code }}</b><small>Lager</small></div></div>
+    <div class="label">{{ svg|safe }}<div><b>{{ code }}</b><small>{{ APP_NAME }}</small></div></div>
     {% endfor %}
   </div>
   {% endfor %}

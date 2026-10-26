@@ -2,7 +2,7 @@
 {% block title %}{{ item.name }}{% endblock %}
 {% block content %}
 <nav class="crumbs">
-  <a href="/">Lager</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
+  <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
 <h1>{{ item.name }}</h1>
 {% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}

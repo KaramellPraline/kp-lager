@@ -4,7 +4,7 @@
 Ein FastAPI-Prozess rendert HTML (Jinja2 + HTMX) und spricht direkt mit einer SQLite-Datei. Caddy davor terminiert HTTPS (nötig für Kamera/Mikrofon im Browser). Whisper läuft später als optionaler Zusatzdienst.
 
 ```
-Handy (QR scannen) → https://lager.home/c/0042 → Caddy → uvicorn/FastAPI → SQLite (+ data/photos/)
+Handy (QR scannen) → https://lager.home.lan/c/0042 → Caddy → uvicorn/FastAPI → SQLite (+ data/photos/)
                                                               └→ (optional) whisper-Dienst
 ```
 

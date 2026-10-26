@@ -11,7 +11,7 @@ def test_format_and_qr_contains_url() -> None:
     svg = labels.qr_svg("https://lager.test/c/0042")
     assert svg.startswith("<svg") and 'width="' not in svg.split(">")[0]
     # URL passt in kleine QR-Version (gut scanbar auf 2 cm)
-    assert segno.make("https://lager.home/c/0042", error="m").version <= 3
+    assert segno.make("https://lager.home.lan/c/0042", error="m").version <= 3
 
 
 def test_sheet_defaults_and_paging(client: TestClient) -> None:

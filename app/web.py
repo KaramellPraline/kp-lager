@@ -17,6 +17,7 @@ from app.db import connect
 from app.repo import LagerError
 
 APP_DIR = Path(__file__).parent
+APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
 KIND_LABELS = {
     "raum": "Raum", "regal": "Regal", "ebene": "Ebene", "stapel": "Stapel/Kistenberg",
@@ -26,6 +27,7 @@ KIND_LABELS = {
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["KIND_LABELS"] = KIND_LABELS
+templates.env.globals["APP_NAME"] = APP_NAME
 
 
 def opt_int(value: str | None) -> int | None:
@@ -49,7 +51,7 @@ def node_url(container_id: int | None) -> str:
 
 
 def create_app(settings: Settings) -> FastAPI:
-    app = FastAPI(title="Sortiersystem")
+    app = FastAPI(title=APP_NAME)
     app.mount("/static", StaticFiles(directory=APP_DIR / "static"), name="static")
     connect(settings.db_path).close()  # Migrationen beim Start
     photo_dir = settings.data_dir / "photos"

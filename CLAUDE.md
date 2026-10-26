@@ -1,4 +1,4 @@
-# Sortiersystem (Lager-Inventar)
+# KP Lager (Repo: sortiersystem)
 
 Zweck: Selbst gehostetes Lagersystem; QR-Code auf Behälter → Handy-Browser zeigt Inhalt, Einlagern/Entnehmen/Suchen im LAN.
 Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite (stdlib `sqlite3`, kein ORM, FTS5), segno (QR), Pillow, uv. Betrieb: Debian-LXC, systemd, Caddy.

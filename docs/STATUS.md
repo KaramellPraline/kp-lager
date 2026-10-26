@@ -3,7 +3,8 @@
 Stand: 2026-10-26
 
 ## Aktuell
-- M0–M7 erledigt und in `main` (53 Tests grün, UI im Handy-Viewport geprüft).
+- App heißt „KP Lager“. M0–M7 erledigt und in `main` (53 Tests grün, UI im Handy-Viewport geprüft).
+- Dev-Version auf dem Windows-PC: `LAGER_BASE_URL=http://<PC-IP>:8000 uv run uvicorn app.main:app --host 0.0.0.0 --port 8000` (Daten in `data/`). Test-Etiketten von dort zeigen auf den PC, nicht für den Dauerbetrieb drucken.
 - **Nächster Schritt: Deployment auf dem Proxmox-LXC** nach `deploy/README.md` (braucht Zugriff auf den Server → manuell oder in einer Session mit SSH-Zugang).
 - Danach: Etiketten drucken, Erst-Inventur per Haiku-Chat (`docs/HAIKU_PROMPT.md`) → `/import`.
 
@@ -23,7 +24,7 @@ Stand: 2026-10-26
 - [ ] **M9 Optional**: semantische Suche (lokale Embeddings), Claude-API- oder Ollama-Extraktion aus Foto+Transkript, Status „ausgeliehen“ für Werkzeug.
 
 ## Offen / zu klären
-- [ ] **Hostname vor dem Etikettendruck festlegen** (steht in jedem QR): `lager.fritz.box` (Fritz!Box) oder `lager.home.arpa` (eigener DNS).
+- [ ] DNS-Eintrag `lager.home.lan` → Container-IP im Router anlegen (Hostname festgelegt, steht in jedem QR).
 - [ ] Etikettenbogen: Standardmaß 48,5×25,4 mm (4×10) – bei anderem Bogen Maße im Formular anpassen, Probedruck auf Normalpapier.
 
 ## Bekannte Probleme

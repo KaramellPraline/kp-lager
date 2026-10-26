@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Lager</h1>
+<h1>{{ APP_NAME }}</h1>
 {% if roots %}
 {% with kids=roots, cols=0 %}{% include "_kids.html" %}{% endwith %}
 {% else %}

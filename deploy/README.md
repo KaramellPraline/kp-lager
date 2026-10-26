@@ -2,10 +2,10 @@
 
 > **Vor dem Etikettendruck festlegen:** Der Hostname steht in jedem QR-Code (`https://<host>/c/0042`). Später ändern = neu drucken.
 
-## 1. Hostname im LAN wählen
-- **Fritz!Box:** Container-Hostname `lager` → automatisch `lager.fritz.box`. Dann `LAGER_HOST=lager.fritz.box`.
-- **Pi-hole/AdGuard/Router mit lokalem DNS:** Eintrag `lager.home.arpa` → IP des Containers (`.home.arpa` ist der offizielle Heimnetz-Suffix).
+## 1. Hostname im LAN: `lager.home.lan` (festgelegt)
+- Im Router bzw. lokalen DNS (Pi-hole/AdGuard/OpenWrt) Eintrag `lager.home.lan` → IP des Containers anlegen.
 - Container-IP im Router fest vergeben (DHCP-Reservierung).
+- Prüfen vom Handy/PC: `nslookup lager.home.lan` liefert die Container-IP.
 
 ## 2. Container anlegen (Proxmox-Shell)
 Debian-13-Template, 1 CPU, 512 MB RAM, 4 GB Disk reichen (Whisper später: 2 CPU, 2 GB RAM). Unprivilegiert, Hostname `lager`, Onboot an.
@@ -20,7 +20,7 @@ ssh root@<container-ip> 'mkdir -p /opt/sortiersystem && tar -xzf /tmp/lager.tgz 
 
 ## 4. Installieren (im Container)
 ```bash
-LAGER_HOST=lager.fritz.box BACKUP_DIR=/mnt/backup bash /opt/sortiersystem/deploy/install.sh
+LAGER_HOST=lager.home.lan BACKUP_DIR=/mnt/backup bash /opt/sortiersystem/deploy/install.sh
 ```
 `BACKUP_DIR` idealerweise ein per Proxmox eingehängtes NAS-Verzeichnis (Mountpoint `mp0`). Zusätzlich Proxmox-vzdump des Containers einplanen.
 

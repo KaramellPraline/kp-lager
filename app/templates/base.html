@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Lager{% endblock %}</title>
+  <meta name="application-name" content="{{ APP_NAME }}">
+  <meta name="apple-mobile-web-app-title" content="{{ APP_NAME }}">
+  <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
   <header>
-    <a class="home" href="/">Lager</a>
+    <a class="home" href="/">{{ APP_NAME }}</a>
     <form action="/suche" method="get" class="search">
       <input type="search" name="q" placeholder="Suchen…" value="{{ q or '' }}" aria-label="Suchen">
     </form>

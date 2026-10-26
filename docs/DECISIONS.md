@@ -22,4 +22,5 @@
 | 2026-10-26 | Umlagern per „aufnehmen → Ziel scannen → hier ablegen“ (Cookie) statt Auswahlliste | Passt zum Scan-Ablauf mit der normalen Kamera-App, kein QR-Scanner im Browser nötig. |
 | 2026-10-26 | Import-Vorschau läuft auf In-Memory-Kopie der DB | Gleicher Code für Vorschau und Übernahme; echte DB bleibt bei Fehlern unberührt. |
 | 2026-10-26 | Etiketten-Codes 4-stellig fortlaufend, Druck-Zähler in `meta` | Kurz, gut lesbar; nie doppelt gedruckt. |
-| 2026-10-26 | Hostname-Empfehlung `lager.fritz.box` bzw. `lager.home.arpa` statt `lager.home` | `.home.arpa` ist der reservierte Heimnetz-Suffix; Fritz!Box löst Hostnamen automatisch auf. |
+| 2026-10-26 | Hostname `lager.home.lan` (User-Entscheidung) | Steht in jedem QR-Code; DNS-Eintrag im Router nötig. |
+| 2026-10-26 | App-Name „KP Lager“, zentral als `APP_NAME` in `app/web.py` | Ein Ort für Titel, Kopfzeile, Etiketten, Homescreen-Name. |

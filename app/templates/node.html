@@ -2,7 +2,7 @@
 {% block title %}{{ node.name }}{% endblock %}
 {% block content %}
 <nav class="crumbs">
-  <a href="/">Lager</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
+  <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
 <h1>{{ node.name }}</h1>
 <p class="meta">{{ KIND_LABELS[node.kind] }}{% if node.code %} · Code {{ node.code }}{% endif %}{% if node.grid %} · {{ node.grid }}{% endif %}</p>

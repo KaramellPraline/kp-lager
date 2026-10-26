@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Installation im Debian-13-LXC (als root). Erwartet den Code unter /opt/sortiersystem.
-# Aufruf: LAGER_HOST=lager.home.arpa BACKUP_DIR=/mnt/backup bash /opt/sortiersystem/deploy/install.sh
+# Aufruf: LAGER_HOST=lager.home.lan BACKUP_DIR=/mnt/backup bash /opt/sortiersystem/deploy/install.sh
 set -euo pipefail
 
-LAGER_HOST="${LAGER_HOST:-lager.home.arpa}"
+LAGER_HOST="${LAGER_HOST:-lager.home.lan}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/sortiersystem}"
 APP_DIR=/opt/sortiersystem
 DATA_DIR=/var/lib/sortiersystem
