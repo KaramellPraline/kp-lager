@@ -24,7 +24,7 @@ $py = (Resolve-Path ".venv\Scripts\python.exe").Path
 $env:LAGER_DATA_DIR = "data"
 $env:LAGER_BASE_URL = "https://lager.home.lan"
 # Spracheingabe über das KI-Gateway auf diesem PC (localhost -> kein Token nötig)
-$env:LAGER_WHISPER_URL = "http://localhost:8765"
+$env:LAGER_WHISPER_URL = "http://127.0.0.1:8766"
 
 $env:LAGER_HTTPS_REDIRECT = ""
 Start-Process -FilePath $py -WindowStyle Hidden -WorkingDirectory (Get-Location) `

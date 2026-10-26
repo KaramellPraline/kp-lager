@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Admin · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Einstellungen</h1>
+{% with tab="admin" %}{% include "_settings_tabs.html" %}{% endwith %}
+<p class="meta">Code-Zähler je Präfix. „Nächster“ ist die Nummer, die beim nächsten Etikett/Code vergeben wird.
+Schon vergebene Nummern lassen sich nicht erneut vergeben. Zurücksetzen gibt reservierte, aber unbenutzte
+Nummern (z. B. gedruckte Vorrats-Etiketten) wieder frei – diese Etiketten könnten dann doppelt entstehen.</p>
+
+{% for c in counters %}
+<section class="card counter">
+  <div class="title-row">
+    <h2 style="margin:0">{{ c.prefix }} · {{ c.label }}</h2>
+    <span class="chip code">nächster {{ c.next_code }}</span>
+  </div>
+  <p class="meta">Höchste vergebene Nummer: {{ c.highest or '–' }} · {{ c.used|length }} Codes vergeben</p>
+  <div class="row">
+    <form method="post" action="/settings/admin/next" class="add-item" style="margin:0">
+      <input type="hidden" name="prefix" value="{{ c.prefix }}">
+      <input name="number" type="number" min="{{ c.highest + 1 }}" value="{{ c.next }}" inputmode="numeric"
+             aria-label="Nächste Nummer {{ c.prefix }}" class="short">
+      <button>Setzen</button>
+    </form>
+    <form method="post" action="/settings/admin/reset"
+          onsubmit="return confirm('Zähler {{ c.prefix }} zurücksetzen? Nächster Code wird {{ c.prefix }}-{{ c.highest + 1 }}.')">
+      <input type="hidden" name="prefix" value="{{ c.prefix }}">
+      <button {% if c.next == c.highest + 1 %}disabled{% endif %}>Zurücksetzen</button>
+    </form>
+  </div>
+  {% if c.used %}
+  <details>
+    <summary>Vergebene Codes ({{ c.used|length }})</summary>
+    <ul class="list">
+      {% for u in c.used %}
+      <li class="item">
+        <a class="name" href="{{ '/n/' if u.type == 'node' else '/items/' }}{{ u.id }}"><b>{{ u.code }}</b> · {{ u.name }}</a>
+        <form method="post" action="/settings/admin/remove" onsubmit="return confirm('Code {{ u.code }} von „{{ u.name }}“ entfernen? Das Objekt bleibt erhalten.')">
+          <input type="hidden" name="code" value="{{ u.code }}">
+          <button aria-label="Code {{ u.code }} entfernen">✕</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+  {% endif %}
+</section>
+{% endfor %}
+{% endblock %}

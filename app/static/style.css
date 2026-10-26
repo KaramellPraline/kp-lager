@@ -212,3 +212,7 @@ table.labels td:nth-child(3) input { width: 6.5em; }
 table.labels td:nth-child(4) button { width: 40px; padding: 0; }
 @media (max-width: 480px) { table.labels td:nth-child(3) input { width: 5em; } table.labels td:nth-child(2) input { min-width: 7em; } }
 @media (max-width: 480px) { table.labels th:nth-child(3), table.labels td:nth-child(3) { display: none; } }
+.tabs a { flex: 1; text-align: center; padding: 8px; border-radius: 9px; text-decoration: none; color: var(--fg); font-weight: 600; }
+.tabs a.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
+.counter .row { align-items: center; }
+.counter .row form { flex: 0 1 auto; }

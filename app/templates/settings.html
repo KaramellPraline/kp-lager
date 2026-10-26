@@ -2,6 +2,7 @@
 {% block title %}Einstellungen · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Einstellungen</h1>
+{% with tab="general" %}{% include "_settings_tabs.html" %}{% endwith %}
 <div class="layout-2">
 <form method="post" action="/settings">
   {% for group, items in groups.items() %}
@@ -46,8 +47,8 @@
     </ul>
   </section>
   <section class="card">
-    <h2 style="margin-top:0">Nächste Codes</h2>
-    <ul class="history">{% for p, label in prefixes.items() %}<li><b>{{ next_codes[p] }}</b> · {{ label }}</li>{% endfor %}</ul>
+    <h2 style="margin-top:0">Codes</h2>
+    <p><a class="button" href="/settings/admin">Zähler &amp; Codes verwalten (Admin)</a></p>
   </section>
   <section class="card">
     <h2 style="margin-top:0">Daten</h2>

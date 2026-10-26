@@ -458,6 +458,55 @@ def create_app(settings: Settings) -> FastAPI:
         prefs.save(conn, {k: str(v) for k, v in form.items()})
         return redirect("/settings", "Einstellungen gespeichert")
 
+    # --- Admin: Code-Zähler je Präfix ----------------------------------------------
+
+    @app.get("/settings/admin", response_class=HTMLResponse)
+    def admin_page(request: Request, conn: Conn) -> HTMLResponse:
+        counters = [
+            {
+                "prefix": p,
+                "label": label,
+                "highest": codes.highest_used(conn, p),
+                "next": codes.next_number(conn, p),
+                "next_code": codes.format_code(p, codes.next_number(conn, p)),
+                "used": codes.used_codes(conn, p),
+            }
+            for p, label in codes.PREFIX_LABELS.items()
+        ]
+        return render(request, conn, "settings_admin.html", counters=counters)
+
+    @app.post("/settings/admin/next")
+    def admin_set_next(
+        conn: Conn, prefix: Annotated[str, Form()], number: Annotated[int, Form()]
+    ) -> RedirectResponse:
+        try:
+            codes.set_next(conn, prefix, number)
+        except ValueError as exc:
+            raise LagerError(str(exc)) from None
+        nxt = codes.format_code(prefix, number)
+        return redirect("/settings/admin", f"{prefix}: nächster Code ist jetzt {nxt}")
+
+    @app.post("/settings/admin/reset")
+    def admin_reset(conn: Conn, prefix: Annotated[str, Form()]) -> RedirectResponse:
+        if prefix not in codes.PREFIX_KIND:
+            raise LagerError(f"Unbekanntes Präfix {prefix}")
+        nxt = codes.format_code(prefix, codes.reset_counter(conn, prefix))
+        return redirect("/settings/admin", f"{prefix} zurückgesetzt – nächster Code {nxt}")
+
+    @app.post("/settings/admin/remove")
+    def admin_remove_code(conn: Conn, code: Annotated[str, Form()]) -> RedirectResponse:
+        """Code von seinem Behälter/Gegenstand lösen (Objekt bleibt erhalten)."""
+        if node := repo.get_container_by_code(conn, code):
+            repo.assign_code(conn, node["id"], None)
+            name = node["name"]
+        elif item := repo.get_item_by_code(conn, code):
+            repo.set_item_code(conn, item["id"], None)
+            name = item["name"]
+        else:
+            raise LagerError(f"{code} ist nicht vergeben")
+        labels.dequeue(conn, [code])
+        return redirect("/settings/admin", f"{code} von „{name}“ entfernt")
+
     @app.post("/settings/backup")
     def settings_backup(conn: Conn) -> RedirectResponse:
         files = backup.run(settings.data_dir, settings.data_dir / "backups")

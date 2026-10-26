@@ -47,3 +47,5 @@
 | 2026-10-26 | Layout: Handy untere Navigation + Scan-Knopf, ab 900 px Seitenleiste + 2 Spalten | Daumenbedienung; Desktop nutzt Breite. |
 | 2026-10-26 | Spracheingabe über eigenes KI-Gateway (OpenAI-kompatibel), auf demselben PC via localhost ohne Token; Standardmodell parakeet | Test: parakeet erkannte „Lötzinn“ korrekt und schneller als whisper-1; kein Secret nötig. Token per `LAGER_WHISPER_TOKEN` für andere Hosts. |
 | 2026-10-26 | Diktat mit „und“/Komma vor einer Zahl wird in mehrere Teile getrennt | Natürliche Spracheingabe „3 Rollen Lötzinn und 50 M3 Muttern“. |
+| 2026-10-26 | Spracheingabe jetzt über Gateway-Port 8766 (`http://127.0.0.1:8766`) | User: Whisper-Gateway umgezogen; 127.0.0.1 statt localhost (eindeutig IPv4, kein Token). |
+| 2026-10-26 | Admin-Tab: Zähler je Präfix setzen/zurücksetzen, Codes einzeln von Objekten lösen; nie unter höchste vergebene Nummer | Fehler korrigierbar, ohne doppelte Codes zu riskieren. |

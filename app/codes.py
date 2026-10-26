@@ -47,17 +47,58 @@ def prefix_of(code: str) -> str | None:
     return norm[:3] if norm else None
 
 
-def next_number(conn: sqlite3.Connection, prefix: str) -> int:
-    """Erste Nummer nach allen vergebenen und bereits reservierten/gedruckten Codes."""
-    row = conn.execute("SELECT value FROM meta WHERE key = ?", (f"next:{prefix}",)).fetchone()
-    reserved = int(row["value"]) if row else 1
+def highest_used(conn: sqlite3.Connection, prefix: str) -> int:
+    """Höchste Nummer, die einem Behälter oder Gegenstand zugeordnet ist (0 = keine)."""
     used = conn.execute(
         "SELECT MAX(n) FROM (SELECT CAST(substr(code, 5) AS INTEGER) AS n FROM container"
         " WHERE code LIKE ? UNION ALL SELECT CAST(substr(code, 5) AS INTEGER) FROM item"
         " WHERE code LIKE ?)",
         (f"{prefix}-%", f"{prefix}-%"),
     ).fetchone()[0]
-    return max(reserved, (used or 0) + 1)
+    return int(used or 0)
+
+
+def next_number(conn: sqlite3.Connection, prefix: str) -> int:
+    """Erste Nummer nach allen vergebenen und bereits reservierten/gedruckten Codes."""
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (f"next:{prefix}",)).fetchone()
+    reserved = int(row["value"]) if row else 1
+    return max(reserved, highest_used(conn, prefix) + 1)
+
+
+def set_next(conn: sqlite3.Connection, prefix: str, number: int) -> None:
+    """Admin: nächste Nummer festlegen (auch zurück), aber nie auf eine vergebene."""
+    if prefix not in PREFIX_KIND:
+        raise ValueError(f"Unbekanntes Präfix {prefix}")
+    lowest = highest_used(conn, prefix) + 1
+    if number < lowest:
+        raise ValueError(
+            f"{format_code(prefix, number)} oder höher ist schon vergeben – mindestens {lowest}"
+        )
+    if number > 999_999:
+        raise ValueError("Nummer zu groß (max. 999999)")
+    with conn:
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (f"next:{prefix}", str(number)),
+        )
+
+
+def reset_counter(conn: sqlite3.Connection, prefix: str) -> int:
+    """Admin: reservierte, unbenutzte Nummern freigeben -> nächste = höchste vergebene + 1."""
+    with conn:
+        conn.execute("DELETE FROM meta WHERE key = ?", (f"next:{prefix}",))
+    return next_number(conn, prefix)
+
+
+def used_codes(conn: sqlite3.Connection, prefix: str) -> list[dict[str, object]]:
+    """Alle vergebenen Codes eines Präfixes mit Objekt (Behälter oder Gegenstand)."""
+    rows = conn.execute(
+        "SELECT code, 'node' AS type, id, name FROM container WHERE code LIKE ?"
+        " UNION ALL SELECT code, 'item', id, name FROM item WHERE code LIKE ? ORDER BY code",
+        (f"{prefix}-%", f"{prefix}-%"),
+    ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def mark_used_until(conn: sqlite3.Connection, prefix: str, last_number: int) -> None:

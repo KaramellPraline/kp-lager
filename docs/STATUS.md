@@ -24,8 +24,9 @@ Stand: 2026-10-26
 - [x] **M7 Fotos**: Upload per Handykamera, EXIF-Drehung, 1600 px + Thumbnail, Löschen räumt Dateien auf.
 - [x] **M8 Alltag**: Rückgängig + Verlauf, Favoriten, Zuletzt angesehen, PWA-Icon, Verliehen-Status, Mindestbestand/Einkaufsliste, Freie Plätze, Synonyme + Tippfehler-Suche, Schnelleingabe „3 Rollen Lötzinn“, Haiku-Prompt pro Behälter, Scan-Modus (Öffnen/Einräumen), Spracheingabe über externen Whisper (`LAGER_WHISPER_URL`), Docker + Backup-Modul.
 - [x] **M9a NORB16 & Bins**: Kastenmodell, Draufsicht, Einsätze, Warteschlange, CAD-Generator.
+- [x] **M9c Admin**: Einstellungen › Admin – Code-Zähler je Präfix setzen/zurücksetzen, einzelne Codes entfernen.
 - [x] **M9b UX & Einstellungen**: responsives Layout, Toasts, Einstellungsregister, Backup-Knopf, HTTPS im LAN.
-- [x] **M8b Spracheingabe** über KI-Gateway auf KP-DESKTOP (`http://localhost:8765`, Modell parakeet, wählbar); Diktat mit mehreren Teilen.
+- [x] **M8b Spracheingabe** über KI-Gateway auf KP-DESKTOP (`http://127.0.0.1:8766`, Modell parakeet, wählbar); Diktat mit mehreren Teilen.
 - [ ] **M9 Optional**: semantische Suche (lokale Embeddings), Claude-API- oder Ollama-Extraktion aus Foto+Transkript, Status „ausgeliehen“ für Werkzeug.
 
 ## Offen / zu klären
