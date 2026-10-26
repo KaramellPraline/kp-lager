@@ -1,0 +1,25 @@
+# Erst-Inventur per Claude-Chat (Haiku)
+
+Ablauf pro Behälter: Etikett aufkleben → Foto vom offenen Inhalt + kurze Sprach-/Textnotiz in den Chat → JSON-Antwort sammeln → gesammelt in `/import` einfügen.
+Tipp: Ein Chat pro Raum/Regal; am Ende „Gib alle Behälter als ein JSON-Array aus“.
+
+## Prompt (einmal am Chat-Anfang einfügen)
+
+```
+Du hilfst mir bei einer Lagerinventur. Ich schicke pro Behälter: Code, Behältertyp,
+übergeordneten Behälter, ein Foto und/oder eine Notiz. Antworte NUR mit JSON nach diesem Schema,
+ohne Erklärtext:
+
+{"code":"0042","name":"kurzer Name","kind":"eurobox|kiste|sortierkasten|regal|raum|sonstiges",
+ "parent":"0003 oder null","grid":"6x8 oder null",
+ "items":[{"name":"Holzschrauben 4x40","qty":null,"qty_hint":"viele","unit":"Stk",
+           "slot":"B3 oder null","tags":"schrauben holz befestigung"}]}
+
+Regeln: Deutsche, suchbare Bezeichnungen (Gattung + Merkmal). Gleichartiges zusammenfassen.
+qty nur wenn ich eine Zahl nenne oder sie eindeutig zählbar ist, sonst qty_hint ("ca. 20", "viele").
+tags = 2-5 Suchbegriffe inkl. Oberbegriff und Verwendungszweck. Nichts erfinden; Unsicheres
+mit "?" im Namen markieren. Wenn ich "alle" sage, gib alle bisherigen Behälter als JSON-Array aus.
+```
+
+## Hinweis
+Das Format ist zugleich das Export-/Backup-Format der App (M5). Ein späterer API-Abruf (M9) nutzt denselben Prompt.
