@@ -14,3 +14,8 @@
 | 2026-10-26 | HTTPS via Caddy `tls internal`, Root-CA aufs Handy | Browser erlauben Kamera/Mikrofon nur in sicherem Kontext. |
 | 2026-10-26 | Whisper (faster-whisper small, CPU) nachrangig als separater Dienst | KI hat niedrige Priorität; Kern darf nicht davon abhängen. |
 | 2026-10-26 | Code-Repo außerhalb Google Drive (`C:\dev\sortiersystem`) | Drive-Sync beschädigt SQLite/.git/venv; in Drive nur Backups. |
+| 2026-10-26 | Speicherstruktur = Baum aus Behältern (`parent_id`), Items an genau einem Knoten | Raum/Regal/Ebene/Stapel/Box/Fach einheitlich; Umzug = ein Feld; Pfad per rekursivem CTE. |
+| 2026-10-26 | Interne `id` + optionaler `code` statt Code als PK | Nicht jeder Knoten braucht ein Etikett (Raum, Ebene, Fach); Etikett nachträglich zuordenbar. |
+| 2026-10-26 | Sortierkasten-Fächer als Kind-Behälter (aus `grid` erzeugt) statt `slot`-Feld am Item | Einheitliche Suche/Pfade; Einsätze können umziehen. |
+| 2026-10-26 | Kein Artikelstamm: gleiches Ding an zwei Orten = zwei Items | Heim-Lager braucht keine Stammdaten; Suche gruppiert nach Namen. Bei Bedarf später Tabelle `article`. |
+| 2026-10-26 | Mengen nie < 0, ungezählte Items (qty NULL) protokollieren nur | Verhindert Datenmüll, ohne Zählzwang. |

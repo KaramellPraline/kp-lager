@@ -3,14 +3,14 @@
 Stand: 2026-10-26
 
 ## Aktuell
-- M0 erledigt (Branch `feat/m0-setup`). Nächster Schritt: M1.
+- M0, M1 erledigt (in main). Nächster Schritt: M2.
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe.
 
 ## Meilensteine (je eine Session, Abnahme = genannte Tests grün)
 - [x] **M0 Setup**: Code-Repo nach `C:\dev\sortiersystem` verschieben (nicht in Google Drive!), `git init`, uv-Projekt, FastAPI-Skeleton mit `/health`, pytest/ruff/mypy konfiguriert, htmx.min.js nach `app/static/` vendored. Test: `/health` → 200.
-- [ ] **M1 Datenmodell**: Migrations-Runner + `001_init.sql` (Tabellen laut ARCHITECTURE), Repository-Funktionen für Behälter/Items/Events. Tests: anlegen, verschachteln, Pfad (Raum › Regal › Box › Fach), Entnahme erzeugt Event, Menge nie < 0.
+- [x] **M1 Datenmodell**: Migrations-Runner + `001_init.sql` (Tabellen laut ARCHITECTURE), Repository-Funktionen für Behälter/Items/Events. Tests: anlegen, verschachteln, Pfad (Raum › Regal › Box › Fach), Entnahme erzeugt Event, Menge nie < 0.
 - [ ] **M2 Mobile UI**: `/c/{code}` zeigt Pfad, Unterbehälter, Inhalt mit −/+; Item hinzufügen (ein Feld, Menge optional); Behälter umziehen („in Behälter X“); unbekannter Code → „Neuen Behälter anlegen“. Sortierkasten: Fach-Raster (z. B. 6×8) antippbar. Tests via TestClient.
 - [ ] **M3 Suche**: FTS5 mit `trigram`-Tokenizer (findet „schraub“ in „Holzschrauben“), Suchfeld auf jeder Seite, Treffer mit Pfad + Fach + Menge. Tests: Teilwort, Umlaute, Tag-Treffer.
 - [ ] **M4 QR-Etiketten**: Bögen mit fortlaufenden, noch freien Codes drucken (`/labels?from=1&count=48`, A4, Etikettengröße konfigurierbar), QR als SVG via segno, URL = `BASE_URL/c/{code}`. Test: SVG enthält korrekte URL.
