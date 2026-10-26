@@ -57,8 +57,8 @@ def test_blank_preview_reserves_only_on_export(client: TestClient) -> None:
     assert preview(client, source="blank", prefix="EUR", count="1")["code"] == ["EUR-001"]
     fields["text"][0] = "Elektronik"
     rows = xlsx_rows(export(client, fields).content)
-    assert rows[0] == ("Code", "QR", "Text", "Zusatz")
-    assert rows[1] == ("EUR-001", "HTTPS://LAGER.TEST/C/EUR-001", "Elektronik", None)
+    assert rows[0] == ("Code", "QR", "Text")
+    assert rows[1] == ("EUR-001", "HTTPS://LAGER.TEST/C/EUR-001", "Elektronik")
     assert preview(client, source="blank", prefix="EUR", count="1")["code"] == ["EUR-004"]
 
 
@@ -171,3 +171,14 @@ def test_next_code_button_and_invalid_codes(client: TestClient) -> None:
 )  # fmt: skip
 def test_normalize(raw: str, expected: str | None) -> None:
     assert codes.normalize(raw) == expected
+
+
+def test_default_qr_uses_schema_and_dns_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import load_settings
+
+    monkeypatch.delenv("LAGER_BASE_URL", raising=False)
+    base = load_settings().base_url
+    assert base == "https://lager.home.lan"
+    assert (
+        labels.qr_content(base, codes.format_code("EUR", 21)) == "HTTPS://LAGER.HOME.LAN/C/EUR-021"
+    )

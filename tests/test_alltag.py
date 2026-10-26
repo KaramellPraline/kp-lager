@@ -284,3 +284,17 @@ def test_home_quick_add_remembers_target(client: TestClient) -> None:
     )
     r = client.post("/quickadd", data={"target": werk, "text": " "}, headers={"referer": "/"})
     assert "Was soll eingetragen werden?" in r.text
+
+
+def test_home_where_favorites_and_last_three(client: TestClient) -> None:
+    ids = [box(client, f"Box {n}") for n in range(12)]
+    for i in ids[:11]:
+        client.post(f"/n/{i}/favorite")
+    for i in ids[:4]:
+        client.post("/quickadd", data={"target": i, "text": "Teil"})
+    page = client.get("/").text
+    favs = re.findall(r'class="pick fav" data-id="(\d+)"', page)
+    assert len(favs) == 10  # max. 10 Favoriten zum Wischen
+    recent = re.findall(r'class="pick" data-id="(\d+)"', page)
+    assert recent == [ids[3], ids[2], ids[1]]  # letzte drei, neueste zuerst
+    assert re.search(rf'<option value="{ids[3]}" selected>', page)

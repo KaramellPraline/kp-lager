@@ -216,3 +216,16 @@ table.labels td:nth-child(4) button { width: 40px; padding: 0; }
 .tabs a.active { background: var(--surface); color: var(--accent); box-shadow: var(--shadow); }
 .counter .row { align-items: center; }
 .counter .row form { flex: 0 1 auto; }
+/* Schnelleingabe „Wohin“: Favoriten wischbar (3 sichtbar, bis 10), zuletzt verwendet */
+.where { display: flex; flex-direction: column; gap: 8px; }
+.where-label { font-size: .9em; color: var(--sub); }
+.pick-scroll { display: grid; grid-auto-flow: column; grid-auto-columns: calc((100% - 16px) / 3); gap: 8px;
+  overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 4px; scrollbar-width: thin; }
+.pick-scroll .pick { scroll-snap-align: start; }
+.pick-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pick { min-height: 40px; padding: 6px 10px; font-size: .88em; font-weight: 600; border-radius: 999px;
+  background: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.pick.fav { background: #fef3c7; color: #92400e; }
+:root[data-theme="dark"] .pick.fav { background: #4a3708; color: #fde68a; }
+.pick.on { background: var(--accent); color: var(--accent-fg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pick.fav { background: #4a3708; color: #fde68a; } }

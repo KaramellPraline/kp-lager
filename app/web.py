@@ -53,14 +53,15 @@ def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectRespon
 
 
 RECENT_COOKIE = "recent"
-TARGET_COOKIE = "qa_target"  # zuletzt gewähltes Ziel der Schnelleingabe auf der Startseite
+TARGET_COOKIE = "qa_targets"  # zuletzt gewählte Ziele der Schnelleingabe (neueste zuerst)
+
+
+def recent_targets(request: Request) -> list[int]:
+    return [int(x) for x in request.cookies.get(TARGET_COOKIE, "").split(",") if x.isdigit()]
 
 
 def last_target(request: Request) -> int | None:
-    raw = request.cookies.get(TARGET_COOKIE, "")
-    if raw.isdigit():
-        return int(raw)
-    ids = recent_ids(request)
+    ids = recent_targets(request) or recent_ids(request)
     return ids[0] if ids else None
 
 
@@ -196,11 +197,14 @@ def create_app(settings: Settings) -> FastAPI:
             n_queue=labels.queue_count(conn),
             targets=repo.all_paths(conn),
             target=last_target(request),
+            fav_targets=repo.favorites(conn)[:10],
+            recent_targets=repo.containers_by_ids(conn, recent_targets(request))[:3],
             voice=bool(settings.whisper_url),
         )
 
     @app.post("/quickadd")
     def home_quick_add(
+        request: Request,
         conn: Conn,
         target: Annotated[int, Form()],
         text: Annotated[str, Form()],
@@ -220,7 +224,10 @@ def create_app(settings: Settings) -> FastAPI:
             labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
         msg = f"{', '.join(f'„{n}“' for n in names)} → {repo.path_label(conn, dest['id'])}"
         resp = redirect("/", msg, undo)
-        resp.set_cookie(TARGET_COOKIE, str(dest["id"]), max_age=31_536_000, samesite="lax")
+        ids = [dest["id"]] + [i for i in recent_targets(request) if i != dest["id"]]
+        resp.set_cookie(
+            TARGET_COOKIE, ",".join(map(str, ids[:3])), max_age=31_536_000, samesite="lax"
+        )
         return resp
 
     @app.get("/c/{code}", response_model=None)

@@ -28,6 +28,27 @@
     }
   });
 
+  // Schnellauswahl „Wohin“: Favoriten/zuletzt verwendet setzen die Auswahlliste
+  function markPicks(select) {
+    document.querySelectorAll("button.pick").forEach(function (b) {
+      b.classList.toggle("on", b.dataset.id === select.value);
+    });
+  }
+  document.addEventListener("click", function (ev) {
+    var pick = ev.target.closest("button.pick");
+    if (!pick) return;
+    var select = document.getElementById("qa-target");
+    select.value = pick.dataset.id;
+    markPicks(select);
+  });
+  document.addEventListener("change", function (ev) {
+    if (ev.target.id === "qa-target") markPicks(ev.target);
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    var select = document.getElementById("qa-target");
+    if (select) markPicks(select);
+  });
+
   // Kachel „Eintragen“ auf der Startseite: zum Formular springen und direkt die Aufnahme starten
   document.addEventListener("click", function (ev) {
     var tile = ev.target.closest("a.mic-tile");

@@ -16,11 +16,22 @@
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">🎤</button>{% endif %}
     <button class="primary" aria-label="Eintragen">＋</button>
   </div>
-  <label>Wohin
-    <select name="target">
+  <div class="where">
+    <span class="where-label">Wohin</span>
+    {% if fav_targets %}
+    <div class="pick-scroll" aria-label="Favoriten">
+      {% for f in fav_targets %}<button type="button" class="pick fav" data-id="{{ f.id }}" title="{{ f.name }}">★ {{ f.name }}</button>{% endfor %}
+    </div>
+    {% endif %}
+    {% if recent_targets %}
+    <div class="pick-row" aria-label="Zuletzt verwendet">
+      {% for r in recent_targets %}<button type="button" class="pick" data-id="{{ r.id }}" title="{{ r.name }}">↺ {{ r.name }}</button>{% endfor %}
+    </div>
+    {% endif %}
+    <select name="target" id="qa-target" aria-label="Wohin">
       {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
     </select>
-  </label>
+  </div>
 </form>
 {% endif %}
 

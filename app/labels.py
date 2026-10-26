@@ -40,15 +40,15 @@ def short(text: str, limit: int = TEXT_MAX) -> str:
 
 
 def to_xlsx(rows: list[Label], text_max: int = TEXT_MAX) -> bytes:
-    """Spalten für die D30-App: A Code, B QR-Inhalt, C Text, D Zusatz."""
+    """Spalten für die D30-App: A Code, B QR-Inhalt, C Text (ohne Zusatz-Spalte)."""
     wb = Workbook()
     ws = wb.active
     assert ws is not None
     ws.title = "Etiketten"
-    ws.append(["Code", "QR", "Text", "Zusatz"])
+    ws.append(["Code", "QR", "Text"])
     for r in rows:
-        ws.append([r.code, r.qr, short(r.text, text_max), r.extra])
-    for col, width in zip("ABCD", (12, 40, 26, 14), strict=True):
+        ws.append([r.code, r.qr, short(r.text, text_max)])
+    for col, width in zip("ABC", (12, 40, 26), strict=True):
         ws.column_dimensions[col].width = width
     buf = io.BytesIO()
     wb.save(buf)
