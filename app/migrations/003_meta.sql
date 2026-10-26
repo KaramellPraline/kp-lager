@@ -1,0 +1,5 @@
+-- Einstellungen/Zähler, z. B. nächster noch nicht gedruckter Etiketten-Code.
+CREATE TABLE meta (
+    key    TEXT PRIMARY KEY,
+    value  TEXT NOT NULL
+);

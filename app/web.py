@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import repo
+from app import labels, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -154,6 +154,47 @@ def create_app(settings: Settings) -> FastAPI:
             items=repo.search(conn, q),
             containers=repo.search_containers(conn, q),
         )
+
+    # --- Etiketten -------------------------------------------------------------
+
+    @app.get("/labels", response_class=HTMLResponse)
+    def label_sheet(
+        request: Request,
+        conn: Conn,
+        start: int | None = None,
+        count: int | None = None,
+        cols: int = labels.Sheet.cols,
+        rows: int = labels.Sheet.rows,
+        width: float = labels.Sheet.width,
+        height: float = labels.Sheet.height,
+        top: float = labels.Sheet.top,
+        left: float = labels.Sheet.left,
+    ) -> HTMLResponse:
+        sheet = labels.Sheet(cols, rows, width, height, top, left)
+        start = start if start is not None else labels.next_free_number(conn)
+        count = max(1, min(count or sheet.per_page, 400))
+        cells = [
+            (code, labels.qr_svg(f"{settings.base_url}/c/{code}"))
+            for code in map(labels.format_code, range(start, start + count))
+        ]
+        pages = [cells[i : i + sheet.per_page] for i in range(0, len(cells), sheet.per_page)]
+        return templates.TemplateResponse(
+            request,
+            "labels.html",
+            {
+                "s": sheet,
+                "start": start,
+                "count": count,
+                "last": start + count - 1,
+                "codes": [c for c, _ in cells],
+                "pages": pages,
+            },
+        )
+
+    @app.post("/labels/printed")
+    def labels_printed(conn: Conn, last: Annotated[int, Form()]) -> RedirectResponse:
+        labels.mark_printed(conn, last)
+        return redirect("/labels", f"Gemerkt – nächster Bogen beginnt bei {last + 1}")
 
     # --- Behälter -------------------------------------------------------------
 
