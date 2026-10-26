@@ -24,3 +24,14 @@ def for_container(
         f", grid={grid}" if grid else ""
     )
     return f"{PROMPT}\n\n{head}\nInhalt: (Foto anhängen und/oder hier beschreiben)"
+
+
+def for_dictation(transcript: str, stamp: str, duration: str) -> str:
+    """Freies Diktat (z. B. beim Durchgehen mehrerer Boxen) als fertiger Haiku-Prompt."""
+    return (
+        f"{PROMPT}\n\nDiktat vom {stamp} (Dauer {duration}). Darin beschreibe ich einen oder "
+        "mehrere Behälter mit Code und Inhalt. Erzeuge für jeden genannten Behälter ein Objekt "
+        "und gib alle als JSON-Array aus. Behälter ohne erkennbaren Code lässt du im JSON weg "
+        'und nennst sie danach in einer Zeile "Ohne Code: …".\n\n--- Diktat ---\n'
+        f"{transcript.strip() or '(kein Text erkannt)'}\n--- Ende ---"
+    )

@@ -229,3 +229,16 @@ table.labels td:nth-child(4) button { width: 40px; padding: 0; }
 :root[data-theme="dark"] .pick.fav { background: #4a3708; color: #fde68a; }
 .pick.on { background: var(--accent); color: var(--accent-fg); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .pick.fav { background: #4a3708; color: #fde68a; } }
+/* Kopfzeile: Aufnahme + Mehr */
+.icon-btn { flex: none; width: var(--tap); min-height: var(--tap); padding: 0; border-radius: 50%; display: grid;
+  place-items: center; font-size: 1.25em; background: var(--muted); color: var(--fg); text-decoration: none; border: none; }
+.icon-btn.active { background: var(--accent-soft); color: var(--accent); }
+.icon-btn.recording { background: var(--danger); color: #fff; animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 8px #dc262633; } }
+.rec-bar { position: sticky; top: 62px; z-index: 18; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 14px; background: var(--accent-soft); border-bottom: 1px solid var(--line); }
+.rec-bar span:nth-child(2) { flex: 1; }
+.rec-bar .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--danger); animation: pulse 1.2s infinite; }
+.bottomnav { grid-template-columns: repeat(4, 1fr); }
+.note-text { white-space: pre-wrap; margin: 8px 0; }
+.note .actions { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }

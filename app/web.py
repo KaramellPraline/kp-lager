@@ -12,7 +12,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import backup, codes, importer, kasten, labels, photos, prefs, prompt, quick, repo
+from app import backup, codes, importer, kasten, labels, notes, photos, prefs, prompt, quick, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -137,6 +137,7 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["COMPACT"] = prefs.flag(conn, "compact")
         ctx["NQUEUE"] = labels.queue_count(conn)
         ctx["P"] = prefs.values(conn)
+        ctx["VOICE"] = bool(settings.whisper_url)
         return templates.TemplateResponse(request, name, ctx)
 
     def entries(conn: sqlite3.Connection, text: str) -> list[tuple[int | None, str, str]]:
@@ -527,6 +528,15 @@ def create_app(settings: Settings) -> FastAPI:
             "more.html",
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
+            notes=[
+                {
+                    "note": n,
+                    "stamp": notes.stamp(n),
+                    "duration": notes.duration_label(n["duration"]),
+                    "prompt": notes.chat_prompt(n),
+                }
+                for n in notes.all_notes(conn)
+            ],
         )
 
     # --- Alltag: Rückgängig, Verlauf, Verliehen, Einkauf, Platz -------------------
@@ -623,24 +633,86 @@ def create_app(settings: Settings) -> FastAPI:
             return JSONResponse({"type": "item", "code": norm, "name": item["name"]})
         return JSONResponse({"type": "unknown", "code": norm, "name": ""})
 
+    async def speech_to_text(
+        conn: sqlite3.Connection, data: bytes, filename: str, content_type: str | None
+    ) -> str:
+        """Audio an den KI-Dienst (OpenAI-kompatibel) – wirft httpx.HTTPError bei Fehlern."""
+        async with httpx.AsyncClient(timeout=600) as client:  # Dienste starten bei Bedarf
+            resp = await client.post(
+                f"{settings.whisper_url}/v1/audio/transcriptions",
+                headers={"Authorization": f"Bearer {settings.whisper_token}"},
+                files={"file": (filename, data, content_type)},
+                data={"model": prefs.raw(conn, "voice_model"), "language": "de"},
+            )
+            resp.raise_for_status()
+        return str(resp.json().get("text", "")).strip()
+
     @app.post("/api/transcribe")
     async def transcribe(audio: UploadFile, conn: Conn) -> JSONResponse:
-        """Leitet die Sprachaufnahme an den KI-Dienst (OpenAI-kompatibel) weiter."""
+        """Kurze Spracheingabe für ein Eingabefeld."""
         if not settings.whisper_url:
             return JSONResponse({"error": "Kein Sprachdienst konfiguriert"}, status_code=503)
         data = await audio.read()
-        try:  # Dienste starten bei Bedarf -> großzügiges Timeout
-            async with httpx.AsyncClient(timeout=300) as client:
-                resp = await client.post(
-                    f"{settings.whisper_url}/v1/audio/transcriptions",
-                    headers={"Authorization": f"Bearer {settings.whisper_token}"},
-                    files={"file": (audio.filename or "aufnahme.webm", data, audio.content_type)},
-                    data={"model": prefs.raw(conn, "voice_model"), "language": "de"},
-                )
-                resp.raise_for_status()
+        try:
+            text = await speech_to_text(
+                conn, data, audio.filename or "aufnahme.webm", audio.content_type
+            )
         except httpx.HTTPError as exc:
             return JSONResponse({"error": f"Whisper nicht erreichbar: {exc}"}, status_code=502)
-        return JSONResponse({"text": str(resp.json().get("text", "")).strip()})
+        return JSONResponse({"text": text})
+
+    # --- Diktate: lange Aufnahmen -> Haiku-Prompt (Mehr › Aufnahmen) ---------------
+
+    note_dir = settings.data_dir / "notes"
+
+    async def transcribe_note(conn: sqlite3.Connection, note_id: int) -> None:
+        note = notes.get(conn, note_id)
+        if not settings.whisper_url:
+            notes.set_result(conn, note_id, error="Kein Sprachdienst konfiguriert")
+            return
+        audio = note_dir / note["audio"]
+        try:
+            ctype = "audio/mp4" if audio.suffix == ".m4a" else "audio/webm"
+            text = await speech_to_text(conn, audio.read_bytes(), audio.name, ctype)
+            notes.set_result(conn, note_id, text=text)
+        except (httpx.HTTPError, OSError) as exc:
+            notes.set_result(conn, note_id, error=str(exc)[:300])
+
+    @app.post("/api/notes")
+    async def create_note(
+        conn: Conn, audio: UploadFile, duration: Annotated[int, Form()] = 0
+    ) -> JSONResponse:
+        """Lange Aufnahme sichern (Audio zuerst – geht nichts verloren), dann transkribieren."""
+        try:
+            name = notes.save_audio(await audio.read(), note_dir, audio.content_type or "")
+        except LagerError as exc:
+            return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+        note_id = notes.create(conn, name, duration)
+        await transcribe_note(conn, note_id)
+        note = notes.get(conn, note_id)
+        ok = note["status"] == "fertig"
+        msg = "Aufnahme gespeichert – Prompt bereit" if ok else "Aufnahme gespeichert, Text fehlt"
+        return JSONResponse({"ok": ok, "id": note_id, "msg": msg})
+
+    @app.post("/notes/{note_id}/retry")
+    async def retry_note(note_id: int, conn: Conn) -> RedirectResponse:
+        await transcribe_note(conn, note_id)
+        ok = notes.get(conn, note_id)["status"] == "fertig"
+        return redirect("/mehr#aufnahmen", "Text erkannt" if ok else "Erneut fehlgeschlagen")
+
+    @app.post("/notes/{note_id}/delete")
+    def delete_note(note_id: int, conn: Conn) -> RedirectResponse:
+        notes.delete(conn, note_id, note_dir)
+        return redirect("/mehr#aufnahmen", "Aufnahme gelöscht")
+
+    @app.get("/notes/{note_id}.txt")
+    def download_note(note_id: int, conn: Conn) -> Response:
+        note = notes.get(conn, note_id)
+        return Response(
+            notes.chat_prompt(note),
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{notes.filename(note)}"'},
+        )
 
     @app.get("/manifest.webmanifest")
     def manifest(conn: Conn) -> JSONResponse:

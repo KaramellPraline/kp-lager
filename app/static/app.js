@@ -21,9 +21,11 @@
     var done = function () { btn.textContent = "Kopiert ✓"; };
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(el.value).then(done);
-    } else {
-      el.select();
-      document.execCommand("copy");
+    } else {  // Fallback ohne HTTPS: sichtbares Hilfsfeld kurz einblenden
+      var tmp = document.createElement("textarea");
+      tmp.value = el.value; tmp.style.position = "fixed"; tmp.style.opacity = "0";
+      document.body.appendChild(tmp); tmp.select();
+      document.execCommand("copy"); tmp.remove();
       done();
     }
   });
@@ -92,5 +94,57 @@
       };
       rec.start();
     }).catch(function () { alert("Kein Zugriff aufs Mikrofon"); });
+  });
+
+  // Lange Aufnahme (Diktat) aus der Kopfzeile -> /api/notes -> Mehr › Aufnahmen
+  document.addEventListener("DOMContentLoaded", function () {
+    var btn = document.getElementById("note-rec");
+    if (!btn) return;
+    var bar = document.getElementById("rec-bar"), time = document.getElementById("rec-time");
+    var rec = null, chunks = [], started = 0, timer = null, keep = true;
+    function fmt(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
+    function guard(ev) { ev.preventDefault(); ev.returnValue = ""; }
+    function finish() {
+      clearInterval(timer);
+      window.removeEventListener("beforeunload", guard);
+      btn.classList.remove("recording");
+    }
+    function start() {
+      if (!navigator.mediaDevices || !window.MediaRecorder || !window.isSecureContext) {
+        alert("Aufnahme braucht HTTPS (Zertifikat installiert?)."); return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        chunks = []; keep = true;
+        rec = new MediaRecorder(stream);
+        rec.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+        rec.onstop = function () {
+          stream.getTracks().forEach(function (t) { t.stop(); });
+          finish();
+          var secs = Math.round((Date.now() - started) / 1000);
+          if (!keep) { bar.hidden = true; rec = null; return; }
+          time.textContent = "wird erkannt …";
+          bar.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+          var form = new FormData();
+          form.append("audio", new Blob(chunks, { type: rec.mimeType }), "diktat.webm");
+          form.append("duration", secs);
+          fetch("/api/notes", { method: "POST", body: form })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { location.href = "/mehr?msg=" + encodeURIComponent(d.msg) + "#aufnahmen"; })
+            .catch(function () { alert("Hochladen fehlgeschlagen"); bar.hidden = true; });
+        };
+        rec.start(1000);
+        started = Date.now();
+        bar.hidden = false; time.textContent = "0:00";
+        bar.querySelectorAll("button").forEach(function (b) { b.disabled = false; });
+        btn.classList.add("recording");
+        timer = setInterval(function () { time.textContent = fmt(Math.round((Date.now() - started) / 1000)); }, 1000);
+        window.addEventListener("beforeunload", guard);
+      }).catch(function () { alert("Kein Zugriff aufs Mikrofon"); });
+    }
+    btn.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); else start(); });
+    document.getElementById("rec-stop").addEventListener("click", function () { if (rec) rec.stop(); });
+    document.getElementById("rec-cancel").addEventListener("click", function () {
+      if (rec && confirm("Aufnahme verwerfen?")) { keep = false; rec.stop(); }
+    });
   });
 })();

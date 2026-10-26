@@ -33,6 +33,7 @@
     {{ nav_link('/platz', '▢', 'Freie Plätze') }}
     {{ nav_link('/verlauf', '↶', 'Verlauf') }}
     {{ nav_link('/import', '⇪', 'Import') }}
+    {{ nav_link('/mehr', '🎙', 'Aufnahmen & Mehr') }}
     {{ nav_link('/settings', '⚙', 'Einstellungen') }}
   </aside>
   <div class="main-col">
@@ -41,7 +42,14 @@
       <form action="/suche" method="get" class="search" role="search">
         <input type="search" name="q" placeholder="Suchen: Teil, Box, Code…" value="{{ q or '' }}" aria-label="Suchen">
       </form>
+      {% if VOICE %}<button type="button" class="icon-btn" id="note-rec" aria-label="Lange Aufnahme starten" title="Lange Aufnahme (Diktat → Haiku-Prompt)">🎙</button>{% endif %}
+      <a class="icon-btn mobile-only {% if cur == '/mehr' %}active{% endif %}" href="/mehr" aria-label="Mehr" title="Mehr">☰</a>
     </header>
+    <div class="rec-bar" id="rec-bar" hidden>
+      <span class="dot"></span><span>Aufnahme läuft <b id="rec-time">0:00</b></span>
+      <button type="button" class="primary" id="rec-stop">Stopp &amp; speichern</button>
+      <button type="button" id="rec-cancel">Verwerfen</button>
+    </div>
     {% if carry %}
     <div class="carry">
       <span>📦 Unterwegs: <b>{{ carry.name }}</b></span>
@@ -59,7 +67,6 @@
   <a href="/suche" class="{% if cur.startswith('/suche') %}active{% endif %}"><span class="ico">🔍</span>Suche</a>
   <a href="/scan" class="scan"><span class="ico">⌗</span>Scannen</a>
   <a href="/labels" class="{% if cur.startswith('/labels') %}active{% endif %}"><span class="ico">🏷</span>Etiketten{% if NQUEUE %}<b class="count">{{ NQUEUE }}</b>{% endif %}</a>
-  <a href="/mehr" class="{% if cur == '/mehr' %}active{% endif %}"><span class="ico">☰</span>Mehr</a>
 </nav>
 {% if msg %}
 <div class="toast" role="status" {% if not undo %}data-autohide{% endif %}>
