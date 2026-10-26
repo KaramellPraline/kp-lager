@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<ul class="list">
+  {% for i in rows %}
+  <li class="item">
+    <a href="/items/{{ i.id }}" class="name">{{ i.name }}
+      <small>{% if kind == 'lent' %}bei {{ i.lent_to }} seit {{ i.lent_since }} · gehört nach {{ i.path }}{% else %}{% if i.qty is not none %}{{ i.qty }}{% if i.min_qty is not none %} / min. {{ i.min_qty }}{% endif %} {{ i.unit }} · {% endif %}{{ i.path }}{% endif %}</small>
+    </a>
+    {% if kind == 'lent' %}
+    <form method="post" action="/items/{{ i.id }}/return"><button>Zurück</button></form>
+    {% elif i.on_list %}
+    <form method="post" action="/items/{{ i.id }}/list"><button>Erledigt</button></form>
+    {% endif %}
+  </li>
+  {% else %}<li class="empty">Nichts auf der Liste.</li>{% endfor %}
+</ul>
+{% if kind == 'shopping' %}<p class="meta">Teile mit Mindestbestand verschwinden von selbst, sobald genug eingelagert ist.</p>{% endif %}
+{% endblock %}

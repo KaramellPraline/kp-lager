@@ -1,9 +1,0 @@
-[Unit]
-Description=Tägliches Sortiersystem-Backup
-
-[Timer]
-OnCalendar=*-*-* 03:15
-Persistent=true
-
-[Install]
-WantedBy=timers.target

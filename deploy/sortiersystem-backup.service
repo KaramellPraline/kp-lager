@@ -1,8 +1,0 @@
-[Unit]
-Description=Sortiersystem Backup (SQLite + Fotos)
-
-[Service]
-Type=oneshot
-User=lager
-EnvironmentFile=/etc/sortiersystem-backup.env
-ExecStart=/bin/bash /opt/sortiersystem/deploy/backup.sh

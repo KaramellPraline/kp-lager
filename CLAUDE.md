@@ -1,13 +1,14 @@
 # KP Lager (Repo: sortiersystem)
 
 Zweck: Selbst gehostetes Lagersystem; QR-Code auf Behälter → Handy-Browser zeigt Inhalt, Einlagern/Entnehmen/Suchen im LAN.
-Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite (stdlib `sqlite3`, kein ORM, FTS5), segno (QR), Pillow, uv. Betrieb: Debian-LXC, systemd, Caddy.
+Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite (stdlib `sqlite3`, kein ORM, FTS5), segno (QR), Pillow, uv. Betrieb: Docker Compose (App + Caddy HTTPS), Host noch offen.
 
 ## Befehle
 - Run (dev): `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` (Daten in `./data`)
 - Test: `uv run pytest -q`
 - Lint/Typecheck: `uv run ruff check . && uv run ruff format --check . && uv run mypy app`
-- Deploy: siehe `deploy/README.md`
+- Deploy: `cd deploy && docker compose up -d --build` (siehe `deploy/README.md`)
+- Backup: `python -m app.backup [ziel] [tage]`
 
 ## Secrets
 - Aktuell keine. KI-API ist bewusst nicht eingebunden (siehe DECISIONS).

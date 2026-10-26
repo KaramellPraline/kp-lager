@@ -1,17 +1,16 @@
-# {$LAGER_HOST} wird von install.sh ersetzt.
 {$LAGER_HOST} {
 	tls internal
 	encode gzip
 	request_body {
 		max_size 40MB
 	}
-	reverse_proxy 127.0.0.1:8000
+	reverse_proxy app:8000
 }
 
-# HTTP: nur Root-Zertifikat zum Installieren aufs Handy, sonst Umleitung auf HTTPS.
+# HTTP: Root-Zertifikat fürs Handy, sonst Umleitung auf HTTPS
 http://{$LAGER_HOST} {
 	handle /ca.crt {
-		root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
+		root * /data/caddy/pki/authorities/local
 		rewrite * /root.crt
 		header Content-Type application/x-x509-ca-cert
 		file_server

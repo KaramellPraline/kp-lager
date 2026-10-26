@@ -19,7 +19,21 @@
   {% endif %}
 </div>
 
-<form method="post" action="/carry/item/{{ item.id }}"><button class="primary">Umlagern (aufnehmen)</button></form>
+{% if item.lent_to %}
+<div class="lent">Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
+  <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>
+</div>
+{% endif %}
+<div class="row">
+  <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">Umlagern (aufnehmen)</button></form>
+  <form method="post" action="/items/{{ item.id }}/list"><button>{% if item.on_list %}Von Einkaufsliste nehmen{% else %}Auf Einkaufsliste{% endif %}</button></form>
+</div>
+{% if not item.lent_to %}
+<form method="post" action="/items/{{ item.id }}/lend" class="add-item">
+  <input name="to" placeholder="Verleihen an / in Benutzung bei …">
+  <button>Verleihen</button>
+</form>
+{% endif %}
 
 <details>
   <summary>Bearbeiten</summary>
@@ -30,6 +44,9 @@
       <input name="unit" value="{{ item.unit }}" placeholder="Einheit">
     </div>
     <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="Mengenhinweis, z. B. viele">
+    <label>Mindestbestand (unterschritten → Einkaufsliste)
+      <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner">
+    </label>
     <input name="tags" value="{{ item.tags }}" placeholder="Suchbegriffe">
     <textarea name="notes" placeholder="Notizen">{{ item.notes }}</textarea>
     <button>Speichern</button>

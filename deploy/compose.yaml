@@ -1,0 +1,28 @@
+# KP Lager mit HTTPS (Caddy, eigene CA). Start: docker compose up -d --build (im Ordner deploy/)
+name: kp-lager
+
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    environment:
+      LAGER_BASE_URL: https://${LAGER_HOST:-lager.home.lan}
+      LAGER_WHISPER_URL: ${LAGER_WHISPER_URL:-}
+    volumes:
+      - ./data:/data
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      LAGER_HOST: ${LAGER_HOST:-lager.home.lan}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
+volumes:
+  caddy_data:

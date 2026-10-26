@@ -9,6 +9,8 @@ from pathlib import Path
 class Settings:
     data_dir: Path
     base_url: str
+    whisper_url: str = ""  # OpenAI-kompatibler Whisper-Dienst, z. B. http://kp-proxmox:8001
+    whisper_model: str = "Systran/faster-whisper-small"
 
     @property
     def db_path(self) -> Path:
@@ -18,5 +20,7 @@ class Settings:
 def load_settings() -> Settings:
     return Settings(
         data_dir=Path(os.environ.get("LAGER_DATA_DIR", "data")),
-        base_url=os.environ.get("LAGER_BASE_URL", "http://localhost:8000").rstrip("/"),
+        base_url=os.environ.get("LAGER_BASE_URL", "https://lager.home.lan").rstrip("/"),
+        whisper_url=os.environ.get("LAGER_WHISPER_URL", "").rstrip("/"),
+        whisper_model=os.environ.get("LAGER_WHISPER_MODEL", "Systran/faster-whisper-small"),
     )

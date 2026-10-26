@@ -33,10 +33,15 @@ Keller (raum)
 - `app/web.py`: alle Routen; Verbindung pro Request; Fehler (`LagerError`) → Redirect mit `?msg=`
 - `app/db.py`: Verbindung (FK an, WAL, `fold()` für Umlaut-LIKE) + Migrations-Runner (PRAGMA user_version)
 - `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster, Löschen), Items (Bestand), Protokoll, Suche
-- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus
+- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus, `005_alltag` Rückgängig/Verleihen/Einkauf/Favoriten
 - `app/codes.py`: Code-Schema PRÄFIX-NNN, Normalisieren, Zähler je Präfix, Einstellungen (`meta`)
 - `app/labels.py`: QR-Inhalt (Großbuchstaben), XLSX für D30 (40×12), Etikettenlisten, `finalize()` (Export: Namen speichern, gedruckt markieren, Codes reservieren)
 - `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
+- `app/quick.py`: Schnelleingabe-Parser („3 Rollen Lötzinn“), Standard-Synonyme
+- `app/prompt.py`: Inventur-Prompt für den Haiku-Chat (Quelle der Wahrheit)
+- `app/backup.py`: `python -m app.backup` – SQLite-Kopie + Foto-Archiv, Aufräumen
+- `app/static/app.js`: Kopieren, Mikrofon → `/api/transcribe`; `jsQR.js` Scan-Fallback ohne BarcodeDetector
+- `Dockerfile`, `deploy/compose.yaml`, `deploy/Caddyfile`: App + Caddy (tls internal, `/ca.crt`)
 - `app/photos.py`: Foto speichern (EXIF-Drehung, 1600 px + Thumbnail), löschen
 - `app/templates/`: `node.html` (Behälter), `item.html`, `search.html`, `import.html`, `labels.html` (Druck), Partials `_*.html`
 - `deploy/`: install.sh, systemd-Units, Caddyfile, backup.sh, README
@@ -46,6 +51,8 @@ Keller (raum)
 - `/c/{code}` bzw. `/C/{code}` QR-Einstieg (Behälter oder Teil) · `/n/{id}` Behälter · `/items/{id}` Teil · `/suche?q=` · `/labels` · `/settings` · `/import` · `/export.json`
 - Etiketten: `POST /labels/preview` (source=blank|pending|container|item → editierbare Tabelle), `POST /labels/export` (fmt=xlsx|a8)
 - Umlagern: `POST /carry/{item|node}/{id}` setzt Cookie, `POST /drop/{id}` legt ab.
+- Alltag: `POST /undo/{event}`, `/verlauf`, `/verliehen`, `/einkauf`, `/platz`, `/scan`, `/manifest.webmanifest`
+- JSON: `GET /api/code/{code}`, `POST /api/move` (Scan-Einräumen), `POST /api/transcribe` (→ Whisper)
 
 ## Schnittstellen
 - Keine externen Dienste im Betrieb. Erst-Inventur: manuell im Claude-Chat (Haiku) → JSON → `/import`.

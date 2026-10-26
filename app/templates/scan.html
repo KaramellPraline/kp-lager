@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% block title %}Scannen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Scannen</h1>
+<div class="seg" role="tablist">
+  <button type="button" class="active" data-mode="open">Öffnen</button>
+  <button type="button" data-mode="put">Einräumen</button>
+</div>
+<p class="meta" id="hint">QR-Code ins Bild halten – öffnet Behälter oder Teil.</p>
+<div id="target" class="carry" hidden><span>Ziel: <b id="target-name"></b></span><button type="button" id="target-clear">Anderes Ziel</button></div>
+<video id="cam" playsinline muted></video>
+<p id="cam-error" class="msg" hidden>Kamera nicht verfügbar – sie braucht HTTPS (https://lager.home.lan). Code unten eintippen geht immer.</p>
+<form id="manual" class="add-item">
+  <input id="manual-code" placeholder="Code eintippen, z. B. EUR-001" autocapitalize="characters">
+  <button class="primary">OK</button>
+</form>
+<ul class="list" id="log"></ul>
+
+<script src="/static/jsQR.js"></script>
+<script>
+(function () {
+  "use strict";
+  var mode = "open", target = null, last = "", lastAt = 0;
+  var video = document.getElementById("cam"), log = document.getElementById("log");
+  var hint = document.getElementById("hint");
+  var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
+  var detector = ("BarcodeDetector" in window) ? new BarcodeDetector({ formats: ["qr_code"] }) : null;
+
+  function codeOf(text) {
+    var m = /\/C\/([A-Z0-9-]+)\s*$/i.exec(text.trim());
+    return (m ? m[1] : text.trim()).toUpperCase();
+  }
+  function note(text, ok, undo) {
+    var li = document.createElement("li");
+    li.className = "item";
+    li.innerHTML = '<span class="name"></span>';
+    li.firstChild.textContent = (ok ? "✓ " : "✗ ") + text;
+    if (undo) {
+      var b = document.createElement("button");
+      b.textContent = "↶";
+      b.onclick = function () {
+        fetch("/undo/" + undo, { method: "POST" }).then(function () { li.classList.add("undone"); b.remove(); });
+      };
+      li.appendChild(b);
+    }
+    log.prepend(li);
+    if (navigator.vibrate) navigator.vibrate(ok ? 60 : [60, 60, 60]);
+  }
+  function setTarget(t) {
+    target = t;
+    document.getElementById("target").hidden = !t;
+    if (t) document.getElementById("target-name").textContent = t.name + " (" + t.code + ")";
+    hint.textContent = mode === "open" ? "QR-Code ins Bild halten – öffnet Behälter oder Teil."
+      : (t ? "Jetzt Teile oder Kisten scannen – sie landen in „" + t.name + "“."
+           : "Zuerst den Ziel-Behälter scannen.");
+  }
+  function handle(code) {
+    var now = Date.now();
+    if (code === last && now - lastAt < 2500) return;
+    last = code; lastAt = now;
+    if (mode === "open") { location.href = "/C/" + encodeURIComponent(code); return; }
+    if (!target) {
+      fetch("/api/code/" + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.type === "container") { setTarget(d); note("Ziel: " + d.name, true); }
+        else note(code + ": erst einen Behälter als Ziel scannen", false);
+      });
+      return;
+    }
+    if (code === target.code) return;
+    var form = new FormData();
+    form.append("code", code); form.append("target", target.code);
+    fetch("/api/move", { method: "POST", body: form }).then(function (r) { return r.json(); })
+      .then(function (d) { note(d.msg, d.ok, d.undo); });
+  }
+  function tick() {
+    if (video.readyState >= 2) {
+      if (detector) {
+        detector.detect(video).then(function (codes) { if (codes.length) handle(codeOf(codes[0].rawValue)); });
+      } else if (window.jsQR) {
+        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        var hit = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+        if (hit) handle(codeOf(hit.data));
+      }
+    }
+    setTimeout(tick, 250);
+  }
+
+  document.querySelectorAll(".seg button").forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll(".seg button").forEach(function (x) { x.classList.remove("active"); });
+      b.classList.add("active"); mode = b.dataset.mode; setTarget(null);
+    };
+  });
+  document.getElementById("target-clear").onclick = function () { setTarget(null); };
+  document.getElementById("manual").onsubmit = function (e) {
+    e.preventDefault();
+    var v = document.getElementById("manual-code").value;
+    if (v) { last = ""; handle(codeOf(v)); document.getElementById("manual-code").value = ""; }
+  };
+
+  if (navigator.mediaDevices && window.isSecureContext) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(function (s) { video.srcObject = s; video.play(); tick(); })
+      .catch(function () { document.getElementById("cam-error").hidden = false; video.hidden = true; });
+  } else {
+    document.getElementById("cam-error").hidden = false; video.hidden = true;
+  }
+})();
+</script>
+{% endblock %}

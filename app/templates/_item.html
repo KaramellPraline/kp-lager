@@ -1,5 +1,5 @@
 <li class="item" id="item-{{ i.id }}">
-  <a href="/items/{{ i.id }}" class="name">{{ i.name }}</a>
+  <a href="/items/{{ i.id }}" class="name">{{ i.name }}{% if i.lent_to %} <span class="badge">bei {{ i.lent_to }}</span>{% endif %}{% if i.min_qty is not none and i.qty is not none and i.qty < i.min_qty %} <span class="badge warn">nachkaufen</span>{% endif %}</a>
   {% if i.qty is not none %}
   <span class="qty-ctl">
     <button hx-post="/items/{{ i.id }}/qty" hx-vals='{"delta": -1}' hx-target="#item-{{ i.id }}"

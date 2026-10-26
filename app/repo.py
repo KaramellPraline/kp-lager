@@ -170,15 +170,26 @@ def move_container(conn: sqlite3.Connection, container_id: int, new_parent_id: i
         r["id"] == container_id for r in container_path(conn, new_parent_id)
     ):
         raise LagerError("Behälter kann nicht in sich selbst oder einen Unterbehälter")
+    node = get_container(conn, container_id)
+    if node is None:
+        raise LagerError("Behälter existiert nicht")
+    target = get_container(conn, new_parent_id) if new_parent_id else None
     with conn:
         conn.execute(
             "UPDATE container SET parent_id = ?, position = NULL, updated_at = datetime('now')"
             " WHERE id = ?",
             (new_parent_id, container_id),
         )
+        # prev_container_id 0 = vorher oberste Ebene
         conn.execute(
-            "INSERT INTO event (container_id, action, note) VALUES (?, 'move', ?)",
-            (container_id, f"nach {new_parent_id}"),
+            "INSERT INTO event (item_name, container_id, prev_container_id, action, note)"
+            " VALUES (?, ?, ?, 'move', ?)",
+            (
+                node["name"],
+                container_id,
+                node["parent_id"] or 0,
+                f"nach {target['name'] if target else 'oberste Ebene'}",
+            ),
         )
 
 
@@ -196,13 +207,22 @@ def assign_code(conn: sqlite3.Connection, container_id: int, code: str | None) -
 
 
 def _log(
-    conn: sqlite3.Connection, item: Row, action: str, delta: int | None = None, note: str = ""
+    conn: sqlite3.Connection,
+    item: Row,
+    action: str,
+    delta: int | None = None,
+    note: str = "",
+    prev_container_id: int | None = None,
 ) -> None:
     conn.execute(
-        "INSERT INTO event (item_id, item_name, container_id, action, delta, note)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (item["id"], item["name"], item["container_id"], action, delta, note),
+        "INSERT INTO event (item_id, item_name, container_id, prev_container_id, action, delta,"
+        " note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (item["id"], item["name"], item["container_id"], prev_container_id, action, delta, note),
     )
+
+
+def last_event_id(conn: sqlite3.Connection) -> int:
+    return int(conn.execute("SELECT COALESCE(MAX(id), 0) FROM event").fetchone()[0])
 
 
 def get_item(conn: sqlite3.Connection, item_id: int) -> Row:
@@ -280,16 +300,25 @@ def change_qty(conn: sqlite3.Connection, item_id: int, delta: int, note: str = "
 
 def move_item(conn: sqlite3.Connection, item_id: int, container_id: int) -> None:
     item = get_item(conn, item_id)
+    target = get_container(conn, container_id)
+    if target is None:
+        raise LagerError("Ziel-Behälter existiert nicht")
     with conn:
         conn.execute(
             "UPDATE item SET container_id = ?, updated_at = datetime('now') WHERE id = ?",
             (container_id, item_id),
         )
-        _log(conn, item, "move", note=f"von {item['container_id']} nach {container_id}")
+        _log(
+            conn,
+            item,
+            "move",
+            note=f"nach {target['name']}",
+            prev_container_id=item["container_id"],
+        )
 
 
 def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | None) -> None:
-    allowed = {"name", "qty", "qty_hint", "unit", "tags", "notes", "photo"}
+    allowed = {"name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list"}
     if not fields or not set(fields) <= allowed:
         raise LagerError(f"Erlaubte Felder: {sorted(allowed)}")
     item = get_item(conn, item_id)
@@ -353,3 +382,191 @@ def search_containers(conn: sqlite3.Connection, q: str, limit: int = 20) -> list
         (q.strip(), *(f"%{t.casefold()}%" for t in terms), limit),
     ).fetchall()
     return [{**dict(r), "path": path_label(conn, r["id"])} for r in rows]
+
+
+def parse_synonyms(text: str) -> dict[str, list[str]]:
+    """Zeilen wie 'inbus = innensechskant = allen' -> jedes Wort -> ganze Gruppe."""
+    groups: dict[str, list[str]] = {}
+    for line in text.splitlines():
+        words = [w.strip().casefold() for w in line.replace(",", "=").split("=") if w.strip()]
+        if len(words) > 1:
+            for w in words:
+                groups[w] = words
+    return groups
+
+
+def search_synonyms(
+    conn: sqlite3.Connection, q: str, synonyms: dict[str, list[str]], limit: int = 50
+) -> list[dict[str, object]]:
+    """Wie search(), aber jedes Wort darf auch durch ein Synonym erfüllt sein."""
+    terms = [t.casefold() for t in q.replace('"', " ").split() if t]
+    if not terms:
+        return []
+    groups = [synonyms.get(t, [t]) if t in synonyms else [t] for t in terms]
+    if all(len(w) >= 3 for g in groups for w in g):
+        match = " AND ".join("(" + " OR ".join(f'"{w}"' for w in g) + ")" for g in groups)
+        rows = conn.execute(
+            "SELECT item.* FROM item_fts JOIN item ON item.id = item_fts.rowid"
+            " WHERE item_fts MATCH ? ORDER BY bm25(item_fts, 10.0, 5.0, 1.0) LIMIT ?",
+            (match, limit),
+        ).fetchall()
+    else:
+        text = "fold(name || ' ' || tags || ' ' || notes)"
+        where = " AND ".join("(" + " OR ".join([f"{text} LIKE ?"] * len(g)) + ")" for g in groups)
+        rows = conn.execute(
+            f"SELECT * FROM item WHERE {where} ORDER BY name LIMIT ?",
+            (*(f"%{w}%" for g in groups for w in g), limit),
+        ).fetchall()
+    return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]
+
+
+def suggest(conn: sqlite3.Connection, q: str) -> str | None:
+    """Tippfehler-Korrektur: ähnlichstes vorhandenes Wort je Suchwort (oder None)."""
+    import difflib
+    import re
+
+    vocab: set[str] = set()
+    for row in conn.execute("SELECT name, tags FROM item"):
+        vocab.update(w.casefold() for w in re.findall(r"\w{3,}", f"{row['name']} {row['tags']}"))
+    fixed, changed = [], False
+    for term in q.casefold().split():
+        if term in vocab or len(term) < 3:
+            fixed.append(term)
+            continue
+        match = difflib.get_close_matches(term, vocab, n=1, cutoff=0.75)
+        fixed.append(match[0] if match else term)
+        changed |= bool(match)
+    return " ".join(fixed) if changed else None
+
+
+# --- Alltag: Rückgängig, Verleihen, Einkauf, Platz, Favoriten -----------------------
+
+UNDOABLE = ("take", "put", "move", "add")
+
+
+def undo(conn: sqlite3.Connection, event_id: int) -> str:
+    """Macht Entnahme/Einlagern/Umlagern/Hinzufügen rückgängig; gibt eine Meldung zurück."""
+    ev = conn.execute("SELECT * FROM event WHERE id = ?", (event_id,)).fetchone()
+    if ev is None or ev["undone"] or ev["action"] not in UNDOABLE:
+        raise LagerError("Das lässt sich nicht (mehr) rückgängig machen")
+    name = ev["item_name"]
+    if ev["action"] in ("take", "put"):
+        if ev["item_id"] is None:
+            raise LagerError("Teil existiert nicht mehr")
+        if ev["delta"]:
+            change_qty(conn, ev["item_id"], -ev["delta"], note="rückgängig")
+        msg = f"Mengenänderung bei „{name}“ zurückgenommen"
+    elif ev["action"] == "move":
+        if ev["prev_container_id"] is None:
+            raise LagerError("Alter Ort unbekannt")
+        if ev["item_id"] is not None:
+            move_item(conn, ev["item_id"], ev["prev_container_id"])
+        elif ev["container_id"] is not None:
+            move_container(conn, ev["container_id"], ev["prev_container_id"] or None)
+        else:
+            raise LagerError("Objekt existiert nicht mehr")
+        msg = f"„{name}“ zurück an alten Ort"
+    else:  # add
+        if ev["item_id"] is None:
+            raise LagerError("Teil existiert nicht mehr")
+        delete_item(conn, ev["item_id"])
+        msg = f"„{name}“ wieder entfernt"
+    with conn:
+        conn.execute("UPDATE event SET undone = 1 WHERE id = ?", (event_id,))
+    return msg
+
+
+def recent_events(conn: sqlite3.Connection, limit: int = 50) -> list[Row]:
+    return conn.execute(
+        "SELECT e.*, c.name AS container_name FROM event e"
+        " LEFT JOIN container c ON c.id = e.container_id ORDER BY e.id DESC LIMIT ?",
+        (limit,),
+    ).fetchall()
+
+
+def lend_item(conn: sqlite3.Connection, item_id: int, to: str) -> None:
+    item = get_item(conn, item_id)
+    to = to.strip() or "unbekannt"
+    with conn:
+        conn.execute(
+            "UPDATE item SET lent_to = ?, lent_since = date('now'), updated_at = datetime('now')"
+            " WHERE id = ?",
+            (to, item_id),
+        )
+        _log(conn, item, "lend", note=to)
+
+
+def return_item(conn: sqlite3.Connection, item_id: int) -> None:
+    item = get_item(conn, item_id)
+    with conn:
+        conn.execute(
+            "UPDATE item SET lent_to = NULL, lent_since = NULL, updated_at = datetime('now')"
+            " WHERE id = ?",
+            (item_id,),
+        )
+        _log(conn, item, "return", note=item["lent_to"] or "")
+
+
+def _with_path(conn: sqlite3.Connection, rows: list[Row]) -> list[dict[str, object]]:
+    return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]
+
+
+def lent_items(conn: sqlite3.Connection) -> list[dict[str, object]]:
+    rows = conn.execute(
+        "SELECT * FROM item WHERE lent_to IS NOT NULL ORDER BY lent_since, name"
+    ).fetchall()
+    return _with_path(conn, rows)
+
+
+def shopping_list(conn: sqlite3.Connection) -> list[dict[str, object]]:
+    """Manuell markierte Teile und alles unter Mindestbestand."""
+    rows = conn.execute(
+        "SELECT * FROM item WHERE on_list = 1"
+        " OR (min_qty IS NOT NULL AND qty IS NOT NULL AND qty < min_qty) ORDER BY name"
+    ).fetchall()
+    return _with_path(conn, rows)
+
+
+def free_places(conn: sqlite3.Connection) -> dict[str, list[dict[str, object]]]:
+    """Leere Boxen/Kisten und Sortierkästen mit freien Fächern."""
+    empty = conn.execute(
+        "SELECT c.* FROM container c WHERE c.kind IN ('eurobox', 'kiste', 'sonstiges')"
+        " AND NOT EXISTS (SELECT 1 FROM item i WHERE i.container_id = c.id)"
+        " AND NOT EXISTS (SELECT 1 FROM container k WHERE k.parent_id = c.id) ORDER BY c.name"
+    ).fetchall()
+    kaesten = conn.execute(
+        """
+        SELECT k.*, COUNT(f.id) AS total,
+               SUM(NOT EXISTS (SELECT 1 FROM item i WHERE i.container_id = f.id)) AS free,
+               GROUP_CONCAT(CASE WHEN NOT EXISTS (SELECT 1 FROM item i WHERE i.container_id = f.id)
+                            THEN f.position END, ' ') AS free_slots
+        FROM container k JOIN container f ON f.parent_id = k.id AND f.kind = 'fach'
+        WHERE k.kind = 'sortierkasten' GROUP BY k.id HAVING free > 0 ORDER BY k.name
+        """
+    ).fetchall()
+    return {
+        "empty": [{**dict(r), "path": path_label(conn, r["id"])} for r in empty],
+        "kaesten": [{**dict(r), "path": path_label(conn, r["id"])} for r in kaesten],
+    }
+
+
+def set_favorite(conn: sqlite3.Connection, container_id: int, on: bool) -> None:
+    with conn:
+        conn.execute("UPDATE container SET favorite = ? WHERE id = ?", (int(on), container_id))
+
+
+def containers_by_ids(conn: sqlite3.Connection, ids: list[int]) -> list[Row]:
+    """In der Reihenfolge der IDs (für 'Zuletzt angesehen')."""
+    if not ids:
+        return []
+    rows = {
+        r["id"]: r
+        for r in conn.execute(
+            f"SELECT * FROM container WHERE id IN ({','.join('?' * len(ids))})", ids
+        )
+    }
+    return [rows[i] for i in ids if i in rows]
+
+
+def favorites(conn: sqlite3.Connection) -> list[Row]:
+    return conn.execute("SELECT * FROM container WHERE favorite = 1 ORDER BY name").fetchall()

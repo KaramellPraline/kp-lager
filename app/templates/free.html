@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Freie Plätze · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Wo ist Platz?</h1>
+<h2>Sortierkästen mit freien Fächern</h2>
+<ul class="list">
+  {% for k in kaesten %}
+  <li><a href="/n/{{ k.id }}"><span class="name">{{ k.name }}{% if k.code %} · {{ k.code }}{% endif %} – {{ k.free }} von {{ k.total }} frei</span>
+    <small>{{ k.free_slots }} · {{ k.path }}</small></a></li>
+  {% else %}<li class="empty">Keine freien Fächer.</li>{% endfor %}
+</ul>
+<h2>Leere Boxen &amp; Kisten</h2>
+<ul class="list">
+  {% for c in empty %}
+  <li><a href="/n/{{ c.id }}"><span class="name">{{ c.name }}{% if c.code %} · {{ c.code }}{% endif %}</span><small>{{ c.path }}</small></a></li>
+  {% else %}<li class="empty">Keine leeren Boxen.</li>{% endfor %}
+</ul>
+{% endblock %}

@@ -1,6 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>{{ APP_NAME }}</h1>
+<nav class="tiles">
+  <a href="/scan">⌗ Scannen</a>
+  <a href="/verliehen">Verliehen{% if n_lent %} <b>{{ n_lent }}</b>{% endif %}</a>
+  <a href="/einkauf">Einkaufsliste{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
+  <a href="/platz">Freie Plätze</a>
+  <a href="/verlauf">Verlauf</a>
+  <a href="/labels">Etiketten</a>
+</nav>
+
+{% if favorites %}
+<h2>★ Favoriten</h2>
+{% with kids=favorites, cols=0 %}{% include "_kids.html" %}{% endwith %}
+{% endif %}
+
+{% if recent %}
+<h2>Zuletzt angesehen</h2>
+{% with kids=recent, cols=0 %}{% include "_kids.html" %}{% endwith %}
+{% endif %}
+
+<h2>Räume &amp; Orte</h2>
 {% if roots %}
 {% with kids=roots, cols=0 %}{% include "_kids.html" %}{% endwith %}
 {% else %}
@@ -18,7 +37,6 @@
 </details>
 
 <nav class="links">
-  <a href="/labels">Etiketten drucken</a>
   <a href="/import">Import</a>
   <a href="/export.json">Export</a>
   <a href="/settings">Einstellungen</a>

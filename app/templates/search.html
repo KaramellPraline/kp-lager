@@ -2,6 +2,7 @@
 {% block title %}Suche: {{ q }}{% endblock %}
 {% block content %}
 <h1>Suche{% if q %}: {{ q }}{% endif %}</h1>
+{% if corrected %}<p class="msg">Keine Treffer für „{{ q }}“ – Ergebnisse für <b>„{{ corrected }}“</b>.</p>{% endif %}
 {% if not q %}
 <p class="empty">Suchwort eingeben – Teilwörter reichen („schraub“ findet „Holzschrauben“).</p>
 {% elif not items and not containers %}

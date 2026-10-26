@@ -6,8 +6,14 @@
   <meta name="application-name" content="{{ APP_NAME }}">
   <meta name="apple-mobile-web-app-title" content="{{ APP_NAME }}">
   <title>{% block title %}{{ APP_NAME }}{% endblock %}</title>
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/static/icon-180.png">
+  <link rel="icon" href="/static/icon-192.png">
   <link rel="stylesheet" href="/static/style.css">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
 </head>
 <body>
   <header>
@@ -15,8 +21,11 @@
     <form action="/suche" method="get" class="search">
       <input type="search" name="q" placeholder="Suchen…" value="{{ q or '' }}" aria-label="Suchen">
     </form>
+    <a class="scan-btn" href="/scan" aria-label="Scannen" title="Scannen">⌗</a>
   </header>
-  {% if msg %}<div class="msg" role="status">{{ msg }}</div>{% endif %}
+  {% if msg %}<div class="msg" role="status"><span>{{ msg }}</span>
+    {% if undo %}<form method="post" action="/undo/{{ undo }}"><button class="link">Rückgängig</button></form>{% endif %}
+  </div>{% endif %}
   {% if carry %}
   <div class="carry">
     <span>Unterwegs: <b>{{ carry.name }}</b></span>

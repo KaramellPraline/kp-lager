@@ -4,7 +4,10 @@
 <nav class="crumbs">
   <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
-<h1>{{ node.name }}</h1>
+<div class="title-row">
+  <h1>{{ node.name }}</h1>
+  <form method="post" action="/n/{{ node.id }}/favorite"><button class="star" aria-label="Favorit" title="Favorit">{% if node.favorite %}★{% else %}☆{% endif %}</button></form>
+</div>
 <p class="meta">{{ KIND_LABELS[node.kind] }}{% if node.code %} · Code {{ node.code }}{% endif %}{% if node.grid %} · {{ node.grid }}{% endif %}</p>
 {% if node.photo %}<a href="/photos/{{ node.photo }}"><img class="photo" src="/photos/thumb_{{ node.photo }}" alt="Foto {{ node.name }}"></a>{% endif %}
 {% if node.notes %}<p class="notes">{{ node.notes }}</p>{% endif %}
@@ -15,7 +18,8 @@
   <ul class="list items">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
   {% else %}<p class="empty">Keine Teile direkt hier.</p>{% endif %}
   <form method="post" action="/n/{{ node.id }}/items" class="add-item">
-    <input name="name" placeholder="Teil hinzufügen…" required>
+    <input name="name" placeholder="Teil, z. B. 3 Rollen Lötzinn" required id="add-name">
+    {% if voice %}<button type="button" class="mic" data-target="add-name" aria-label="Spracheingabe">🎤</button>{% endif %}
     <input name="qty" placeholder="Anz." inputmode="numeric" class="short">
     <button class="primary">+</button>
   </form>
@@ -34,6 +38,13 @@
   {% include "_kids.html" %}
 </section>
 {% endif %}
+
+<details>
+  <summary>Inventur per Chat (Haiku)</summary>
+  <p class="meta">Prompt kopieren, im Chat einfügen, Foto dazu → JSON-Antwort unter <a href="/import">Import</a> einfügen.</p>
+  <textarea id="chat-prompt" rows="6" readonly>{{ chat_prompt }}</textarea>
+  <button type="button" class="copy" data-target="chat-prompt">Prompt kopieren</button>
+</details>
 
 <details>
   <summary>Unterbehälter anlegen</summary>

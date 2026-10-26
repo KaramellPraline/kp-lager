@@ -5,6 +5,8 @@ Codes nach Schema (docs/ETIKETTEN.md): RAU-, REG-, STA-, EUR-, KIS-, SOR- + 3 Zi
 Ablauf pro Behälter: Etikett aufkleben → Foto vom offenen Inhalt + kurze Sprach-/Textnotiz in den Chat → JSON-Antwort sammeln → gesammelt in `/import` einfügen.
 Tipp: Ein Chat pro Raum/Regal; am Ende „Gib alle Behälter als ein JSON-Array aus“.
 
+> In der App: Behälterseite › „Inventur per Chat (Haiku)“ › „Prompt kopieren“ – enthält schon Code/Art/Eltern des Behälters. Quelle: `app/prompt.py`.
+
 ## Prompt (einmal am Chat-Anfang einfügen)
 
 ```

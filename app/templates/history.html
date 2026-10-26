@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Verlauf · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Verlauf</h1>
+{% set labels = {'add': 'neu', 'take': 'entnommen', 'put': 'eingelagert', 'move': 'umgelagert',
+  'edit': 'bearbeitet', 'delete': 'gelöscht', 'import': 'importiert', 'lend': 'verliehen',
+  'return': 'zurück', 'undo': 'rückgängig'} %}
+<ul class="list">
+  {% for e in events %}
+  <li class="item {% if e.undone %}undone{% endif %}">
+    <span class="name">
+      {% if e.item_id %}<a href="/items/{{ e.item_id }}">{{ e.item_name }}</a>{% elif e.container_id and not e.item_name %}<a href="/n/{{ e.container_id }}">{{ e.container_name }}</a>{% else %}{{ e.item_name or e.container_name or '–' }}{% endif %}
+      <small>{{ labels.get(e.action, e.action) }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %} · {{ e.ts }}</small>
+    </span>
+    {% if e.action in undoable and not e.undone %}
+    <form method="post" action="/undo/{{ e.id }}"><button>↶</button></form>
+    {% endif %}
+  </li>
+  {% else %}<li class="empty">Noch nichts passiert.</li>{% endfor %}
+</ul>
+{% endblock %}

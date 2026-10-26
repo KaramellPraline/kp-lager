@@ -31,3 +31,9 @@
 | 2026-10-26 | Etikettendruck immer über Vorschau-Tabelle mit editierbarem Text; Namen nur auf Wunsch ins Lager übernehmen | User-Wunsch; Etikettentext oft kürzer als der volle Name. |
 | 2026-10-26 | A8-Etiketten (A4 quer, 4×4, dünne Schnittlinien, QR links, Name, Code) ersetzen den A4-Bogen 48,5×25,4 | User-Vorgabe; groß genug für Euroboxen, kein Spezialpapier nötig. |
 | 2026-10-26 | Vorrats-Codes erst beim Export reservieren | Abgebrochene Vorschau verbraucht keine Nummern. |
+| 2026-10-26 | QR-Basis-URL Standard `https://lager.home.lan` | User-Wunsch; DNS-Eintrag in AdGuard nötig. |
+| 2026-10-26 | Hosting per Docker Compose (App + Caddy) statt systemd-LXC; kp-pi3 verworfen | User-Entscheidung; portabel auf jeden Docker-Host. LXC-Skripte entfernt. |
+| 2026-10-26 | Whisper nicht im App-Container, sondern externer OpenAI-kompatibler Dienst (`LAGER_WHISPER_URL`) | Schwache Hosts überfordert; Mikrofon-Knopf nur sichtbar, wenn konfiguriert. |
+| 2026-10-26 | Scan im Browser: BarcodeDetector, Fallback jsQR (vendored) | iOS Safari hat keinen BarcodeDetector; keine CDNs im LAN. |
+| 2026-10-26 | Zuletzt angesehen per Cookie (pro Gerät), Favoriten in der DB (für alle) | Verlauf ist persönlich, Favoriten geteilt. |
+| 2026-10-26 | Rückgängig für Entnehmen/Einlagern/Umlagern/Hinzufügen über Event-Log (`prev_container_id`, `undone`) | Fehlbedienung am Handy schnell korrigierbar; Löschen bleibt mit Bestätigung. |

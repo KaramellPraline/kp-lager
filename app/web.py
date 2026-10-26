@@ -6,12 +6,13 @@ from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
 
+import httpx
 from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import codes, importer, labels, photos, repo
+from app import codes, importer, labels, photos, prompt, quick, repo
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -41,10 +42,19 @@ def opt_int(value: str | None) -> int | None:
         raise LagerError(f"'{value}' ist keine ganze Zahl") from None
 
 
-def redirect(url: str, msg: str = "") -> RedirectResponse:
+def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectResponse:
     if msg:
         url += ("&" if "?" in url else "?") + "msg=" + quote(msg)
+    if undo:
+        url += ("&" if "?" in url else "?") + f"undo={undo}"
     return RedirectResponse(url, status_code=303)
+
+
+RECENT_COOKIE = "recent"
+
+
+def recent_ids(request: Request) -> list[int]:
+    return [int(x) for x in request.cookies.get(RECENT_COOKIE, "").split(",") if x.isdigit()]
 
 
 def container_code(raw: str) -> str | None:
@@ -108,7 +118,12 @@ def create_app(settings: Settings) -> FastAPI:
         ctx.setdefault("node", None)
         ctx["carry"] = carry_info(request, conn)
         ctx["msg"] = request.query_params.get("msg", "")
+        undo = request.query_params.get("undo", "")
+        ctx["undo"] = int(undo) if undo.isdigit() else None
         return templates.TemplateResponse(request, name, ctx)
+
+    def synonyms(conn: sqlite3.Connection) -> dict[str, list[str]]:
+        return repo.parse_synonyms(codes.get_setting(conn, "synonyms", quick.DEFAULT_SYNONYMS))
 
     def need_node(conn: sqlite3.Connection, node_id: int) -> repo.Row:
         node = repo.get_container(conn, node_id)
@@ -124,7 +139,16 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request, conn: Conn) -> HTMLResponse:
-        return render(request, conn, "index.html", roots=repo.children(conn, None))
+        return render(
+            request,
+            conn,
+            "index.html",
+            roots=repo.children(conn, None),
+            favorites=repo.favorites(conn),
+            recent=repo.containers_by_ids(conn, recent_ids(request)),
+            n_lent=len(repo.lent_items(conn)),
+            n_shopping=len(repo.shopping_list(conn)),
+        )
 
     @app.get("/c/{code}", response_model=None)
     @app.get("/C/{code}", response_model=None)  # QR-Inhalt in Großbuchstaben
@@ -152,16 +176,27 @@ def create_app(settings: Settings) -> FastAPI:
     def node_page(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
         node = need_node(conn, node_id)
         cols = int(node["grid"].split("x")[0]) if node["grid"] else 0
-        return render(
+        path = repo.container_path(conn, node_id)[:-1]
+        parent_code = next((p["code"] for p in reversed(path) if p["code"]), None)
+        resp = render(
             request,
             conn,
             "node.html",
             node=node,
-            path=repo.container_path(conn, node_id)[:-1],
+            path=path,
             kids=repo.children(conn, node_id),
             items=repo.items_in(conn, node_id),
             cols=cols,
+            chat_prompt=prompt.for_container(
+                node["code"] or "(Code)", node["kind"], node["name"], parent_code, node["grid"]
+            ),
+            voice=bool(settings.whisper_url),
         )
+        recent = [node_id] + [i for i in recent_ids(request) if i != node_id]
+        resp.set_cookie(
+            RECENT_COOKIE, ",".join(map(str, recent[:8])), max_age=31_536_000, samesite="lax"
+        )
+        return resp
 
     @app.get("/items/{item_id}", response_class=HTMLResponse)
     def item_page(request: Request, item_id: int, conn: Conn) -> HTMLResponse:
@@ -183,12 +218,17 @@ def create_app(settings: Settings) -> FastAPI:
             return redirect(f"/n/{node['id']}")
         if q and (item := repo.get_item_by_code(conn, code)):
             return redirect(f"/items/{item['id']}")
+        items = repo.search_synonyms(conn, q, synonyms(conn))
+        corrected = None
+        if q and not items and (fixed := repo.suggest(conn, q)):
+            items, corrected = repo.search_synonyms(conn, fixed, synonyms(conn)), fixed
         return render(
             request,
             conn,
             "search.html",
             q=q,
-            items=repo.search(conn, q),
+            corrected=corrected,
+            items=items,
             containers=repo.search_containers(conn, q),
         )
 
@@ -311,12 +351,150 @@ def create_app(settings: Settings) -> FastAPI:
             "settings.html",
             auto_item_code=codes.auto_item_code(conn),
             prefixes=codes.PREFIX_LABELS,
+            synonyms=codes.get_setting(conn, "synonyms", quick.DEFAULT_SYNONYMS),
+            base_url=settings.base_url,
+            whisper_url=settings.whisper_url,
         )
 
     @app.post("/settings")
-    def settings_save(conn: Conn, auto_item_code: Annotated[str, Form()] = "") -> RedirectResponse:
+    def settings_save(
+        conn: Conn,
+        auto_item_code: Annotated[str, Form()] = "",
+        synonyms: Annotated[str, Form()] = quick.DEFAULT_SYNONYMS,
+    ) -> RedirectResponse:
         codes.set_setting(conn, "auto_item_code", "1" if auto_item_code else "0")
+        codes.set_setting(conn, "synonyms", synonyms.strip())
         return redirect("/settings", "Gespeichert")
+
+    # --- Alltag: Rückgängig, Verlauf, Verliehen, Einkauf, Platz -------------------
+
+    @app.post("/undo/{event_id}")
+    def undo(request: Request, event_id: int, conn: Conn) -> RedirectResponse:
+        msg = repo.undo(conn, event_id)
+        back = request.headers.get("referer", "/").split("?")[0]
+        return redirect(back, msg)
+
+    @app.get("/verlauf", response_class=HTMLResponse)
+    def history_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request, conn, "history.html", events=repo.recent_events(conn), undoable=repo.UNDOABLE
+        )
+
+    @app.get("/verliehen", response_class=HTMLResponse)
+    def lent_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "list.html", title="Verliehen / in Benutzung",
+                      rows=repo.lent_items(conn), kind="lent")  # fmt: skip
+
+    @app.get("/einkauf", response_class=HTMLResponse)
+    def shopping_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "list.html", title="Einkaufsliste",
+                      rows=repo.shopping_list(conn), kind="shopping")  # fmt: skip
+
+    @app.get("/platz", response_class=HTMLResponse)
+    def free_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "free.html", **repo.free_places(conn))
+
+    @app.post("/items/{item_id}/lend")
+    def lend(item_id: int, conn: Conn, to: Annotated[str, Form()] = "") -> RedirectResponse:
+        repo.lend_item(conn, item_id, to)
+        return redirect(f"/items/{item_id}", "Als verliehen markiert")
+
+    @app.post("/items/{item_id}/return")
+    def give_back(item_id: int, conn: Conn) -> RedirectResponse:
+        repo.return_item(conn, item_id)
+        return redirect(f"/items/{item_id}", "Zurück im Lager")
+
+    @app.post("/items/{item_id}/list")
+    def toggle_list(request: Request, item_id: int, conn: Conn) -> RedirectResponse:
+        item = repo.get_item(conn, item_id)
+        repo.update_item(conn, item_id, on_list=0 if item["on_list"] else 1)
+        back = request.headers.get("referer", f"/items/{item_id}").split("?")[0]
+        return redirect(
+            back, "Von Einkaufsliste genommen" if item["on_list"] else "Auf Einkaufsliste"
+        )
+
+    @app.post("/n/{node_id}/favorite")
+    def favorite(node_id: int, conn: Conn) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        repo.set_favorite(conn, node_id, not node["favorite"])
+        return redirect(
+            f"/n/{node_id}", "Favorit entfernt" if node["favorite"] else "Als Favorit gemerkt"
+        )
+
+    # --- Scan-Modus & Sprache (brauchen HTTPS für Kamera/Mikrofon) ---------------
+
+    @app.get("/scan", response_class=HTMLResponse)
+    def scan_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "scan.html")
+
+    @app.post("/api/move")
+    def api_move(
+        conn: Conn, code: Annotated[str, Form()], target: Annotated[str, Form()]
+    ) -> JSONResponse:
+        """Scan-Modus 'Einräumen': gescanntes Teil/Behälter in den Ziel-Behälter."""
+        dest = repo.get_container_by_code(conn, codes.normalize(target) or target)
+        if dest is None:
+            return JSONResponse({"ok": False, "msg": f"Ziel {target} unbekannt"}, status_code=404)
+        norm = codes.normalize(code) or code
+        try:
+            if item := repo.get_item_by_code(conn, norm):
+                repo.move_item(conn, item["id"], dest["id"])
+                name = item["name"]
+            elif node := repo.get_container_by_code(conn, norm):
+                repo.move_container(conn, node["id"], dest["id"])
+                name = node["name"]
+            else:
+                return JSONResponse({"ok": False, "msg": f"{norm} ist noch nicht angelegt"}, 404)
+        except LagerError as exc:
+            return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+        return JSONResponse(
+            {"ok": True, "msg": f"„{name}“ → {dest['name']}", "undo": repo.last_event_id(conn)}
+        )
+
+    @app.get("/api/code/{code}")
+    def api_code(code: str, conn: Conn) -> JSONResponse:
+        norm = codes.normalize(code) or code
+        if node := repo.get_container_by_code(conn, norm):
+            return JSONResponse({"type": "container", "code": norm, "name": node["name"]})
+        if item := repo.get_item_by_code(conn, norm):
+            return JSONResponse({"type": "item", "code": norm, "name": item["name"]})
+        return JSONResponse({"type": "unknown", "code": norm, "name": ""})
+
+    @app.post("/api/transcribe")
+    async def transcribe(audio: UploadFile) -> JSONResponse:
+        """Leitet Sprachaufnahme an einen Whisper-Dienst (OpenAI-kompatibel) weiter."""
+        if not settings.whisper_url:
+            return JSONResponse({"error": "Kein Whisper-Dienst konfiguriert"}, status_code=503)
+        data = await audio.read()
+        try:
+            async with httpx.AsyncClient(timeout=120) as client:
+                resp = await client.post(
+                    f"{settings.whisper_url}/v1/audio/transcriptions",
+                    files={"file": (audio.filename or "aufnahme.webm", data, audio.content_type)},
+                    data={"model": settings.whisper_model, "language": "de"},
+                )
+                resp.raise_for_status()
+        except httpx.HTTPError as exc:
+            return JSONResponse({"error": f"Whisper nicht erreichbar: {exc}"}, status_code=502)
+        return JSONResponse({"text": str(resp.json().get("text", "")).strip()})
+
+    @app.get("/manifest.webmanifest")
+    def manifest() -> JSONResponse:
+        return JSONResponse(
+            {
+                "name": APP_NAME,
+                "short_name": APP_NAME,
+                "start_url": "/",
+                "display": "standalone",
+                "background_color": "#ffffff",
+                "theme_color": "#2563eb",
+                "icons": [
+                    {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
+                    {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                ],
+            },
+            media_type="application/manifest+json",
+        )
 
     # --- Behälter -------------------------------------------------------------
 
@@ -389,16 +567,20 @@ def create_app(settings: Settings) -> FastAPI:
         need_node(conn, node_id)
         if not name.strip():
             raise LagerError("Name fehlt")
+        amount = opt_int(qty)
+        if amount is None:  # Schnelleingabe "3 Rollen Lötzinn"
+            amount, parsed_unit, name = quick.parse(name)
+            unit = unit or parsed_unit
         repo.add_item(
             conn,
             node_id,
             name,
-            qty=opt_int(qty),
+            qty=amount,
             unit=unit.strip(),
             tags=tags.strip(),
             code=codes.new_item_code(conn),
         )
-        return redirect(f"/n/{node_id}", f"„{name.strip()}“ eingelagert")
+        return redirect(f"/n/{node_id}", f"„{name.strip()}“ eingelagert", repo.last_event_id(conn))
 
     @app.post("/items/new")
     def add_item_with_code(
@@ -448,6 +630,7 @@ def create_app(settings: Settings) -> FastAPI:
         unit: Annotated[str, Form()] = "",
         tags: Annotated[str, Form()] = "",
         notes: Annotated[str, Form()] = "",
+        min_qty: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         repo.update_item(
             conn,
@@ -458,6 +641,7 @@ def create_app(settings: Settings) -> FastAPI:
             unit=unit.strip(),
             tags=tags.strip(),
             notes=notes,
+            min_qty=opt_int(min_qty),
         )
         return redirect(f"/items/{item_id}", "Gespeichert")
 
@@ -510,7 +694,7 @@ def create_app(settings: Settings) -> FastAPI:
             repo.move_item(conn, c["id"], node_id)
         else:
             repo.move_container(conn, c["id"], node_id)
-        resp = redirect(f"/n/{node_id}", f"„{c['name']}“ abgelegt")
+        resp = redirect(f"/n/{node_id}", f"„{c['name']}“ abgelegt", repo.last_event_id(conn))
         resp.delete_cookie(CARRY_COOKIE)
         return resp
 
