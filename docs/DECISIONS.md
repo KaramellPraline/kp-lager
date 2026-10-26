@@ -19,3 +19,7 @@
 | 2026-10-26 | Sortierkasten-Fächer als Kind-Behälter (aus `grid` erzeugt) statt `slot`-Feld am Item | Einheitliche Suche/Pfade; Einsätze können umziehen. |
 | 2026-10-26 | Kein Artikelstamm: gleiches Ding an zwei Orten = zwei Items | Heim-Lager braucht keine Stammdaten; Suche gruppiert nach Namen. Bei Bedarf später Tabelle `article`. |
 | 2026-10-26 | Mengen nie < 0, ungezählte Items (qty NULL) protokollieren nur | Verhindert Datenmüll, ohne Zählzwang. |
+| 2026-10-26 | Umlagern per „aufnehmen → Ziel scannen → hier ablegen“ (Cookie) statt Auswahlliste | Passt zum Scan-Ablauf mit der normalen Kamera-App, kein QR-Scanner im Browser nötig. |
+| 2026-10-26 | Import-Vorschau läuft auf In-Memory-Kopie der DB | Gleicher Code für Vorschau und Übernahme; echte DB bleibt bei Fehlern unberührt. |
+| 2026-10-26 | Etiketten-Codes 4-stellig fortlaufend, Druck-Zähler in `meta` | Kurz, gut lesbar; nie doppelt gedruckt. |
+| 2026-10-26 | Hostname-Empfehlung `lager.fritz.box` bzw. `lager.home.arpa` statt `lager.home` | `.home.arpa` ist der reservierte Heimnetz-Suffix; Fritz!Box löst Hostnamen automatisch auf. |

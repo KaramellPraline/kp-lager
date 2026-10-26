@@ -27,16 +27,23 @@ Keller (raum)
 - Ab M3: `item_fts` (FTS5 trigram) über Name, Tags, Notizen.
 - Codes werden vorab gedruckt; Code ohne Zeile in `container` = noch frei.
 
-## Geplante Dateien
-- `app/main.py`: FastAPI-App, Routen
-- `app/db.py`: Verbindung (FK an, WAL) + Migrations-Runner (PRAGMA user_version)
-- `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster), Items (Bestand), Protokoll
-- `app/migrations/NNN_*.sql`: Schema
-- `app/templates/`, `app/static/`: Jinja2-Templates, htmx, CSS
-- `app/labels.py`: QR-Etikettenbögen
-- `app/importer.py`: JSON-Import/Export
-- `deploy/`: systemd-Unit, Caddyfile, Backup-Skript
-- `tests/`: pytest
+## Dateien
+- `app/main.py`: Einstiegspunkt (`create_app(load_settings())`)
+- `app/config.py`: Settings aus Env (`LAGER_DATA_DIR`, `LAGER_BASE_URL`)
+- `app/web.py`: alle Routen; Verbindung pro Request; Fehler (`LagerError`) → Redirect mit `?msg=`
+- `app/db.py`: Verbindung (FK an, WAL, `fold()` für Umlaut-LIKE) + Migrations-Runner (PRAGMA user_version)
+- `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster, Löschen), Items (Bestand), Protokoll, Suche
+- `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler
+- `app/labels.py`: Codes, QR-SVG, Bogenformat, Druck-Zähler
+- `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
+- `app/photos.py`: Foto speichern (EXIF-Drehung, 1600 px + Thumbnail), löschen
+- `app/templates/`: `node.html` (Behälter), `item.html`, `search.html`, `import.html`, `labels.html` (Druck), Partials `_*.html`
+- `deploy/`: install.sh, systemd-Units, Caddyfile, backup.sh, README
+- `tests/`: pytest (`conftest.py` liefert `client` mit Temp-Datenverzeichnis)
+
+## Wichtige Routen
+- `/c/{code}` QR-Einstieg · `/n/{id}` Behälter · `/items/{id}` Teil · `/suche?q=` · `/labels` · `/import` · `/export.json`
+- Umlagern: `POST /carry/{item|node}/{id}` setzt Cookie, `POST /drop/{id}` legt ab.
 
 ## Schnittstellen
 - Keine externen Dienste im Betrieb. Erst-Inventur: manuell im Claude-Chat (Haiku) → JSON → `/import`.

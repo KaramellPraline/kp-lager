@@ -1,13 +1,13 @@
 # Sortiersystem (Lager-Inventar)
 
 Zweck: Selbst gehostetes Lagersystem; QR-Code auf Behälter → Handy-Browser zeigt Inhalt, Einlagern/Entnehmen/Suchen im LAN.
-Stack: Python 3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite (stdlib `sqlite3`, kein ORM, FTS5), segno (QR), uv.
+Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite (stdlib `sqlite3`, kein ORM, FTS5), segno (QR), Pillow, uv. Betrieb: Debian-LXC, systemd, Caddy.
 
 ## Befehle
-- Run (dev): `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000`
+- Run (dev): `uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000` (Daten in `./data`)
 - Test: `uv run pytest -q`
 - Lint/Typecheck: `uv run ruff check . && uv run ruff format --check . && uv run mypy app`
-- Deploy: siehe `deploy/README.md` (ab M6)
+- Deploy: siehe `deploy/README.md`
 
 ## Secrets
 - Aktuell keine. KI-API ist bewusst nicht eingebunden (siehe DECISIONS).
