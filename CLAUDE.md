@@ -9,11 +9,12 @@ Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite 
 - Bins (3D-Druck): `uv run --group cad python cad/norb_bins.py 2x1 --div 3x1` (siehe `docs/NORB16.md`)
 - Test: `uv run pytest -q` (mit CAD-Tests: `uv run --group cad pytest -q`)
 - Lint/Typecheck: `uv run ruff check . && uv run ruff format --check . && uv run mypy app`
+- API/CLI/MCP: REST `/api/v1` (Lesen offen, Schreiben mit Schlüssel aus Einstellungen → Admin); `uv run python tools/lager_cli.py suche lötzinn`; MCP: `uv run --group mcp python tools/lager_mcp.py` (Vorlage `docs/mcp.example.json`)
 - Deploy: `cd deploy && docker compose up -d --build` (siehe `deploy/README.md`)
 - Backup: `python -m app.backup [ziel] [tage]`
 
 ## Secrets
-- Aktuell keine. KI-API ist bewusst nicht eingebunden (siehe DECISIONS).
+- `LAGER_API_KEY` (nur lokal für CLI/MCP-Schreibzugriff, nie committen). KI-API ist bewusst nicht eingebunden (siehe DECISIONS).
 
 ## Regeln
 - Arbeit in Meilensteinen aus `docs/STATUS.md`; pro Meilenstein ein Branch `feat/mX-…`, Abnahmekriterien = Tests.

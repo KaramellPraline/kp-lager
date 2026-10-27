@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "kp-lager": {
+      "command": "uv",
+      "args": ["run", "--directory", "C:/dev/sortiersystem", "--group", "mcp", "python", "tools/lager_mcp.py"],
+      "env": {
+        "LAGER_URL": "https://lager.home.lan",
+        "LAGER_API_KEY": ""
+      }
+    }
+  }
+}
