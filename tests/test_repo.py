@@ -1,5 +1,6 @@
 import sqlite3
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 
@@ -118,3 +119,13 @@ def test_update_and_delete_keep_history(conn: sqlite3.Connection, lager: dict[st
     assert [r["action"] for r in rows] == ["add", "edit", "delete"]
     assert rows[-1]["item_name"] == "Multimeter UT61E"
     assert all(r["item_id"] is None for r in rows)
+
+
+def test_migration_skipped_if_other_process_was_faster(tmp_path: Path) -> None:
+    """Port 80 und 443 starten gleichzeitig: wer später kommt, darf nicht doppelt migrieren."""
+    from app import db
+
+    db.migrate(sqlite3.connect(tmp_path / "x.db"))
+    late = sqlite3.connect(tmp_path / "x.db")
+    file = sorted(db.MIGRATIONS_DIR.glob("008_*.sql"))[0]
+    assert db.apply(late, file, 8) is False  # hatte Version 7 gelesen, ist aber schon weiter
