@@ -23,6 +23,7 @@ from app import (
     importer,
     itemtypes,
     kasten,
+    kinds,
     labels,
     notes,
     photos,
@@ -40,11 +41,7 @@ from app.repo import LagerError
 APP_DIR = Path(__file__).parent
 APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
-KIND_LABELS = {
-    "raum": "Raum", "regal": "Regal", "ebene": "Ebene", "stapel": "Stapel/Kistenberg",
-    "eurobox": "Eurobox", "kiste": "Kiste", "sortierkasten": "Sortierkasten",
-    "einsatz": "Einsatz", "fach": "Fach", "sonstiges": "Sonstiges",
-}  # fmt: skip
+KIND_LABELS = kinds.KIND_LABELS
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["KIND_LABELS"] = KIND_LABELS
@@ -236,6 +233,8 @@ def create_app(settings: Settings) -> FastAPI:
         target: Annotated[str, Form()] = "",
         mode: Annotated[str, Form()] = "item",
         kind: Annotated[str, Form()] = "kiste",
+        new_kind: Annotated[str, Form()] = "",
+        new_prefix: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         """„Hinzufügen“ auf der Startseite: Teil (getippt/diktiert), Behälter oder Typ."""
         if not text.strip():
@@ -247,6 +246,8 @@ def create_app(settings: Settings) -> FastAPI:
             t = itemtypes.get(conn, itemtypes.create(conn, text))
             return redirect("/", f"Typ {t['code']} „{t['name']}“ angelegt")
         if mode == "container":
+            if kind == "neu":
+                kind = kinds.create(conn, new_kind, new_prefix)
             cid = repo.create_container(conn, text.strip(), kind, parent_id=opt_int(target))
             return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt")
         if not target:
@@ -411,7 +412,22 @@ def create_app(settings: Settings) -> FastAPI:
             },
             pending=labels.pending(conn, settings.base_url),
             queue=labels.queue(conn, settings.base_url),
+            custom_kinds={k["prefix"]: k for k in kinds.custom(conn)},
         )
+
+    @app.post("/arten")
+    def kind_create(
+        conn: Conn, label: Annotated[str, Form()], prefix: Annotated[str, Form()]
+    ) -> RedirectResponse:
+        kinds.create(conn, label, prefix)
+        return redirect(
+            "/labels#schema", f"Art „{label.strip()}“ mit {prefix.upper()}-001 angelegt"
+        )
+
+    @app.post("/arten/{kind}/delete")
+    def kind_delete(kind: str, conn: Conn) -> RedirectResponse:
+        kinds.delete(conn, kind)
+        return redirect("/labels#schema", "Art gelöscht")
 
     @app.post("/labels/preview", response_class=HTMLResponse)
     def labels_preview(

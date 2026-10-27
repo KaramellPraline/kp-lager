@@ -160,6 +160,14 @@
     if (!field.hidden) field.focus();
   });
 
+  // Auswahl mit „Neu …“ (value "neu") blendet die Eingabefelder im Element data-reveal ein
+  document.addEventListener("change", function (ev) {
+    if (!ev.target.matches("select[data-reveal]")) return;
+    var box = document.getElementById(ev.target.dataset.reveal);
+    box.hidden = ev.target.value !== "neu";
+    if (!box.hidden) box.querySelector("input").focus();
+  });
+
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
   document.addEventListener("click", function (ev) {
     var b = ev.target.closest(".add-anything .seg button");
