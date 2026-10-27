@@ -12,10 +12,10 @@ from typing import Any
 
 import httpx
 
-from app import datasheets, importer, itemtypes, prompt, repo
+from app import datasheets, importer, itemtypes, materials, prompt, repo
 from app.repo import LagerError
 
-ENRICH_FIELDS = ("name", "full_name", "model", "tags", "type_id", "datasheet_url")
+ENRICH_FIELDS = ("name", "full_name", "model", "tags", "type_id", "datasheet_url", "specs")
 
 
 def chat(url: str, token: str, model: str, messages: list[dict[str, str]]) -> str:
@@ -65,7 +65,9 @@ def enrich_item(
 ) -> str:
     """Teil vervollständigen; alter Stand wird für „Ablehnen“ gesichert."""
     item = repo.get_item(conn, item_id)
-    answer = chat(url, token, model, prompt.local_enrich(dict(item), itemtypes.names(conn)))
+    fields = {f.key: f"{f.de} ({f.unit})" if f.unit else f.de
+              for f in materials.FIELDS.get(item["material"] or "", ())}  # fmt: skip
+    answer = chat(url, token, model, prompt.local_enrich(dict(item), itemtypes.names(conn), fields))
     found = importer.parse(answer)
     if not found:
         raise LagerError("Die KI hat keine verwertbare Antwort geliefert")
@@ -81,14 +83,27 @@ def enrich_item(
         type_id = itemtypes.create(conn, type_name)
         if type_id != item["type_id"]:
             changes["type_id"] = type_id
+    raw_specs = sugg.get("specs")
+    if fields and isinstance(raw_specs, dict):
+        current = materials.specs(item)
+        filled = {}  # nur leere Felder füllen (Eingaben bleiben), nur plausible Werte
+        for k, v in raw_specs.items():
+            value = str(v or "").strip()
+            if k not in fields or not value or current.get(k, "").strip():
+                continue
+            if (ok := materials.plausible(k, value)) is not None:
+                filled[k] = ok
+        if filled:
+            changes["specs"] = json.dumps({**current, **filled}, ensure_ascii=False)
     if not changes:
+        repo.update_item(conn, item_id, ai_checked=None)
         return "Die KI hatte nichts zu ergänzen"
     if item["ai_backup"] is None:  # bei mehrfachem Vervollständigen den Ursprung behalten
         changes["ai_backup"] = json.dumps(backup, ensure_ascii=False)
     changes["review"] = 1
     repo.update_item(conn, item_id, **changes)
-    fields = ", ".join(k for k in changes if k not in ("review", "ai_backup"))
-    msg = f"KI-Vorschlag übernommen ({fields})"
+    done = ", ".join(k for k in changes if k not in ("review", "ai_backup"))
+    msg = f"KI-Vorschlag übernommen ({done})"
     if changes.get("datasheet_url") and not item["datasheet"]:
         try:
             stem = (
@@ -131,8 +146,15 @@ def count(conn: sqlite3.Connection) -> int:
     return int(row[0])
 
 
+def mark_checked(conn: sqlite3.Connection, item_id: int) -> None:
+    """Mensch hat das Teil geprüft -> raus aus der KI-Warteschlange."""
+    with conn:
+        conn.execute("UPDATE item SET ai_checked = datetime('now') WHERE id = ?", (item_id,))
+
+
 def approve_item(conn: sqlite3.Connection, item_id: int) -> None:
     repo.update_item(conn, item_id, review=0, ai_backup=None)
+    mark_checked(conn, item_id)
 
 
 def reject_item(conn: sqlite3.Connection, item_id: int) -> str:
@@ -141,6 +163,7 @@ def reject_item(conn: sqlite3.Connection, item_id: int) -> str:
     if item["ai_backup"]:
         backup: dict[str, Any] = json.loads(item["ai_backup"])
         repo.update_item(conn, item_id, **backup, review=0, ai_backup=None)
+        mark_checked(conn, item_id)
         return f"Alter Stand von „{backup.get('name') or item['name']}“ wiederhergestellt"
     repo.delete_item(conn, item_id)
     return f"„{item['name']}“ verworfen"
@@ -154,6 +177,44 @@ def approve_node(conn: sqlite3.Connection, node_id: int) -> None:
 def approve_all(conn: sqlite3.Connection) -> int:
     n = count(conn)
     with conn:
-        conn.execute("UPDATE item SET review = 0, ai_backup = NULL WHERE review = 1")
+        conn.execute(
+            "UPDATE item SET review = 0, ai_backup = NULL, ai_checked = datetime('now')"
+            " WHERE review = 1"
+        )
         conn.execute("UPDATE container SET review = 0 WHERE review = 1")
     return n
+
+
+# --- KI-Support: Warteschlange ungeprüfter Teile, Inventur Kiste für Kiste ----------------
+
+UNCHECKED = "i.archived = 0 AND i.ai_checked IS NULL"
+
+
+def queue_count(conn: sqlite3.Connection) -> int:
+    return int(conn.execute(f"SELECT COUNT(*) FROM item i WHERE {UNCHECKED}").fetchone()[0])
+
+
+def next_unchecked(conn: sqlite3.Connection, skip: int = 0) -> Any:
+    """Nächstes ungeprüftes Teil (Kiste für Kiste, dann Name); skip = übersprungene."""
+    return conn.execute(
+        f"SELECT i.* FROM item i WHERE {UNCHECKED}"
+        " ORDER BY i.container_id, i.name LIMIT 1 OFFSET ?",
+        (max(0, skip),),
+    ).fetchone()
+
+
+def boxes_todo(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+    """Behälter mit ungeprüften Teilen, in Pfad-Reihenfolge, mit den Teile-IDs zum Abarbeiten."""
+    rows = conn.execute(
+        f"SELECT i.container_id, i.id, i.review FROM item i WHERE {UNCHECKED}"
+        " ORDER BY i.container_id, i.name"
+    ).fetchall()
+    boxes: dict[int, dict[str, Any]] = {}
+    for r in rows:
+        b = boxes.setdefault(r["container_id"], {"id": r["container_id"], "todo": [], "waiting": 0})
+        if r["review"]:
+            b["waiting"] += 1  # schon von der KI ergänzt, wartet auf Freigabe
+        else:
+            b["todo"].append(r["id"])
+    out = [{**b, "path": repo.path_label(conn, b["id"])} for b in boxes.values()]
+    return sorted(out, key=lambda b: str(b["path"]).casefold())

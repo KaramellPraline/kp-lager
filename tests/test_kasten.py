@@ -59,15 +59,20 @@ def test_quickadd_puts_item_in_compartment_and_queues_bin_label(client: TestClie
     r = client.post(
         f"/n/{k}/quickadd", data={"target": targets[1][0], "text": "50 M3 Muttern", "queue": "1"}
     )
-    assert "„M3 Muttern“ → Fach A2" in r.text and "Etikett BIN-001 in Warteschlange" in r.text
+    assert "„M3 Muttern“ → Fach A2" in r.text and "Inhaltsetikett BIN-001 vorgemerkt" in r.text
     assert "M3 Muttern" in r.text  # erscheint in der Draufsicht
     client.post(
         f"/n/{k}/quickadd", data={"target": targets[0][0], "text": "Dübel 6mm", "queue": "1"}
     )
+    labels_page = client.get("/labels").text.split("Inhaltsetiketten (")[1].split("</section>")[0]
+    assert labels_page.count("BIN-001 · ") == 1  # aktualisiert, nicht doppelt
+    assert (
+        "BIN-001 · M3 Muttern, Dübel 6mm" in labels_page
+        or "BIN-001 · Dübel 6mm, M3 Muttern" in labels_page
+    )
+    client.post(f"/labels/queue/kasten/{k}")  # Bin-Tag oben: nur Kasten + Position
     queue = client.get("/labels/queue").text
-    assert queue.count('name="code" value="BIN-001"') == 1  # aktualisiert, nicht doppelt
-    assert 'value="M3 Muttern, Dübel 6mm"' in queue or 'value="Dübel 6mm, M3 Muttern"' in queue
-    assert 'value="SOR-001 B2"' in queue
+    assert 'value="SOR-001 B2"' in queue and "M3 Muttern" not in queue
 
 
 def test_queue_export_formats_and_clear(client: TestClient) -> None:
