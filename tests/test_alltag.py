@@ -166,7 +166,7 @@ def test_manifest_icons_and_chat_prompt(client: TestClient) -> None:
     assert client.get("/static/icon-192.png").headers["content-type"] == "image/png"
     b = box(client, "Elektronik", code="KIS-002")
     page = client.get(f"/n/{b}").text
-    assert "Behälter: code=KIS-002, kind=kiste, name=Elektronik" in page
+    assert "Behälter: code=KIS-002, kind=crate, name=Elektronik" in page
     assert 'class="mic"' not in page  # ohne Whisper kein Mikrofon-Knopf
 
 

@@ -39,7 +39,7 @@ def test_norb16_topview_place_and_fill(client: TestClient) -> None:
     assert page.count('class="tv-free') == 32  # 35 Zellen − 3 Griff
     assert page.count('class="tv-blocked"') == 3
     r = client.post(f"/n/{k}/bins", data={"position": "A1", "size": "2x1", "div": "3x1"})
-    assert "Einsatz EIN-001 (2x1) bei A1" in r.text
+    assert "Einsatz BIN-001 (2x1) bei A1" in r.text
     assert r.text.count('class="tv-free') == 30
     assert r.text.count('class="tv-comp') == 3
     r = client.post(
@@ -59,13 +59,13 @@ def test_quickadd_puts_item_in_compartment_and_queues_bin_label(client: TestClie
     r = client.post(
         f"/n/{k}/quickadd", data={"target": targets[1][0], "text": "50 M3 Muttern", "queue": "1"}
     )
-    assert "„M3 Muttern“ → Fach A2" in r.text and "Etikett EIN-001 in Warteschlange" in r.text
+    assert "„M3 Muttern“ → Fach A2" in r.text and "Etikett BIN-001 in Warteschlange" in r.text
     assert "M3 Muttern" in r.text  # erscheint in der Draufsicht
     client.post(
         f"/n/{k}/quickadd", data={"target": targets[0][0], "text": "Dübel 6mm", "queue": "1"}
     )
     queue = client.get("/labels/queue").text
-    assert queue.count('name="code" value="EIN-001"') == 1  # aktualisiert, nicht doppelt
+    assert queue.count('name="code" value="BIN-001"') == 1  # aktualisiert, nicht doppelt
     assert 'value="M3 Muttern, Dübel 6mm"' in queue or 'value="Dübel 6mm, M3 Muttern"' in queue
     assert 'value="SOR-001 B2"' in queue
 
@@ -75,13 +75,13 @@ def test_queue_export_formats_and_clear(client: TestClient) -> None:
     client.post(f"/n/{k}/bins", data={"position": "A1", "size": "1x1"})
     client.post(f"/n/{k}/bins", data={"position": "A2", "size": "1x1"})
     client.post(f"/labels/queue/kasten/{k}")
-    fields = {"code": ["EIN-001", "EIN-002"], "text": ["Lötzinn", "Kabel"], "extra": ["", ""]}
-    r = client.post("/labels/queue/remove?code=EIN-002", data=fields)
-    assert "EIN-002 entfernt" in r.text and 'value="EIN-002"' not in r.text
-    one = {"code": ["EIN-001"], "text": ["Lötzinn"], "extra": [""], "source": "queue"}
+    fields = {"code": ["BIN-001", "BIN-002"], "text": ["Lötzinn", "Kabel"], "extra": ["", ""]}
+    r = client.post("/labels/queue/remove?code=BIN-002", data=fields)
+    assert "BIN-002 entfernt" in r.text and 'value="BIN-002"' not in r.text
+    one = {"code": ["BIN-001"], "text": ["Lötzinn"], "extra": [""], "source": "queue"}
     a4 = client.post("/labels/export", data={**one, "fmt": "a4"})
-    assert "grid-template-columns: repeat(5, 40mm)" in a4.text and "<b>EIN-001</b>" in a4.text
-    assert 'value="EIN-001"' not in client.get("/labels/queue").text  # nach Export geleert
+    assert "grid-template-columns: repeat(5, 40mm)" in a4.text and "<b>BIN-001</b>" in a4.text
+    assert 'value="BIN-001"' not in client.get("/labels/queue").text  # nach Export geleert
     client.post(f"/labels/queue/node/{k}")
     kasten_label = {"code": ["SOR-001"], "text": ["Kleinteile"], "extra": [""], "source": "queue"}
     x = client.post("/labels/export", data={**kasten_label, "fmt": "xlsx"})

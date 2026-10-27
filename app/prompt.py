@@ -4,11 +4,18 @@ Beide nehmen die aktuellen Typen (inkl. unterwegs angelegter) dynamisch auf. Ant
 JSON im Import-Format (`/import`, app/importer.py).
 """
 
-SCHEMA = """{"code":"EUR-001","name":"kurzer Name","kind":"eurobox|kiste|sortierkasten|regal|raum|stapel|sonstiges",
+from app import codes
+
+SCHEMA = """{"code":"EUR-001","name":"kurzer Name","kind":"KINDS",
  "parent":"REG-001 oder null","grid":"6x8 oder null",
  "items":[{"name":"Holzschrauben 4x40","full_name":"Spanplattenschrauben 4x40 Torx, verzinkt",
            "type":"mechanical","model":"","qty":null,"qty_hint":"viele","unit":"Stk",
            "slot":"B3 oder null","tags":"schrauben holz befestigung"}]}"""
+
+
+def schema() -> str:
+    """Import-Schema mit den aktuellen Arten (feste + eigene, englische Schlüssel)."""
+    return SCHEMA.replace("KINDS", "|".join(k for k in codes.KIND_PREFIX if k != "bin"))
 
 
 def _types_line(types: list[str]) -> str:
@@ -22,7 +29,7 @@ def base_prompt(types: list[str]) -> str:
 übergeordneten Behälter, ein Foto und/oder eine Notiz. Antworte NUR mit JSON nach diesem Schema,
 ohne Erklärtext:
 
-{SCHEMA}
+{schema()}
 
 Regeln: Deutsche, suchbare Bezeichnungen. name = Anzeigename, kurz (max. 24 Zeichen, passt aufs Etikett).
 full_name = vollständige Bezeichnung (Hersteller, Serie, Größe), sonst leer.
@@ -67,7 +74,7 @@ def local_system(types: list[str]) -> str:
     return (
         "Du wandelst Lager-Notizen in JSON um. Antworte ausschließlich mit gültigem JSON, "
         "ohne Markdown, ohne Erklärung. Deutsch. Erfinde nichts.\n"
-        f"Schema (Array von Behältern):\n[{SCHEMA}]\n"
+        f"Schema (Array von Behältern):\n[{schema()}]\n"
         "name max. 24 Zeichen. Zahlwörter als Ziffern (zwei -> qty 2). qty nur bei genannter Zahl, "
         "sonst null und qty_hint. "
         f"{_types_line(types)} model = Teile-/Modellnummer, auch wenn sie im Namen steckt "

@@ -9,23 +9,10 @@ import sqlite3
 
 ITEM_PREFIX = "ART"
 TYPE_PREFIX = "TYP"  # Typen/Kategorien von Teilen (item_type)
-PREFIX_KIND: dict[str, str | None] = {
-    "RAU": "raum",
-    "REG": "regal",
-    "STA": "stapel",
-    "EUR": "eurobox",
-    "KIS": "kiste",
-    "SOR": "sortierkasten",
-    "EIN": "einsatz",
-    ITEM_PREFIX: None,
-    TYPE_PREFIX: None,
-}
-PREFIX_LABELS = {
-    "RAU": "Raum", "REG": "Regal", "STA": "Stellplatz/Kistenberg", "EUR": "Eurobox",
-    "KIS": "Kiste/Box", "SOR": "Sortierkasten", "EIN": "Einsatz (Bin)", ITEM_PREFIX: "Gegenstand",
-    TYPE_PREFIX: "Typ",
-}  # fmt: skip
-KIND_PREFIX = {kind: p for p, kind in PREFIX_KIND.items() if kind} | {"sonstiges": "KIS"}
+# Präfix -> Art (None = Teil/Typ), Präfix -> Name, Art -> Präfix; gefüllt von app.kinds
+PREFIX_KIND: dict[str, str | None] = {}
+PREFIX_LABELS: dict[str, str] = {}
+KIND_PREFIX: dict[str, str] = {}
 CODE_RE = re.compile(r"^([A-Z]{3})-?0*(\d{1,6})$")
 
 
@@ -146,3 +133,6 @@ def auto_item_code(conn: sqlite3.Connection) -> bool:
 
 def new_item_code(conn: sqlite3.Connection) -> str | None:
     return reserve(conn, ITEM_PREFIX, 1)[0] if auto_item_code(conn) else None
+
+
+import app.kinds  # noqa: E402, F401  (füllt die Präfix-Tabellen)

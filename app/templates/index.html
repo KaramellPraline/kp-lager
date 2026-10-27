@@ -15,7 +15,7 @@
   </div>
   <div data-for="container" hidden class="stack">
   <label>Art
-    <select name="kind" data-reveal="new-kind">{% for k, label in KIND_LABELS.items() if k not in ('fach', 'einsatz') %}<option value="{{ k }}" {% if k == 'kiste' %}selected{% endif %}>{{ label }}{% if KIND_PREFIX.get(k) %} · {{ KIND_PREFIX[k] }}{% endif %}</option>{% endfor %}
+    <select name="kind" data-reveal="new-kind">{% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">{% for k in keys if k not in ('compartment', 'bin', 'level') %}<option value="{{ k }}" {% if k == 'box' %}selected{% endif %}>{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}</optgroup>{% endfor %}
       <option value="neu">Neue Art …</option></select>
   </label>
   <div class="row" id="new-kind" hidden>

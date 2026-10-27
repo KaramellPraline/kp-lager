@@ -29,7 +29,7 @@ def item_of(client: TestClient, name: str = "ESP32 Board") -> tuple[str, str]:
 def test_default_types_and_codes(conn: sqlite3.Connection) -> None:
     rows = itemtypes.all_types(conn)
     assert [(t["code"], t["name"]) for t in rows] == [
-        ("TYP-002", "electronic"), ("TYP-001", "mechanical"), ("TYP-003", "smart-home"), ("TYP-004", "TBD")
+        ("TYP-002", "electronic"), ("TYP-001", "mechanical"), ("TYP-003", "smart-home"), ("TYP-004", "tbd")
     ]  # fmt: skip
     new = itemtypes.create(conn, "  pneumatic  ")
     assert itemtypes.get(conn, new)["code"] == "TYP-005"
@@ -65,11 +65,11 @@ def test_edit_item_with_new_type_names_and_model(client: TestClient) -> None:
         "name": "ESP32", "full_name": "Espressif ESP32 DevKit", "type_id": "neu",
         "new_type": "Mikrocontroller", "model": "ESP32-WROOM-32E"})  # fmt: skip
     assert "Gespeichert" in r.text and "Espressif ESP32 DevKit" in r.text
-    assert "Mikrocontroller" in r.text and "ESP32-WROOM-32E" in r.text
+    assert "mikrocontroller" in r.text and "ESP32-WROOM-32E" in r.text
     assert "duckduckgo.com" in r.text  # Datenblatt-Suche über Modellnummer
     types_page = client.get("/typen").text
-    assert "Mikrocontroller" in types_page and "TYP-005" in types_page
-    t_id = re.search(r'href="/typen/(\d+)"><span>Mikrocontroller', types_page).group(1)  # type: ignore[union-attr]
+    assert "mikrocontroller" in types_page and "TYP-005" in types_page
+    t_id = re.search(r'href="/typen/(\d+)"><span>mikrocontroller', types_page).group(1)  # type: ignore[union-attr]
     assert "ESP32" in client.get(f"/typen/{t_id}").text
     assert str(client.get("/C/TYP-005").url.path) == f"/typen/{t_id}"
 
@@ -106,6 +106,6 @@ def test_import_type_model_and_review_flag(conn: sqlite3.Connection) -> None:
     assert not report.errors
     item = repo.search(conn, "esp32-s3")[0]
     assert item["full_name"] == "Espressif ESP32" and item["review"] == 1
-    assert itemtypes.get(conn, int(item["type_id"]))["name"] == "Mikrocontroller"  # type: ignore[arg-type]
+    assert itemtypes.get(conn, int(item["type_id"]))["name"] == "mikrocontroller"  # type: ignore[arg-type]
     node = repo.get_container_by_code(conn, "KIS-001")
     assert node is not None and node["review"] == 1

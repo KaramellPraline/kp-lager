@@ -34,7 +34,7 @@ def by_name(conn: sqlite3.Connection, name: str) -> Row | None:
 
 def create(conn: sqlite3.Connection, name: str) -> int:
     """Neuen Typ anlegen (bekommt den nächsten TYP-Code); vorhandener Name -> dessen ID."""
-    name = " ".join(name.split())
+    name = " ".join(name.split()).lower()  # Typen immer kleingeschrieben
     if not name:
         raise LagerError("Typname fehlt")
     if (existing := by_name(conn, name)) is not None:
@@ -58,7 +58,7 @@ def resolve(conn: sqlite3.Connection, type_id: str, new_name: str = "") -> int |
 
 
 def rename(conn: sqlite3.Connection, type_id: int, name: str) -> None:
-    name = " ".join(name.split())
+    name = " ".join(name.split()).lower()  # Typen immer kleingeschrieben
     if not name:
         raise LagerError("Typname fehlt")
     other = by_name(conn, name)

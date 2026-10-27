@@ -21,7 +21,7 @@ Keller (raum)
 └─ Kistenberg (stapel) ── Kisten wandern per move_container
 ```
 
-- `container`: `id` (intern), `code` (QR-ID, UNIQUE, nur etikettierte Knoten), `parent_id`, `kind` (raum|regal|ebene|stapel|eurobox|kiste|sortierkasten|fach|sonstiges), `name`, `position` (Platz im Eltern, z. B. `B3`), `grid` (`SpaltenxZeilen` → Fächer A1… als Kind-Knoten), `notes`, `photo`, Zeitstempel. Löschen nur wenn leer (RESTRICT).
+- `container`: `id` (intern), `code` (QR-ID, UNIQUE, nur etikettierte Knoten), `parent_id`, `kind` (englische Schlüssel aus `app/kinds.py`, z. B. room|shelf|toolbox|eurobox|sortingbox|bin|compartment, plus eigene aus `container_kind`), `name`, `position` (Platz im Eltern, z. B. `B3`), `grid` (`SpaltenxZeilen` → Fächer A1… als Kind-Knoten), `notes`, `photo`, Zeitstempel. Löschen nur wenn leer (RESTRICT).
 - `item`: `id`, `code` (ART-0001, UNIQUE, optional), `label_printed`, `container_id`, `name`, `qty` (NULL = ungezählt, nie < 0), `qty_hint` („ca. 20“, „viele“), `unit`, `tags`, `notes`, `photo`, Zeitstempel.
 - `event`: Protokoll (`add|take|put|move|edit|delete|import`, `delta`, `note`); `item_name` als Kopie, bleibt nach Löschen erhalten.
 - Ab M3: `item_fts` (FTS5 trigram) über Name, Tags, Notizen.

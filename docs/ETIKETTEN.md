@@ -3,15 +3,32 @@
 ## Schema
 `PRÄFIX-Nummer` – der Code sagt, **was** etwas ist, nie **wo** es steht (Umzug ändert kein Etikett).
 
-| Präfix | Art | Stellen | Beispiel |
+Quelle: `app/kinds.py` (feste Arten, Namen DE/EN, Einstellung „Sprache der Namen“). Eigene Arten mit eigenem Präfix: Etiketten → Code-Schema oder Start „Neue Art …“.
+
+| Gruppe | Präfix | Art (EN / DE) | Schlüssel |
 |---|---|---|---|
-| RAU | Raum | 3 | RAU-001 |
-| REG | Regal | 3 | REG-001 |
-| STA | Stellplatz / Kistenberg | 3 | STA-001 |
-| EUR | Eurobox | 3 | EUR-001 |
-| KIS | Kiste / Box / Sonstiges | 3 | KIS-001 |
-| SOR | Sortierkasten | 3 | SOR-001 |
-| ART | Gegenstand (auch Teile in Fächern) | 4 | ART-0001 |
+| Standorte & Infrastruktur | RAU | Room / Raum | room |
+| | REG | Shelf / Racking / Regal | shelf |
+| | WBA | Workbench / Werkbank | workbench |
+| | WAL | Wall / Pegboard / Lochwand | wall |
+| | DRW | Drawer Unit / Schubladenelement | drawer |
+| Behälter & Aufbewahrung | TBX | Tool Box / Werkzeugbox (Kistenberg Pro) | toolbox |
+| | MCF | Machine Case / Maschinenkoffer | case |
+| | MOD | Modular Box / Modulbox | module |
+| | SOR | Sorting Box / Sortierkasten | sortingbox |
+| | EUR | Eurobox | eurobox |
+| | KIS | Crate / Large Box / Kiste | crate |
+| | BOX | Box | box |
+| | BIN | Bin / Insert / Einsatz | bin |
+| Verbrauch & Rohmaterial | CNS | Consumables / Verbrauchsmaterial | consumables |
+| | RAW | Raw Material / Rohmaterial | raw |
+| | CBL | Cables & Wire / Kabel | cables |
+| | CMP | Electronic Components / Elektronikbauteile | components |
+| Sicherheit | PPE | Personal Protective Equipment / PSA | ppe |
+| Gegenstände | ART | Article / Item (4 Stellen) | – |
+| | TYP | Type – Name immer klein (makita, handwerkzeug) | – |
+
+Ohne eigenen Code: `level` (Ebene), `compartment` (Fach). Alte Codes: STA → TBX, EIN → BIN (Migration 011).
 
 - Fächer haben kein eigenes Etikett: jedes Teil im Fach bekommt sein ART-Etikett (QR + Name).
 - Eingabe tolerant: `eur1`, `EUR001`, `Eur-001` → `EUR-001`.

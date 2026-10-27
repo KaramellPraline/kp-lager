@@ -71,7 +71,7 @@ def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> La
     holder = conn.execute(
         "SELECT kind, name, position FROM container WHERE id = ?", (item["container_id"],)
     ).fetchone()
-    extra = holder["position"] if holder["kind"] == "fach" else holder["name"]
+    extra = holder["position"] if holder["kind"] == "compartment" else holder["name"]
     return Label(item["code"], qr_content(base_url, item["code"]), item["name"], extra or "")
 
 
@@ -203,7 +203,7 @@ def dequeue(conn: sqlite3.Connection, codes_: list[str]) -> None:
 
 def container_label(conn: sqlite3.Connection, node: sqlite3.Row) -> tuple[str, str]:
     """(Text, Zusatz) für ein Behälter-Etikett; Einsatz: Inhalt + Kasten/Position."""
-    if node["kind"] == "einsatz":
+    if node["kind"] == "bin":
         from app import kasten  # zirkulärer Import vermeiden
 
         parent = repo.get_container(conn, node["parent_id"]) if node["parent_id"] else None

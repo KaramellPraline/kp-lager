@@ -105,7 +105,7 @@ def test_a8_sheet_layout(client: TestClient) -> None:
 def test_scan_reserved_code_preselects_kind(client: TestClient) -> None:
     r = client.get("/C/SOR-007")
     assert "Etikett SOR-007 ist noch frei" in r.text
-    assert re.search(r'value="sortierkasten"\s+selected', r.text)
+    assert re.search(r'value="sortingbox"\s+selected', r.text)
     assert 'action="/items/new"' in client.get("/C/ART-0003").text
     assert client.get("/C/XYZ-001").status_code == 404
 

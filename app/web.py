@@ -47,6 +47,8 @@ templates = Jinja2Templates(directory=APP_DIR / "templates")
 templates.env.globals["KIND_LABELS"] = KIND_LABELS
 templates.env.globals["APP_NAME"] = APP_NAME
 templates.env.globals["KIND_PREFIX"] = codes.KIND_PREFIX
+templates.env.globals["KIND_GROUPS"] = kinds.KIND_GROUPS
+templates.env.globals["SCHEMA_GROUPS"] = kinds.SCHEMA_GROUPS
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
@@ -232,7 +234,7 @@ def create_app(settings: Settings) -> FastAPI:
         text: Annotated[str, Form()],
         target: Annotated[str, Form()] = "",
         mode: Annotated[str, Form()] = "item",
-        kind: Annotated[str, Form()] = "kiste",
+        kind: Annotated[str, Form()] = "box",
         new_kind: Annotated[str, Form()] = "",
         new_prefix: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
@@ -326,7 +328,7 @@ def create_app(settings: Settings) -> FastAPI:
             place=request.query_params.get("place", ""),
             sizes=kasten.SIZES,
             divs=kasten.DIVS,
-            cad=kasten.cad_command(node) if node["kind"] == "einsatz" else "",
+            cad=kasten.cad_command(node) if node["kind"] == "bin" else "",
         )
         recent = [node_id] + [i for i in recent_ids(request) if i != node_id]
         resp.set_cookie(
@@ -1107,7 +1109,8 @@ def create_app(settings: Settings) -> FastAPI:
     ) -> RedirectResponse:
         if not name.strip():
             raise LagerError("Name fehlt")
-        model_key = model if kind == "sortierkasten" and model in kasten.MODELS else None
+        kind = kinds.resolve(kind) or kind
+        model_key = model if kind == "sortingbox" and model in kasten.MODELS else None
         cid = repo.create_container(
             conn,
             name.strip(),

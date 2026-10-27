@@ -56,3 +56,4 @@
 | 2026-10-27 | KI-Ergebnisse immer mit Flag „zu prüfen“; Vervollständigen sichert alten Stand (`item.ai_backup`) für Ablehnen | Keine stillen KI-Änderungen am Bestand. |
 | 2026-10-27 | API v1: Lesen/Suchen ohne Schlüssel (nur LAN), Schreiben nur mit `kpl_`-Schlüssel (Header `X-API-Key`/Bearer); CLI und MCP sprechen nur die REST-API | Ein Zugriffsweg, Rechte zentral; MCP SDK auf v1 gepinnt (FastMCP, v2 hat API umbenannt). |
 | 2026-10-27 | Eigene Behälter-Arten in `container_kind` mit 3-Buchstaben-Präfix; CHECK auf `container.kind` entfällt (Migration 010) | Nutzer will Arten unterwegs ergänzen; Prüfung liegt jetzt in `app/kinds.py`. |
+| 2026-10-27 | Code-Schema nach Nutzerliste (WBA, WAL, DRW, TBX, MCF, MOD, BOX, BIN, CNS, RAW, CBL, CMP, PPE …); Arten-Schlüssel englisch, Anzeige DE/EN wählbar; alte deutsche Schlüssel als Alias beim Import; Typen immer kleingeschrieben | User-Vorgabe; Alias hält alte Haiku-JSONs lauffähig. |
