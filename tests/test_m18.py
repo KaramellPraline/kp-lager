@@ -16,7 +16,7 @@ def test_new_kind_from_start(client: TestClient) -> None:
     )
     assert r.status_code == 200 and "Werkbank links" in r.text
     assert codes.KIND_PREFIX["schublade"] == "SCH" and codes.normalize("sch1") == "SCH-001"
-    page = client.get("/labels").text
+    page = client.get("/codes").text
     assert "SCH</b>-001 · Schublade" in page
     assert "Schublade · SCH" in client.get("/").text
     # Code vergeben über die neue Art
@@ -41,7 +41,7 @@ def test_start_tiles_without_bottom_bar_duplicates(client: TestClient) -> None:
 
 
 def test_new_schema_groups_and_language(client: TestClient) -> None:
-    page = client.get("/labels").text
+    page = client.get("/codes").text
     for p in (
         "WBA",
         "WAL",
@@ -59,11 +59,29 @@ def test_new_schema_groups_and_language(client: TestClient) -> None:
     ):
         assert f"<b>{p}</b>-001" in page
     assert "<b>STA</b>" not in page and "<b>EIN</b>" not in page
-    assert "Verbrauch &amp; Rohmaterial" in page and "Werkzeugbox / Kistenberg Pro" in page
-    client.post("/settings", data={"lang": "en"})
-    page = client.get("/labels").text
-    assert "Consumables &amp; Materials" in page and "Personal Protective Equipment" in page
+    assert "Verbrauch &amp; Rohmaterial" in page and "Werkzeugbox, z. B. Kistenberg Pro" in page
+    assert "<b>TBX</b>" not in client.get("/labels").text
+    start = client.get("/").text
+    assert (
+        "Werkzeugbox · TBX" in start and "Kistenberg" not in start
+    )  # Beschreibung nicht im Dropdown
+    assert all("/" not in k.de and "/" not in k.en for k in kinds.BUILTIN)
+    r = client.post("/lang", data={"lang": "en", "back": "/codes"})
+    assert "Consumables &amp; Materials" in r.text and "Safety glasses" in r.text
     assert "Machine Case · MCF" in client.get("/").text
+    assert 'value="en" class="active"' in client.get("/mehr").text
+    assert client.post("/lang", data={"lang": "de", "back": "//evil"}).url.path == "/mehr"
+
+
+def test_custom_kind_description_only_on_codes_page(client: TestClient) -> None:
+    assert (
+        "Schrägstrich" in client.post("/arten", data={"label": "Dose/Glas", "prefix": "DOS"}).text
+    )
+    client.post(
+        "/arten", data={"label": "Dose", "prefix": "DOS", "description": "Blechdose im Regal"}
+    )
+    assert "Blechdose im Regal" in client.get("/codes").text
+    assert "Blechdose" not in client.get("/").text
 
 
 def test_types_lowercase_and_old_kind_keys(client: TestClient) -> None:

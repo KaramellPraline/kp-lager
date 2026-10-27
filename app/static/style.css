@@ -270,3 +270,7 @@ mark { background: var(--raised); color: var(--glow); }
 .add-anything .seg { margin: 0; }
 button.icon-only { width: var(--tap); padding: 0; flex: none; }
 .mono { font-family: var(--font-mono); font-weight: 500; }
+
+/* Codes-Seite: Präfix, Name, Beschreibung */
+.list li.code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; }
+.list li.code-row form { margin: 0; }
