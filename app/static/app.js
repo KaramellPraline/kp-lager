@@ -185,6 +185,23 @@
     });
   });
 
+  // Startseite: Foto zum Hinzufügen (Kamera oder Galerie) mit Vorschau
+  document.addEventListener("DOMContentLoaded", function () {
+    var btn = document.getElementById("add-photo-btn"), input = document.getElementById("add-photo");
+    if (!btn || !input) return;
+    var box = document.getElementById("add-photo-preview"), img = box.querySelector("img");
+    btn.addEventListener("click", function () { input.click(); });
+    input.addEventListener("change", function () {
+      var f = input.files && input.files[0];
+      box.hidden = !f;
+      btn.classList.toggle("on", !!f);
+      if (f) img.src = URL.createObjectURL(f);
+    });
+    document.getElementById("add-photo-clear").addEventListener("click", function () {
+      input.value = ""; box.hidden = true; btn.classList.remove("on");
+    });
+  });
+
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
   document.addEventListener("click", function (ev) {
     var b = ev.target.closest(".add-anything .seg button");
@@ -193,6 +210,11 @@
     form.querySelectorAll(".seg button").forEach(function (x) { x.classList.toggle("active", x === b); });
     form.querySelector("#add-mode").value = b.dataset.mode;
     form.querySelector("#quick-home").placeholder = b.dataset.ph;
+    var hint = form.querySelector("#add-hint"), submit = form.querySelector("#add-submit .lbl");
+    var empty = form.querySelector("#qa-empty");
+    if (hint && b.dataset.hint) hint.textContent = b.dataset.hint;
+    if (submit && b.dataset.submit) submit.textContent = b.dataset.submit;
+    if (empty && b.dataset.empty) empty.textContent = b.dataset.empty;
     form.querySelectorAll("[data-for]").forEach(function (el) {
       el.hidden = el.dataset.for.split(" ").indexOf(b.dataset.mode) < 0;
     });

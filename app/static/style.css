@@ -302,3 +302,22 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 .tag-filter { margin: 8px 0 12px; }
 .tag-filter .pick { text-decoration: none; white-space: nowrap; }
 .tag-filter .pick.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+
+/* Start: Hinzufügen – klare Reihenfolge Was? → Kategorie → Wohin? → Knopf */
+.add-label { font: 13px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--sub); display: block; }
+.add-label select { margin-top: 6px; text-transform: none; letter-spacing: 0; font: inherit; font-family: var(--font-ui); }
+.add-hint { margin: -4px 0 0; font-size: 13px; }
+.cats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+.cat-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 52px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
+  cursor: pointer; text-align: center; }
+.cat-tile input { position: absolute; opacity: 0; pointer-events: none; }
+.cat-tile b { font: 500 14px/1 var(--font-mono); }
+.cat-tile span { font-size: 12px; line-height: 1.15; color: var(--sub); overflow-wrap: anywhere; }
+.cat-tile:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+.cat-tile:has(input:checked) span { color: var(--accent-fg); }
+.cat-tile:has(input:focus-visible) { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--glow); }
+.add-submit { width: 100%; min-height: 52px; font-size: 16px; }
+.mic.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.photo-preview { display: flex; align-items: center; gap: 10px; }
+.photo-preview img { width: 56px; height: 56px; object-fit: cover; border-radius: var(--r-sm); }

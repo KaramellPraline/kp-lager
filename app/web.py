@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -53,6 +53,7 @@ templates.env.globals["KIND_PREFIX"] = codes.KIND_PREFIX
 templates.env.globals["KIND_GROUPS"] = kinds.KIND_GROUPS
 templates.env.globals["SCHEMA_GROUPS"] = kinds.SCHEMA_GROUPS
 templates.env.globals["ITEM_CATS"] = kinds.ITEM_CATS
+templates.env.globals["ITEM_CATS_SHORT"] = kinds.ITEM_CATS_SHORT
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
@@ -243,10 +244,15 @@ def create_app(settings: Settings) -> FastAPI:
         new_prefix: Annotated[str, Form()] = "",
         cat: Annotated[str, Form()] = "ART",
         choice: Annotated[str, Form()] = "",
+        photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
-        """„Hinzufügen“ auf der Startseite: Teil mit Kategorie, Behälter, oder „Alle“ (beides)."""
+        """„Hinzufügen“ auf der Startseite: Teil mit Kategorie, Behälter, oder „Alle“ (beides).
+
+        Mit Foto: wird jedem neuen Teil bzw. dem neuen Behälter angehängt.
+        """
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
+        image = photo.file.read() if photo is not None and photo.filename else b""
         if mode == "all":  # choice = "kind:<art>" oder "item:<präfix>"
             what, _, value = choice.partition(":")
             if what == "kind":
@@ -265,10 +271,10 @@ def create_app(settings: Settings) -> FastAPI:
             if kind == "neu":
                 kind = kinds.create(conn, new_kind, new_prefix)
             cid = repo.create_container(conn, text.strip(), kind, parent_id=opt_int(target))
+            if image:
+                repo.set_container_photo(conn, cid, photos.save(image, photo_dir))
             return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt")
-        if not target:
-            raise LagerError("Erst einen Ort wählen oder anlegen")
-        dest = need_node(conn, int(target))
+        dest = need_node(conn, int(target) if target else repo.inbox(conn))
         cat = cat.strip().upper()
         if cat not in codes.ITEM_PREFIXES:
             raise LagerError(f"Unbekannte Kategorie {cat}")
@@ -281,6 +287,8 @@ def create_app(settings: Settings) -> FastAPI:
             new_id = repo.add_item(conn, dest["id"], name, qty=amount, unit=unit, code=code)
             if material := materials.PREFIX_MATERIAL.get(cat):
                 materials.save_specs(conn, new_id, material, {})
+            if image:
+                repo.update_item(conn, new_id, photo=photos.save(image, photo_dir))
             names.append(name)
         undo = repo.last_event_id(conn)
         if (holder := content_holder(conn, dest)) and prefs.flag(conn, "queue_on_quickadd"):
