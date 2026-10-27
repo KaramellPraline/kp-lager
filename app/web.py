@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import Depends, FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi import Body, Depends, FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -950,6 +950,42 @@ def create_app(settings: Settings) -> FastAPI:
             {"ok": True, "msg": f"„{name}“ → {dest['name']}", "undo": repo.last_event_id(conn)}
         )
 
+    @app.post("/api/move-batch")
+    def api_move_batch(conn: Conn, body: Annotated[dict[str, Any], Body()]) -> JSONResponse:
+        """Sammelmodus beim Einräumen: alle gescannten Codes auf einmal ins Ziel.
+
+        Noch nicht angelegte ART-Codes (vorgedruckte Etiketten) werden mit dem Namen neu angelegt.
+        """
+        target = str(body.get("target", ""))
+        dest = repo.get_container_by_code(conn, codes.normalize(target) or target)
+        if dest is None:
+            return JSONResponse({"ok": False, "msg": f"Ziel {target} unbekannt"}, status_code=404)
+        results = []
+        for entry in body.get("entries", []):
+            raw, name = str(entry.get("code", "")), " ".join(str(entry.get("name", "")).split())
+            norm = codes.normalize(raw) or raw
+            try:
+                if item := repo.get_item_by_code(conn, norm):
+                    repo.move_item(conn, item["id"], dest["id"])
+                    msg = f"„{item['name']}“ eingeräumt"
+                elif node := repo.get_container_by_code(conn, norm):
+                    repo.move_container(conn, node["id"], dest["id"])
+                    msg = f"„{node['name']}“ eingeräumt"
+                elif codes.prefix_of(norm) == codes.ITEM_PREFIX and name:
+                    repo.add_item(conn, dest["id"], name, code=norm)
+                    msg = f"„{name}“ neu angelegt"
+                else:
+                    raise LagerError(f"{norm} ist noch nicht angelegt")
+                results.append({"code": norm, "ok": True, "msg": msg})
+            except LagerError as exc:
+                results.append({"code": norm, "ok": False, "msg": str(exc)})
+        done = sum(1 for r in results if r["ok"] is True)
+        return JSONResponse({
+            "ok": done == len(results),
+            "msg": f"{done} von {len(results)} nach „{dest['name']}“ eingeräumt",
+            "results": results,
+        })  # fmt: skip
+
     @app.get("/api/code/{code}")
     def api_code(code: str, conn: Conn) -> JSONResponse:
         norm = codes.normalize(code) or code
@@ -957,7 +993,9 @@ def create_app(settings: Settings) -> FastAPI:
             return JSONResponse({"type": "container", "code": norm, "name": node["name"]})
         if item := repo.get_item_by_code(conn, norm):
             return JSONResponse({"type": "item", "code": norm, "name": item["name"]})
-        return JSONResponse({"type": "unknown", "code": norm, "name": ""})
+        return JSONResponse(
+            {"type": "unknown", "code": norm, "name": "", "prefix": codes.prefix_of(norm)}
+        )
 
     async def speech_to_text(
         conn: sqlite3.Connection, data: bytes, filename: str, content_type: str | None
