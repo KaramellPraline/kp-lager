@@ -39,6 +39,8 @@ PREFS = (
     Pref("home_rooms", "Startseite: Räume und Orte", "bool", "1", "Startseite"),
     Pref("auto_item_code", "Neue Teile bekommen automatisch einen ART-Code", "bool", "1",
          "Erfassung", "Aus: Code nur per Knopf „Etikett vergeben“."),
+    Pref("scan_beep", "Piepton, wenn ein Code erkannt und erfasst wurde", "bool", "1", "Erfassung",
+         "Hoher Ton = erfasst, zwei tiefe Töne = Fehler."),
     Pref("quick_parse", "Schnelleingabe erkennen („3 Rollen Lötzinn“ → Menge, Einheit, Name)",
          "bool", "1", "Erfassung"),
     Pref("default_unit", "Standard-Einheit, wenn eine Menge ohne Einheit kommt", "text", "",
