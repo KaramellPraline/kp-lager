@@ -157,7 +157,12 @@ ITEM_LABELS = {
             "Schutzbrille, Gehörschutz, Handschuhe, Masken",
             "Safety glasses, hearing protection, gloves, masks"),
     codes.ITEM_PREFIX: ("item",
-        "Gegenstand", "Item", "Einzelner Gegenstand oder Werkzeug", "Single article or tool"
+        "Gegenstand", "Item", "Einzelner Gegenstand, der in keine andere Kategorie passt",
+        "Single article that fits no other category"
+    ),
+    "TOL": ("item",
+        "Werkzeug", "Tool", "Hand- und Elektrowerkzeug, Messgeräte, Akkus fürs Werkzeug",
+        "Hand and power tools, measuring devices, tool batteries"
     ),
     codes.TYPE_PREFIX: ("item",
         "Tag", "Tag",
@@ -178,7 +183,7 @@ SCHEMA_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Präfixe) fürs
 PREFIX_DESC: dict[str, str] = {}  # Präfix -> Beschreibung (nur Codes-Seite)
 # Teile-Kategorien für die Auswahl beim Hinzufügen: [(Präfix, Name)], ART zuerst
 ITEM_CATS: list[tuple[str, str]] = []
-CAT_ORDER = ("ART", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE")
+CAT_ORDER = ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE")
 
 
 def set_lang(conn: sqlite3.Connection, value: str) -> None:

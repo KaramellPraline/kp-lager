@@ -10,7 +10,7 @@ def _shelf(client: TestClient) -> int:
 
 def test_item_categories_on_start(client: TestClient) -> None:
     page = client.get("/").text
-    for p in ("ART", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE"):
+    for p in ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE"):
         assert f'name="cat" value="{p}"' in page
     seg = page.split('class="seg"')[1].split("</div>")[0]
     assert "Typ" not in seg and "Projekt" not in seg and 'data-mode="all"' in seg
@@ -89,3 +89,18 @@ def test_tag_prefix_and_search_filter(client: TestClient) -> None:
     assert sorted(i["name"] for i in api["items"]) == ["Akkuschrauber 18V", "Handkreissäge 18V"]
     assert client.get("/api/v1/search", params={"tag": "gibtsnicht"}).status_code == 404
     assert "/typen/" in client.get(f"/C/{tags['makita']['code'].replace('TAG', 'TYP')}").url.path
+
+
+def test_tool_category(client: TestClient) -> None:
+    shelf = _shelf(client)
+    client.post(
+        "/quickadd",
+        data={"mode": "item", "text": "Akkuschrauber 18V", "target": shelf, "cat": "TOL"},
+    )
+    items = client.get(f"/api/v1/containers/{shelf}").json()["items"]
+    assert items[0]["code"] == "TOL-001" and codes.normalize("tol1") == "TOL-001"
+    assert "<b>TOL</b>-001 · Werkzeug" in client.get("/codes").text
+    assert (
+        "TOL-Codes sind für Teile"
+        in client.post(f"/n/{shelf}/edit", data={"name": "Regal", "code": "TOL-002"}).text
+    )
