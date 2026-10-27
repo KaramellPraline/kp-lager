@@ -47,11 +47,20 @@ D30-Vorlage einmal anlegen: QR-Feld aus Spalte <b>QR</b>, Text aus <b>Code</b> u
   <p class="meta">Auf der Seite des Behälters: „Etiketten aller Teile drucken“ – vergibt fehlende ART-Codes, ein Etikett pro Teil (QR + Name).</p>
 </section>
 
-<section>
+<section id="schema">
   <h2>Code-Schema</h2>
   <ul class="history">
-    {% for p, label in prefixes.items() %}<li><b>{{ p }}</b>-{{ '0001' if p == 'ART' else '001' }} · {{ label }}</li>{% endfor %}
+    {% for p, label in prefixes.items() %}<li><b>{{ p }}</b>-{{ '0001' if p == 'ART' else '001' }} · {{ label }}
+      {% if p == 'TYP' %}<a href="/typen">Typen verwalten</a>{% endif %}
+      {% if p in custom_kinds %}<span class="meta">eigene Art · {{ custom_kinds[p].n }} Behälter</span>
+        {% if not custom_kinds[p].n %}<form method="post" action="/arten/{{ custom_kinds[p].kind }}/delete" style="display:inline"><button class="link" aria-label="Art {{ label }} löschen">{{ icon('action.delete') }}</button></form>{% endif %}
+      {% endif %}</li>{% endfor %}
   </ul>
+  <form method="post" action="/arten" class="row" aria-label="Neue Behälter-Art">
+    <label>Neue Behälter-Art <input name="label" placeholder="z. B. Schublade" required></label>
+    <label>Präfix <input name="prefix" placeholder="SCH" maxlength="3" pattern="[A-Za-z]{3}" required style="text-transform:uppercase"></label>
+    <button>{{ icon('action.add') }} Anlegen</button>
+  </form>
   <p class="meta">Der Code sagt, was etwas ist – nicht, wo es steht. Umzüge ändern kein Etikett.</p>
 </section>
 {% endblock %}

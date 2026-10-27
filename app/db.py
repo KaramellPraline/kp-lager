@@ -16,6 +16,9 @@ def connect(path: Path | str) -> sqlite3.Connection:
     # SQLites lower()/LIKE falten nur ASCII; fold() kann auch Umlaute.
     conn.create_function("fold", 1, lambda s: s.casefold() if s else s, deterministic=True)
     migrate(conn)
+    from app import kinds  # spät importiert: kinds -> repo -> db wäre zirkulär
+
+    kinds.sync(conn)
     return conn
 
 

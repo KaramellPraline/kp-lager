@@ -13,9 +13,16 @@
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
     <button class="primary icon-only" aria-label="Hinzufügen">{{ icon('action.add') }}</button>
   </div>
-  <label data-for="container" hidden>Art
-    <select name="kind">{% for k, label in KIND_LABELS.items() if k not in ('fach', 'einsatz') %}<option value="{{ k }}" {% if k == 'kiste' %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  <div data-for="container" hidden class="stack">
+  <label>Art
+    <select name="kind" data-reveal="new-kind">{% for k, label in KIND_LABELS.items() if k not in ('fach', 'einsatz') %}<option value="{{ k }}" {% if k == 'kiste' %}selected{% endif %}>{{ label }}{% if KIND_PREFIX.get(k) %} · {{ KIND_PREFIX[k] }}{% endif %}</option>{% endfor %}
+      <option value="neu">Neue Art …</option></select>
   </label>
+  <div class="row" id="new-kind" hidden>
+    <input name="new_kind" placeholder="Name der Art, z. B. Schublade" aria-label="Name der neuen Art">
+    <input name="new_prefix" placeholder="Präfix, z. B. SCH" maxlength="3" aria-label="Präfix" style="text-transform:uppercase">
+  </div>
+  </div>
   <div class="where" data-for="item container">
     <span class="where-label">Wohin</span>
     {% if fav_targets %}
@@ -37,9 +44,6 @@
 
 {% if P.home_tiles == '1' %}
 <nav class="tiles" aria-label="Schnellzugriff">
-  <a href="/scan">{{ icon('action.scan') }}Scannen</a>
-  <a href="/sprache">{{ icon('media.dictate') }}Sprache</a>
-  <a href="/labels">{{ icon('content.tag') }}Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
   <a href="/einkauf">{{ icon('content.shopping') }}Einkauf{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
   <a href="/platz">{{ icon('content.space') }}Freie Plätze</a>
   <a href="/verlauf">{{ icon('content.history') }}Verlauf</a>

@@ -5,10 +5,11 @@ from string import ascii_uppercase
 
 Row = sqlite3.Row
 
-KINDS = (
+# Feste Arten; eigene ergänzt app/kinds.sync zur Laufzeit.
+KINDS = [
     "raum", "regal", "ebene", "stapel", "eurobox", "kiste", "sortierkasten", "einsatz", "fach",
     "sonstiges",
-)  # fmt: skip
+]  # fmt: skip
 
 
 class LagerError(ValueError):
