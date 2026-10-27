@@ -92,6 +92,21 @@ def pending(conn: sqlite3.Connection, base_url: str) -> list[Label]:
     return rows
 
 
+def all_coded(conn: sqlite3.Connection, base_url: str) -> list[Label]:
+    """Alle Behälter und Teile mit Code (für die A4-Auswahl), Zusatz = Ort."""
+    rows = [
+        Label(c["code"], qr_content(base_url, c["code"]), c["name"], c["kind"])
+        for c in conn.execute("SELECT * FROM container WHERE code IS NOT NULL ORDER BY code")
+    ]
+    rows += [
+        item_label(conn, base_url, i)
+        for i in conn.execute(
+            "SELECT * FROM item WHERE code IS NOT NULL AND archived = 0 ORDER BY code"
+        )
+    ]
+    return rows
+
+
 def for_container(conn: sqlite3.Connection, base_url: str, container_id: int) -> list[Label]:
     """Alle Gegenstände im Behälter inkl. Fächern; fehlende ART-Codes werden vergeben."""
     items = conn.execute(

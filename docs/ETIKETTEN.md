@@ -33,7 +33,7 @@
 ## Abläufe
 Jede Auswahl öffnet zuerst die **Vorschau-Tabelle** (Code | Text | Zusatz). Texte lassen sich dort ändern
 (rot = zu lang für 40×12, wird im XLSX gekürzt). Optional „Geänderte Texte auch als Namen im Lager speichern“.
-Dann **XLSX für D30** oder **A8-Bogen**.
+Export immer als **XLSX für den D30**. Papierdruck separat unter **Etiketten › A4-Druck**: beliebige Etiketten auswählen, als 40×12-Bogen (110/Seite) oder A8 (16/Seite).
 
 - **Neue Boxen:** `Etiketten › Neue Codes auf Vorrat` (z. B. 20× EUR) → Vorschau (Text z. B. „Elektronik“) → Export → aufkleben → beim ersten Scan anlegen. Codes werden erst beim Export reserviert.
 - **Sortierkasten komplett:** Kastenseite › „Etiketten aller Teile drucken“ → ein Etikett pro Teil, fehlende ART-Codes werden vergeben.

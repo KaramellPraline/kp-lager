@@ -269,3 +269,4 @@ mark { background: var(--raised); color: var(--glow); }
 @media print { .bottomnav, .sidenav, .topbar, .toast { display: none !important; } }
 .add-anything .seg { margin: 0; }
 button.icon-only { width: var(--tap); padding: 0; flex: none; }
+.mono { font-family: var(--font-mono); font-weight: 500; }

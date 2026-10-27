@@ -26,11 +26,9 @@
   <label class="check"><input type="checkbox" name="save_names" value="1"> Geänderte Texte auch als Namen im Lager speichern</label>
   {% endif %}
   <div class="row">
-    {% set fmts = [('xlsx', 'XLSX für D30 (40×12)'), ('a8', 'A8-Bogen (16 pro A4 quer)'), ('a4', 'A4-Bogen 40×12 (110 Stück)')] %}
-    {% for f, t in fmts if f == P.label_format %}<button name="fmt" value="{{ f }}" class="primary">{{ t }}</button>{% endfor %}
-    {% for f, t in fmts if f != P.label_format %}<button name="fmt" value="{{ f }}">{{ t }}</button>{% endfor %}
+    <button name="fmt" value="xlsx" class="primary">{{ icon('action.download', size='sm') }} XLSX für D30 exportieren</button>
   </div>
-  <p class="meta">Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
+  <p class="meta">Auf Papier drucken: <a href="/labels/a4">A4-Druck</a> (Auswahl aus allen Etiketten). Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
 </form>
 <script>
   // Hinweis, wenn Text auf dem D30 gekürzt würde

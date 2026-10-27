@@ -2,9 +2,9 @@
 {% block title %}Etiketten · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Etiketten</h1>
-<p class="meta">Jede Auswahl öffnet erst eine Vorschau-Tabelle (Texte bearbeitbar), dann Export als
-<b>XLSX für den D30</b> (40×12 mm) oder <b>A8-Bogen</b> (16 pro A4 quer, z. B. für Euroboxen).
-D30-Vorlage einmal anlegen: QR-Feld {{ icon('nav.back') }} Spalte <b>QR</b>, Text {{ icon('nav.back') }} <b>Code</b>/<b>Text</b>.</p>
+<p class="meta">Export immer als XLSX für den D30 (40×12 mm): erst Vorschau (Texte bearbeitbar), dann Export.
+D30-Vorlage einmal anlegen: QR-Feld aus Spalte <b>QR</b>, Text aus <b>Code</b> und <b>Text</b>.</p>
+<p><a class="button" href="/labels/a4">{{ icon('action.print', size='sm') }} A4-Druck: Etiketten auswählen</a></p>
 
 <section>
   <h2>Warteschlange ({{ queue|length }})</h2>

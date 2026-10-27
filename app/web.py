@@ -439,6 +439,42 @@ def create_app(settings: Settings) -> FastAPI:
             text_max=prefs.number(conn, "label_text_max"),
         )
 
+    @app.get("/labels/a4", response_class=HTMLResponse)
+    def labels_a4_page(request: Request, conn: Conn, q: str = "") -> HTMLResponse:
+        rows = labels.all_coded(conn, settings.base_url)
+        if q.strip():
+            needle = q.casefold()
+            rows = [r for r in rows if needle in f"{r.code} {r.text} {r.extra}".casefold()]
+        return render(request, conn, "labels_a4_select.html", rows=rows, aq=q)
+
+    @app.post("/labels/a4", response_model=None)
+    def labels_a4_print(
+        request: Request,
+        conn: Conn,
+        code: Annotated[list[str], Form()] = [],  # noqa: B006
+        fmt: Annotated[str, Form()] = "a4",
+    ) -> Response:
+        """Ausgewählte Etiketten auf A4 drucken (40×12-Bogen oder A8)."""
+        chosen = set(code)
+        rows = [r for r in labels.all_coded(conn, settings.base_url) if r.code in chosen]
+        if not rows:
+            raise LagerError("Nichts ausgewählt")
+        rows = labels.finalize(
+            conn, settings.base_url, [(r.code, r.text, r.extra) for r in rows], False
+        )
+        cells = [(r, labels.qr_svg(r.qr)) for r in rows]
+        if fmt == "a8":
+            per = labels.A8_PER_PAGE
+            pages = [cells[i : i + per] for i in range(0, len(cells), per)]
+            return templates.TemplateResponse(
+                request, "labels_a8.html", {"pages": pages, "rows": rows}
+            )
+        per = labels.A4_COLS * labels.A4_ROWS
+        pages = [cells[i : i + per] for i in range(0, len(cells), per)]
+        return templates.TemplateResponse(
+            request, "labels_a4.html", {"pages": pages, "rows": rows, "per": per}
+        )
+
     @app.post("/labels/export", response_model=None)
     def labels_export(
         request: Request,

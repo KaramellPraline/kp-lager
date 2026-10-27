@@ -43,8 +43,6 @@ PREFS = (
     Pref("voice_model", "Modell für Spracheingabe", "choice", "parakeet", "Erfassung",
          "parakeet: schneller, im Test genauer; whisper-1: Alternative.",
          choices=(("parakeet", "parakeet"), ("whisper-1", "whisper-1"))),
-    Pref("label_format", "Bevorzugtes Etikettenformat", "choice", "xlsx", "Etiketten",
-         choices=(("xlsx", "XLSX für D30 (40×12)"), ("a8", "A8-Bogen"), ("a4", "A4-Bogen 40×12"))),
     Pref("label_text_max", "Max. Zeichen Text auf 40×12 (D30)", "int", "24", "Etiketten",
          min=8, max=60),
     Pref("queue_on_quickadd", "Schnelleingabe legt Bin-Etikett in die Warteschlange", "bool",

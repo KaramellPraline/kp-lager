@@ -182,3 +182,32 @@ def test_default_qr_uses_schema_and_dns_name(monkeypatch: pytest.MonkeyPatch) ->
     assert (
         labels.qr_content(base, codes.format_code("EUR", 21)) == "HTTPS://LAGER.HOME.LAN/C/EUR-021"
     )
+
+
+def test_preview_exports_only_xlsx(client: TestClient) -> None:
+    page = client.post(
+        "/labels/preview", data={"source": "blank", "prefix": "EUR", "count": "2"}
+    ).text
+    assert 'value="xlsx"' in page and 'value="a8"' not in page and 'value="a4"' not in page
+    assert 'href="/labels/a4"' in page
+
+
+def test_a4_selection_and_print(client: TestClient) -> None:
+    box = node_of(
+        client.post("/containers", data={"name": "Werkzeug", "kind": "kiste", "code": "KIS-001"})
+    )
+    client.post(f"/n/{box}/items", data={"name": "Zange"})  # ART-0001
+    client.post(f"/n/{box}/items", data={"name": "Feile"})  # ART-0002
+    page = client.get("/labels/a4").text
+    assert all(f'value="{c}"' in page for c in ("KIS-001", "ART-0001", "ART-0002"))
+    assert 'value="ART-0002"' not in client.get("/labels/a4", params={"q": "zange"}).text
+    r = client.post("/labels/a4", data={"code": ["ART-0001", "KIS-001"], "fmt": "a4"})
+    assert (
+        "grid-template-columns: repeat(5, 40mm)" in r.text
+        and "<b>ART-0001</b>" in r.text
+        and "ART-0002" not in r.text
+    )
+    r = client.post("/labels/a4", data={"code": ["ART-0002"], "fmt": "a8"})
+    assert "size: A4 landscape" in r.text and "Feile" in r.text
+    r = client.post("/labels/a4", data={"fmt": "a4"}, headers={"referer": "/labels/a4"})
+    assert "Nichts ausgewählt" in r.text
