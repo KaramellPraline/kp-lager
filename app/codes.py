@@ -8,6 +8,7 @@ import re
 import sqlite3
 
 ITEM_PREFIX = "ART"
+TYPE_PREFIX = "TYP"  # Typen/Kategorien von Teilen (item_type)
 PREFIX_KIND: dict[str, str | None] = {
     "RAU": "raum",
     "REG": "regal",
@@ -17,10 +18,12 @@ PREFIX_KIND: dict[str, str | None] = {
     "SOR": "sortierkasten",
     "EIN": "einsatz",
     ITEM_PREFIX: None,
+    TYPE_PREFIX: None,
 }
 PREFIX_LABELS = {
     "RAU": "Raum", "REG": "Regal", "STA": "Stellplatz/Kistenberg", "EUR": "Eurobox",
     "KIS": "Kiste/Box", "SOR": "Sortierkasten", "EIN": "Einsatz (Bin)", ITEM_PREFIX: "Gegenstand",
+    TYPE_PREFIX: "Typ",
 }  # fmt: skip
 KIND_PREFIX = {kind: p for p, kind in PREFIX_KIND.items() if kind} | {"sonstiges": "KIS"}
 CODE_RE = re.compile(r"^([A-Z]{3})-?0*(\d{1,6})$")
@@ -52,8 +55,9 @@ def highest_used(conn: sqlite3.Connection, prefix: str) -> int:
     used = conn.execute(
         "SELECT MAX(n) FROM (SELECT CAST(substr(code, 5) AS INTEGER) AS n FROM container"
         " WHERE code LIKE ? UNION ALL SELECT CAST(substr(code, 5) AS INTEGER) FROM item"
+        " WHERE code LIKE ? UNION ALL SELECT CAST(substr(code, 5) AS INTEGER) FROM item_type"
         " WHERE code LIKE ?)",
-        (f"{prefix}-%", f"{prefix}-%"),
+        (f"{prefix}-%", f"{prefix}-%", f"{prefix}-%"),
     ).fetchone()[0]
     return int(used or 0)
 
@@ -95,8 +99,9 @@ def used_codes(conn: sqlite3.Connection, prefix: str) -> list[dict[str, object]]
     """Alle vergebenen Codes eines Präfixes mit Objekt (Behälter oder Gegenstand)."""
     rows = conn.execute(
         "SELECT code, 'node' AS type, id, name FROM container WHERE code LIKE ?"
-        " UNION ALL SELECT code, 'item', id, name FROM item WHERE code LIKE ? ORDER BY code",
-        (f"{prefix}-%", f"{prefix}-%"),
+        " UNION ALL SELECT code, 'item', id, name FROM item WHERE code LIKE ?"
+        " UNION ALL SELECT code, 'type', id, name FROM item_type WHERE code LIKE ? ORDER BY code",
+        (f"{prefix}-%", f"{prefix}-%", f"{prefix}-%"),
     ).fetchall()
     return [dict(r) for r in rows]
 

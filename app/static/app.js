@@ -151,4 +151,12 @@
       if (rec && confirm("Aufnahme verwerfen?")) { keep = false; rec.stop(); }
     });
   });
+
+  // Typ-Auswahl: „Neuer Typ …“ blendet das Namensfeld ein
+  document.addEventListener("change", function (ev) {
+    if (!ev.target.matches("select[data-new-type]")) return;
+    var field = ev.target.form.querySelector("input[name=new_type]");
+    field.hidden = ev.target.value !== "neu";
+    if (!field.hidden) field.focus();
+  });
 })();

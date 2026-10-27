@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Typen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Typen</h1>
+<p class="meta">Typen ordnen Teile ein (z. B. mechanical, electronic). Jeder Typ bekommt einen Code TYP-001 … und lässt sich beim Bearbeiten eines Teils auch unterwegs neu anlegen.</p>
+<form method="post" action="/typen" class="add-item card">
+  <input name="name" placeholder="Neuer Typ, z. B. pneumatic" required>
+  <button class="primary">{{ icon('action.add', size='sm') }} Anlegen</button>
+</form>
+<ul class="list">
+  {% for t in types %}
+  <li><a href="/typen/{{ t.id }}"><span>{{ t.name }}</span><small>{{ t.code or 'ohne Code' }} · {{ t.n }} Teile</small></a></li>
+  {% else %}<li class="empty">Noch keine Typen.</li>{% endfor %}
+</ul>
+{% endblock %}

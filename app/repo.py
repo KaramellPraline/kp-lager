@@ -280,7 +280,8 @@ def set_item_code(conn: sqlite3.Connection, item_id: int, code: str | None) -> N
 
 def items_in(conn: sqlite3.Connection, container_id: int) -> list[Row]:
     return conn.execute(
-        "SELECT * FROM item WHERE container_id = ? ORDER BY name", (container_id,)
+        "SELECT * FROM item WHERE container_id = ? AND archived = 0 ORDER BY name",
+        (container_id,),
     ).fetchall()
 
 
@@ -321,7 +322,10 @@ def move_item(conn: sqlite3.Connection, item_id: int, container_id: int) -> None
 
 
 def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | None) -> None:
-    allowed = {"name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list"}
+    allowed = {
+        "name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list",
+        "full_name", "type_id", "model", "datasheet_url", "datasheet", "review", "archived",
+    }  # fmt: skip
     if not fields or not set(fields) <= allowed:
         raise LagerError(f"Erlaubte Felder: {sorted(allowed)}")
     item = get_item(conn, item_id)
@@ -347,6 +351,9 @@ def history(conn: sqlite3.Connection, item_id: int) -> list[Row]:
     ).fetchall()
 
 
+SEARCH_TEXT = "fold(name || ' ' || full_name || ' ' || model || ' ' || tags || ' ' || notes)"
+
+
 # --- Suche ----------------------------------------------------------------------
 
 
@@ -361,13 +368,14 @@ def search(conn: sqlite3.Connection, q: str, limit: int = 50) -> list[dict[str, 
     if all(len(t) >= 3 for t in terms):
         rows = conn.execute(
             "SELECT item.* FROM item_fts JOIN item ON item.id = item_fts.rowid"
-            " WHERE item_fts MATCH ? ORDER BY bm25(item_fts, 10.0, 5.0, 1.0) LIMIT ?",
+            " WHERE item_fts MATCH ? AND item.archived = 0"
+            " ORDER BY bm25(item_fts, 10.0, 6.0, 8.0, 5.0, 1.0) LIMIT ?",
             (" AND ".join(f'"{t}"' for t in terms), limit),
         ).fetchall()
     else:
-        where = " AND ".join(["fold(name || ' ' || tags || ' ' || notes) LIKE ?"] * len(terms))
+        where = " AND ".join([f"{SEARCH_TEXT} LIKE ?"] * len(terms))
         rows = conn.execute(
-            f"SELECT * FROM item WHERE {where} ORDER BY name LIMIT ?",
+            f"SELECT * FROM item WHERE {where} AND archived = 0 ORDER BY name LIMIT ?",
             (*(f"%{t.casefold()}%" for t in terms), limit),
         ).fetchall()
     return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]
@@ -410,14 +418,15 @@ def search_synonyms(
         match = " AND ".join("(" + " OR ".join(f'"{w}"' for w in g) + ")" for g in groups)
         rows = conn.execute(
             "SELECT item.* FROM item_fts JOIN item ON item.id = item_fts.rowid"
-            " WHERE item_fts MATCH ? ORDER BY bm25(item_fts, 10.0, 5.0, 1.0) LIMIT ?",
+            " WHERE item_fts MATCH ? AND item.archived = 0"
+            " ORDER BY bm25(item_fts, 10.0, 6.0, 8.0, 5.0, 1.0) LIMIT ?",
             (match, limit),
         ).fetchall()
     else:
-        text = "fold(name || ' ' || tags || ' ' || notes)"
+        text = SEARCH_TEXT
         where = " AND ".join("(" + " OR ".join([f"{text} LIKE ?"] * len(g)) + ")" for g in groups)
         rows = conn.execute(
-            f"SELECT * FROM item WHERE {where} ORDER BY name LIMIT ?",
+            f"SELECT * FROM item WHERE {where} AND archived = 0 ORDER BY name LIMIT ?",
             (*(f"%{w}%" for g in groups for w in g), limit),
         ).fetchall()
     return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]

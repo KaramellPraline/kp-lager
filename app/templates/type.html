@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ t.name }} · Typ{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/typen">Typen</a> › {{ t.name }}</nav>
+<div class="title-row"><h1>{{ t.name }}</h1>{% if t.code %}<span class="chip code">{{ t.code }}</span>{% endif %}</div>
+<ul class="list">
+  {% for i in items %}
+  <li><a href="/items/{{ i.id }}"><span>{{ i.name }}{% if i.model %} · {{ i.model }}{% endif %}</span><small>{{ i.path }}</small></a></li>
+  {% else %}<li class="empty">Noch keine Teile mit diesem Typ.</li>{% endfor %}
+</ul>
+<details>
+  <summary>Bearbeiten</summary>
+  <form method="post" action="/typen/{{ t.id }}/rename" class="add-item">
+    <input name="name" value="{{ t.name }}" required aria-label="Name"><button>{{ icon('action.save', size='sm') }} Umbenennen</button>
+  </form>
+  <form method="post" action="/typen/{{ t.id }}/delete" onsubmit="return confirm('Typ löschen?')">
+    <button class="danger">{{ icon('action.delete', size='sm') }} Löschen (nur wenn unbenutzt)</button>
+  </form>
+</details>
+{% endblock %}

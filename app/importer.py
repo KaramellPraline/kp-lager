@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app import codes as code_schema
-from app import repo
+from app import itemtypes, repo
 from app.db import connect
 
 
@@ -89,7 +89,9 @@ def _slot_container(conn: sqlite3.Connection, parent_id: int, slot: str) -> int:
     return repo.create_container(conn, f"Fach {slot}", "fach", parent_id=parent_id, position=slot)
 
 
-def apply(conn: sqlite3.Connection, data: list[dict[str, Any]], report: Report) -> None:
+def apply(
+    conn: sqlite3.Connection, data: list[dict[str, Any]], report: Report, review: bool = False
+) -> None:
     pending = list(data)
     while pending:
         ready = [
@@ -104,10 +106,12 @@ def apply(conn: sqlite3.Connection, data: list[dict[str, Any]], report: Report) 
             return
         for c in ready:
             pending.remove(c)
-            _apply_container(conn, c, report)
+            _apply_container(conn, c, report, review)
 
 
-def _apply_container(conn: sqlite3.Connection, c: dict[str, Any], report: Report) -> None:
+def _apply_container(
+    conn: sqlite3.Connection, c: dict[str, Any], report: Report, review: bool = False
+) -> None:
     code, name = _str(c["code"]), _str(c["name"])
     parent_code = _str(c.get("parent"))
     parent = repo.get_container_by_code(conn, parent_code) if parent_code else None
@@ -121,6 +125,9 @@ def _apply_container(conn: sqlite3.Connection, c: dict[str, Any], report: Report
         grid = _str(c.get("grid")) or None
         cid = repo.create_container(conn, name, kind, parent_id=parent_id, code=code, grid=grid)
         report.containers_created.append(f"{code} {name}")
+        if review:
+            with conn:
+                conn.execute("UPDATE container SET review = 1 WHERE id = ?", (cid,))
     else:
         cid = node["id"]
         if parent_code and node["parent_id"] != parent_id:
@@ -134,7 +141,7 @@ def _apply_container(conn: sqlite3.Connection, c: dict[str, Any], report: Report
         if any(i["name"].casefold() == iname.casefold() for i in repo.items_in(conn, target)):
             report.items_skipped += 1
             continue
-        repo.add_item(
+        item_id = repo.add_item(
             conn,
             target,
             iname,
@@ -146,10 +153,22 @@ def _apply_container(conn: sqlite3.Connection, c: dict[str, Any], report: Report
             action="import",
             code=code_schema.new_item_code(conn),
         )
+        extra: dict[str, str | int | None] = {}
+        if full := _str(item.get("full_name")):
+            extra["full_name"] = full
+        if model := _str(item.get("model")):
+            extra["model"] = model
+        if type_name := _str(item.get("type")):
+            extra["type_id"] = itemtypes.create(conn, type_name)  # neu oder vorhanden
+        if review:
+            extra["review"] = 1
+        if extra:
+            repo.update_item(conn, item_id, **extra)
         report.items_added += 1
 
 
-def run(conn: sqlite3.Connection, text: str, commit: bool) -> Report:
+def run(conn: sqlite3.Connection, text: str, commit: bool, review: bool = False) -> Report:
+    """review=True: alles Angelegte bekommt das Flag „zu prüfen“ (KI-Ergebnisse)."""
     report = Report()
     data = parse(text)
     if not data:
@@ -165,10 +184,10 @@ def run(conn: sqlite3.Connection, text: str, commit: bool) -> Report:
     # Erst immer auf einer Kopie – so bleibt die echte DB bei Fehlern unverändert.
     scratch = connect(":memory:")
     conn.backup(scratch)
-    apply(scratch, data, report)
+    apply(scratch, data, report, review)
     scratch.close()
     if commit and not report.errors:
-        apply(conn, data, Report())
+        apply(conn, data, Report(), review)
     return report
 
 

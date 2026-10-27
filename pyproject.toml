@@ -32,7 +32,7 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
-per-file-ignores = { "app/prompt.py" = ["E501"] }  # Prompt-Text 1:1
+per-file-ignores = { "app/prompt.py" = ["E501"], "tests/*" = ["E501"] }  # Prompt-Text 1:1, lange Testdaten
 
 [tool.mypy]
 strict = true

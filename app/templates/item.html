@@ -11,9 +11,13 @@
     {% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo-thumb" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
     <div class="grow">
       <h1>{{ item.name }}</h1>
+      {% if item.full_name %}<p class="meta" style="margin:2px 0 0">{{ item.full_name }}</p>{% endif %}
       <div class="chips">
+        {% if item.review %}<span class="chip review">{{ icon('status.attention', size='xs') }} Zu prüfen</span>{% endif %}
+        {% if item_type %}<a class="chip" href="/typen/{{ item_type.id }}">{{ icon('content.type', size='xs') }} {{ item_type.name }}</a>{% endif %}
+        {% if item.model %}<span class="chip">{{ item.model }}</span>{% endif %}
         {% if item.code %}<span class="chip code">{{ item.code }}</span>{% if not item.label_printed %}<span class="chip">Etikett offen</span>{% endif %}{% endif %}
-        <span class="chip">{{ icon('content.place') }} {{ path[-1].name }}</span>
+        <span class="chip">{{ icon('content.place', size='xs') }} {{ path[-1].name }}</span>
         {% if item.tags %}<span class="chip">{{ item.tags }}</span>{% endif %}
       </div>
     </div>
@@ -30,6 +34,20 @@
     <input name="to" placeholder="Verleihen an / in Benutzung bei …" aria-label="Verleihen an">
     <button>{{ icon('content.lent') }} Verleihen</button>
   </form>
+  {% endif %}
+
+  {% if item.model or item.datasheet %}
+  <div class="card">
+    <h2 style="margin-top:0">Datenblatt</h2>
+    {% if item.datasheet %}
+    <a class="button primary" href="/datasheets/{{ item.datasheet }}" target="_blank">{{ icon('content.document', size='sm') }} Datenblatt öffnen (PDF)</a>
+    {% elif item.datasheet_url %}
+    <form method="post" action="/items/{{ item.id }}/datasheet"><button>{{ icon('action.download', size='sm') }} Datenblatt herunterladen</button></form>
+    {% else %}
+    <p class="meta">Noch kein Datenblatt. URL unter „Bearbeiten“ eintragen – die PDF wird dann automatisch gespeichert.</p>
+    {% endif %}
+    {% if sheet_search %}<p><a href="{{ sheet_search }}" target="_blank" rel="noopener">{{ icon('nav.search', size='sm') }} Datenblatt für {{ item.model }} suchen</a></p>{% endif %}
+  </div>
   {% endif %}
 
   {% if item.notes %}<div class="card notes">{{ item.notes }}</div>{% endif %}
@@ -61,7 +79,19 @@
   <details>
     <summary>Bearbeiten</summary>
     <form method="post" action="/items/{{ item.id }}/edit" class="stack">
-      <label>Name <input name="name" value="{{ item.name }}" required></label>
+      <label>Anzeigename (kurz, fürs Etikett) <input name="name" value="{{ item.name }}" required></label>
+      <label>Vollständiger Name <input name="full_name" value="{{ item.full_name }}" placeholder="z. B. Hersteller, Serie, genaue Bezeichnung"></label>
+      <label>Typ
+        <select name="type_id" data-new-type>
+          <option value="">– kein Typ –</option>
+          {% for t in types %}<option value="{{ t.id }}" {% if t.id == item.type_id %}selected{% endif %}>{{ t.name }} · {{ t.code }}</option>{% endfor %}
+          <option value="neu">Neuer Typ …</option>
+        </select></label>
+      <input name="new_type" placeholder="Name des neuen Typs" hidden>
+      <div class="row">
+        <label>Modellnummer <input name="model" value="{{ item.model }}" placeholder="z. B. ESP32-WROOM-32E"></label>
+        <label>Datenblatt-URL (PDF) <input name="datasheet_url" value="{{ item.datasheet_url }}" inputmode="url" placeholder="https://…"></label>
+      </div>
       <div class="row">
         <label>Anzahl <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="leer = ungezählt" inputmode="numeric"></label>
         <label>Einheit <input name="unit" value="{{ item.unit }}" placeholder="Stk"></label>

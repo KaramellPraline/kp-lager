@@ -15,8 +15,10 @@ from fastapi.templating import Jinja2Templates
 from app import (
     backup,
     codes,
+    datasheets,
     icons,
     importer,
+    itemtypes,
     kasten,
     labels,
     notes,
@@ -107,6 +109,9 @@ def create_app(settings: Settings) -> FastAPI:
     photo_dir = settings.data_dir / "photos"
     photo_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/photos", StaticFiles(directory=photo_dir), name="photos")
+    sheet_dir = settings.data_dir / "datasheets"
+    sheet_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/datasheets", StaticFiles(directory=sheet_dir), name="datasheets")
 
     def get_conn() -> Iterator[sqlite3.Connection]:
         conn = connect(settings.db_path)
@@ -254,7 +259,11 @@ def create_app(settings: Settings) -> FastAPI:
             return redirect(f"/n/{node['id']}", msg)
         if item := repo.get_item_by_code(conn, code):
             return redirect(f"/items/{item['id']}", msg)
+        if t := itemtypes.by_code(conn, code):
+            return redirect(f"/typen/{t['id']}", msg)
         prefix = codes.prefix_of(code)
+        if prefix == codes.TYPE_PREFIX:
+            raise HTTPException(404, f"Typ {code} gibt es nicht")
         if prefix is None:
             raise HTTPException(404, f"'{code}' passt nicht zum Code-Schema (z. B. EUR-001)")
         template = "new_item_code.html" if prefix == codes.ITEM_PREFIX else "new_code.html"
@@ -310,6 +319,9 @@ def create_app(settings: Settings) -> FastAPI:
             item=item,
             path=repo.container_path(conn, item["container_id"]),
             events=repo.history(conn, item_id)[:30],
+            types=itemtypes.all_types(conn),
+            item_type=itemtypes.get(conn, item["type_id"]) if item["type_id"] else None,
+            sheet_search=datasheets.search_url(item["model"]) if item["model"] else "",
         )
 
     @app.get("/suche", response_model=None)
@@ -524,6 +536,10 @@ def create_app(settings: Settings) -> FastAPI:
         elif item := repo.get_item_by_code(conn, code):
             repo.set_item_code(conn, item["id"], None)
             name = item["name"]
+        elif t := itemtypes.by_code(conn, code):
+            with conn:
+                conn.execute("UPDATE item_type SET code = NULL WHERE id = ?", (t["id"],))
+            name = t["name"]
         else:
             raise LagerError(f"{code} ist nicht vergeben")
         labels.dequeue(conn, [code])
@@ -983,11 +999,21 @@ def create_app(settings: Settings) -> FastAPI:
         tags: Annotated[str, Form()] = "",
         notes: Annotated[str, Form()] = "",
         min_qty: Annotated[str, Form()] = "",
+        full_name: Annotated[str, Form()] = "",
+        type_id: Annotated[str, Form()] = "",
+        new_type: Annotated[str, Form()] = "",
+        model: Annotated[str, Form()] = "",
+        datasheet_url: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
+        before = repo.get_item(conn, item_id)
         repo.update_item(
             conn,
             item_id,
             name=name.strip(),
+            full_name=full_name.strip(),
+            type_id=itemtypes.resolve(conn, type_id, new_type),
+            model=model.strip(),
+            datasheet_url=datasheet_url.strip(),
             qty=opt_int(qty),
             qty_hint=qty_hint.strip(),
             unit=unit.strip(),
@@ -995,7 +1021,60 @@ def create_app(settings: Settings) -> FastAPI:
             notes=notes,
             min_qty=opt_int(min_qty),
         )
-        return redirect(f"/items/{item_id}", "Gespeichert")
+        msg = "Gespeichert"
+        url = datasheet_url.strip()
+        if url and (url != before["datasheet_url"] or not before["datasheet"]):
+            msg = fetch_datasheet(conn, item_id)
+        return redirect(f"/items/{item_id}", msg)
+
+    def fetch_datasheet(conn: sqlite3.Connection, item_id: int) -> str:
+        """Datenblatt-PDF der Item-URL lokal speichern; Rückmeldung als Text."""
+        item = repo.get_item(conn, item_id)
+        stem = f"{item['code'] or item_id}-{item['model'] or item['name']}"
+        try:
+            name = datasheets.download(item["datasheet_url"], sheet_dir, stem)
+        except LagerError as exc:
+            return f"Gespeichert – {exc}"
+        if item["datasheet"] and item["datasheet"] != name:
+            (sheet_dir / item["datasheet"]).unlink(missing_ok=True)
+        repo.update_item(conn, item_id, datasheet=name)
+        return "Gespeichert – Datenblatt heruntergeladen"
+
+    @app.post("/items/{item_id}/datasheet")
+    def refresh_datasheet(item_id: int, conn: Conn) -> RedirectResponse:
+        if not repo.get_item(conn, item_id)["datasheet_url"]:
+            raise LagerError("Keine Datenblatt-URL hinterlegt")
+        return redirect(
+            f"/items/{item_id}", fetch_datasheet(conn, item_id).replace("Gespeichert – ", "")
+        )
+
+    # --- Typen (TYP-001 …) --------------------------------------------------------
+
+    @app.get("/typen", response_class=HTMLResponse)
+    def types_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "types.html", types=itemtypes.all_types(conn))
+
+    @app.post("/typen")
+    def create_type(conn: Conn, name: Annotated[str, Form()]) -> RedirectResponse:
+        t = itemtypes.get(conn, itemtypes.create(conn, name))
+        return redirect("/typen", f"Typ {t['code']} „{t['name']}“ angelegt")
+
+    @app.get("/typen/{type_id}", response_class=HTMLResponse)
+    def type_page(request: Request, type_id: int, conn: Conn) -> HTMLResponse:
+        t = itemtypes.get(conn, type_id)
+        rows = [{**dict(i), "path": repo.path_label(conn, i["container_id"])}
+                for i in itemtypes.items_of(conn, type_id)]  # fmt: skip
+        return render(request, conn, "type.html", t=t, items=rows)
+
+    @app.post("/typen/{type_id}/rename")
+    def rename_type(type_id: int, conn: Conn, name: Annotated[str, Form()]) -> RedirectResponse:
+        itemtypes.rename(conn, type_id, name)
+        return redirect(f"/typen/{type_id}", "Umbenannt")
+
+    @app.post("/typen/{type_id}/delete")
+    def delete_type(type_id: int, conn: Conn) -> RedirectResponse:
+        itemtypes.delete(conn, type_id)
+        return redirect("/typen", "Typ gelöscht")
 
     @app.post("/items/{item_id}/delete")
     def delete_item(item_id: int, conn: Conn) -> RedirectResponse:
