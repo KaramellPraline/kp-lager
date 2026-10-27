@@ -25,6 +25,7 @@ from app import (
     kasten,
     kinds,
     labels,
+    materials,
     notes,
     photos,
     prefs,
@@ -97,8 +98,8 @@ def container_code(raw: str) -> str | None:
     norm = codes.normalize(raw)
     if norm is None:
         raise LagerError(f"'{raw}' passt nicht zum Code-Schema (z. B. EUR-001)")
-    if norm.startswith(codes.ITEM_PREFIX):
-        raise LagerError("ART-Codes sind für Gegenstände, nicht für Behälter")
+    if norm[:3] in codes.ITEM_PREFIXES:
+        raise LagerError(f"{norm[:3]}-Codes sind für Teile, nicht für Behälter")
     return norm
 
 
@@ -288,7 +289,7 @@ def create_app(settings: Settings) -> FastAPI:
             raise HTTPException(404, f"Typ {code} gibt es nicht")
         if prefix is None:
             raise HTTPException(404, f"'{code}' passt nicht zum Code-Schema (z. B. EUR-001)")
-        template = "new_item_code.html" if prefix == codes.ITEM_PREFIX else "new_code.html"
+        template = "new_item_code.html" if prefix in codes.ITEM_PREFIXES else "new_code.html"
         return render(
             request,
             conn,
@@ -350,7 +351,28 @@ def create_app(settings: Settings) -> FastAPI:
             open_takes=withdrawals.open_for_item(conn, item_id),
             item_type=itemtypes.get(conn, item["type_id"]) if item["type_id"] else None,
             sheet_search=datasheets.search_url(item["model"]) if item["model"] else "",
+            spec_sheet=materials.sheet(item, kinds.lang(conn) == "en"),
+            unit_price=materials.unit_price(item),
+            specs=materials.specs(item),
+            spec_fields=materials.FIELDS.get(item["material"] or "", ()),
+            spec_groups=materials.GROUPS,
         )
+
+    @app.post("/items/{item_id}/specs")
+    async def item_specs(request: Request, item_id: int, conn: Conn) -> RedirectResponse:
+        form = {k: str(v) for k, v in (await request.form()).items()}
+        repo.get_item(conn, item_id)
+        materials.save_specs(conn, item_id, form.get("material", ""), form)
+        return redirect(f"/items/{item_id}#datenblatt", "Eigenschaften gespeichert")
+
+    @app.get("/material", response_class=HTMLResponse)
+    def material_page(request: Request, conn: Conn) -> HTMLResponse:
+        rows = [
+            {"item": i, "specs": materials.specs(i), "unit_price": materials.unit_price(i),
+             "path": repo.path_label(conn, i["container_id"])}
+            for i in materials.all_materials(conn)
+        ]  # fmt: skip
+        return render(request, conn, "material.html", rows=rows, names=materials.MATERIALS)
 
     @app.get("/suche", response_model=None)
     def search(request: Request, conn: Conn, q: str = "") -> Response:
@@ -971,8 +993,10 @@ def create_app(settings: Settings) -> FastAPI:
                 elif node := repo.get_container_by_code(conn, norm):
                     repo.move_container(conn, node["id"], dest["id"])
                     msg = f"„{node['name']}“ eingeräumt"
-                elif codes.prefix_of(norm) == codes.ITEM_PREFIX and name:
-                    repo.add_item(conn, dest["id"], name, code=norm)
+                elif (prefix := codes.prefix_of(norm)) in codes.ITEM_PREFIXES and name:
+                    new_id = repo.add_item(conn, dest["id"], name, code=norm)
+                    if material := materials.PREFIX_MATERIAL.get(prefix or ""):
+                        materials.save_specs(conn, new_id, material, {})
                     msg = f"„{name}“ neu angelegt"
                 else:
                     raise LagerError(f"{norm} ist noch nicht angelegt")
@@ -1345,13 +1369,15 @@ def create_app(settings: Settings) -> FastAPI:
         qty: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         norm = codes.normalize(code)
-        if norm is None or not norm.startswith(codes.ITEM_PREFIX):
-            raise LagerError(f"'{code}' ist kein Gegenstands-Code (ART-0001)")
+        if norm is None or norm[:3] not in codes.ITEM_PREFIXES:
+            raise LagerError(f"'{code}' ist kein Teile-Code (ART-0001, FIL-001, RES-001)")
         if not name.strip():
             raise LagerError("Name fehlt")
         need_node(conn, container_id)
         item_id = repo.add_item(conn, container_id, name, qty=opt_int(qty), code=norm)
-        codes.mark_used_until(conn, codes.ITEM_PREFIX, int(norm[4:]))
+        codes.mark_used_until(conn, norm[:3], int(norm[4:]))
+        if material := materials.PREFIX_MATERIAL.get(norm[:3]):
+            materials.save_specs(conn, item_id, material, {})
         return redirect(f"/items/{item_id}", f"„{name.strip()}“ angelegt")
 
     @app.post("/items/{item_id}/code")
@@ -1361,7 +1387,9 @@ def create_app(settings: Settings) -> FastAPI:
         if remove:
             repo.set_item_code(conn, item_id, None)
             return redirect(f"/items/{item_id}", "Code entfernt")
-        code = codes.reserve(conn, codes.ITEM_PREFIX, 1)[0]
+        material = repo.get_item(conn, item_id)["material"]
+        prefix = materials.MATERIALS[material][2] if material else codes.ITEM_PREFIX
+        code = codes.reserve(conn, prefix, 1)[0]
         repo.set_item_code(conn, item_id, code)
         return redirect(f"/items/{item_id}", f"Code {code} vergeben")
 
@@ -1390,8 +1418,15 @@ def create_app(settings: Settings) -> FastAPI:
         new_type: Annotated[str, Form()] = "",
         model: Annotated[str, Form()] = "",
         datasheet_url: Annotated[str, Form()] = "",
+        order_url: Annotated[str, Form()] = "",
+        price: Annotated[str, Form()] = "",
+        material: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         before = repo.get_item(conn, item_id)
+        if material != (before["material"] or ""):
+            materials.save_specs(conn, item_id, material, {
+                f"spec_{k}": v for k, v in materials.specs(before).items()
+            })  # fmt: skip
         repo.update_item(
             conn,
             item_id,
@@ -1400,6 +1435,8 @@ def create_app(settings: Settings) -> FastAPI:
             type_id=itemtypes.resolve(conn, type_id, new_type),
             model=model.strip(),
             datasheet_url=datasheet_url.strip(),
+            order_url=order_url.strip(),
+            price=materials.parse_price(price),
             qty=opt_int(qty),
             qty_hint=qty_hint.strip(),
             unit=unit.strip(),

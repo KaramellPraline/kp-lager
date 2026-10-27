@@ -51,9 +51,35 @@
   </form>
   {% endif %}
 
-  {% if item.model or item.datasheet %}
-  <div class="card">
+  {% if item.order_url or item.price is not none %}
+  <div class="card title-row">
+    <span>{% if item.price is not none %}<b>{{ '%.2f'|format(item.price)|replace('.', ',') }} €</b>{% if unit_price %} · {{ unit_price }}{% endif %}{% endif %}</span>
+    {% if item.order_url %}<a class="button" href="{{ item.order_url }}" target="_blank" rel="noopener">{{ icon('content.shopping', size='sm') }} Nachbestellen</a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% if item.model or item.datasheet or item.material %}
+  <div class="card" id="datenblatt">
     <h2 style="margin-top:0">Datenblatt</h2>
+    {% for group, rows in spec_sheet %}
+    <h3>{{ group }}</h3>
+    <dl class="specs">{% for label, value in rows %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
+    {% endfor %}
+    {% if item.material %}
+    <details {% if not spec_sheet %}open{% endif %}>
+      <summary>{{ icon('action.edit', size='sm') }} Eigenschaften bearbeiten</summary>
+      <form method="post" action="/items/{{ item.id }}/specs" class="stack">
+        <input type="hidden" name="material" value="{{ item.material }}">
+        {% for gkey, glabels in spec_groups.items() %}{% set fs = spec_fields|selectattr('group', 'equalto', gkey)|list %}{% if fs %}
+        <h3>{{ glabels[0] }}</h3>
+        <div class="spec-grid">{% for f in fs %}
+          <label>{{ f.de }}{% if f.unit %} ({{ f.unit }}){% endif %}
+            <input name="spec_{{ f.key }}" value="{{ specs.get(f.key, '') }}" placeholder="{{ f.hint }}" {% if f.unit and f.unit not in ('',) and f.key not in ('shore',) %}inputmode="decimal"{% endif %}></label>
+        {% endfor %}</div>{% endif %}{% endfor %}
+        <button class="primary">{{ icon('action.save', size='sm') }} Eigenschaften speichern</button>
+      </form>
+    </details>
+    {% endif %}
     {% if item.datasheet %}
     <a class="button primary" href="/datasheets/{{ item.datasheet }}" target="_blank">{{ icon('content.document', size='sm') }} Datenblatt öffnen (PDF)</a>
     {% elif item.datasheet_url %}
@@ -108,6 +134,16 @@
         <label>Modellnummer <input name="model" value="{{ item.model }}" placeholder="z. B. ESP32-WROOM-32E"></label>
         <label>Datenblatt-URL (PDF) <input name="datasheet_url" value="{{ item.datasheet_url }}" inputmode="url" placeholder="https://…"></label>
       </div>
+      <div class="row">
+        <label>Bestell-Link <input name="order_url" value="{{ item.order_url }}" inputmode="url" placeholder="https://…"></label>
+        <label>Preis (€) <input name="price" value="{{ '%.2f'|format(item.price) if item.price is not none else '' }}" inputmode="decimal" placeholder="z. B. 19,99"></label>
+      </div>
+      <label>Material (3D-Druck)
+        <select name="material">
+          <option value="" {% if not item.material %}selected{% endif %}>– kein –</option>
+          <option value="fil" {% if item.material == 'fil' %}selected{% endif %}>Filament (FIL)</option>
+          <option value="res" {% if item.material == 'res' %}selected{% endif %}>UV-Harz (RES)</option>
+        </select></label>
       <div class="row">
         <label>Anzahl <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="leer = ungezählt" inputmode="numeric"></label>
         <label>Einheit <input name="unit" value="{{ item.unit }}" placeholder="Stk"></label>

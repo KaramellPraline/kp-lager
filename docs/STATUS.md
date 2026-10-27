@@ -38,6 +38,7 @@ Stand: 2026-10-26
 - [x] **M14 Etiketten**: Export immer XLSX; A4 als eigene Seite mit Auswahl aus allen etikettierten Teilen.
 - [x] **M15 Lokale KI** (Gateway Chat): Teil vollständig ausfüllen ohne Haiku; „An lokale KI senden“ neben jedem Prompt-Kopieren; kompakter Prompt für lokale Modelle inkl. dynamischer Typen; alle KI-Ergebnisse mit Flag „zu prüfen“ → Tab „Freigaben“ unter Mehr (freigeben/ändern).
 - [x] **M16 Sprach-Tab** in der unteren Leiste: langes Diktat + Dauer-Aufnahme Teil für Teil, getrennt durch „weiter“ oder Knopf → Einträge in „Zu sortieren“.
+- [x] **M22 3D-Druck-Material**: FIL (Filament) und RES (UV-Harz) als Teile-Codes; Datenblatt mit Druck-, Trocknungs- und Mechanik-Eigenschaften; Bestell-Link + Preis (€/kg, €/l) für alle Teile; Übersicht Mehr → Filament & Harz.
 - [x] **M21 Scannen**: Piepton bei erfasstem Code (Einstellung), Doppeltipp auf Einräumen = Sammelmodus (Überkategorie, dann beliebig viele Teile, neue ART-Etiketten mit Name, erst bei Bestätigen eingeräumt).
 - [x] **M20 Codes-Seite** unter Mehr (Name ohne Schrägstrich + Beschreibung), Sprache DE/EN zentral unter Mehr.
 - [x] **M19 Neues Code-Schema** (20 Arten in 5 Gruppen, englische Schlüssel, Namen DE/EN per Einstellung, STA→TBX, EIN→BIN, Typen immer klein).

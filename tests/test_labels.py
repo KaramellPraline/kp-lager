@@ -155,7 +155,10 @@ def test_sortierkasten_labels_one_per_item(client: TestClient) -> None:
 def test_next_code_button_and_invalid_codes(client: TestClient) -> None:
     box = node_of(client.post("/containers", data={"name": "Box", "kind": "eurobox"}))
     assert "Code EUR-001 vergeben" in client.post(f"/n/{box}/code").text
-    for code, msg in (("ART-0001", "für Gegenstände"), ("0042", "passt nicht zum Code-Schema")):
+    for code, msg in (
+        ("ART-0001", "für Teile, nicht für Behälter"),
+        ("0042", "passt nicht zum Code-Schema"),
+    ):
         r = client.post(
             "/containers",
             data={"name": "X", "kind": "kiste", "code": code},

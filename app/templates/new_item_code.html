@@ -2,10 +2,10 @@
 {% block title %}Neues Teil {{ code }}{% endblock %}
 {% block content %}
 <h1>Etikett {{ code }} ist noch frei</h1>
-<p>Neuen Gegenstand mit diesem Code anlegen:</p>
+<p>{% if code.startswith('FIL') %}Neue Filament-Spule{% elif code.startswith('RES') %}Neue Flasche UV-Harz{% else %}Neuen Gegenstand{% endif %} mit diesem Code anlegen{% if code[:3] in ('FIL', 'RES') %} – Eigenschaften danach im Datenblatt eintragen{% endif %}:</p>
 <form method="post" action="/items/new" class="stack">
   <input type="hidden" name="code" value="{{ code }}">
-  <input name="name" placeholder="Name, z. B. Akkuschrauber" required autofocus>
+  <input name="name" placeholder="{{ 'Name, z. B. PETG schwarz' if code[:3] in ('FIL', 'RES') else 'Name, z. B. Akkuschrauber' }}" required autofocus>
   <input name="qty" placeholder="Anzahl (optional)" inputmode="numeric">
   <label>Liegt in
     <select name="container_id" required>

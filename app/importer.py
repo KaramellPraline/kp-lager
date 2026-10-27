@@ -54,7 +54,7 @@ def validate(conn: sqlite3.Connection, data: list[dict[str, Any]], report: Repor
     codes = [_str(c.get("code")) for c in data]
     for raw in codes:
         norm = code_schema.normalize(raw) if raw else None
-        if raw and (norm is None or norm.startswith(code_schema.ITEM_PREFIX)):
+        if raw and (norm is None or norm[:3] in code_schema.ITEM_PREFIXES):
             report.errors.append(f"Code {raw} passt nicht zum Schema (z. B. EUR-001)")
     for i, c in enumerate(data, 1):
         label = f"Behälter {codes[i - 1] or '#' + str(i)}"

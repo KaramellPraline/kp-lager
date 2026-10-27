@@ -8,6 +8,8 @@ import re
 import sqlite3
 
 ITEM_PREFIX = "ART"
+# Präfixe für Teile (nicht Behälter): ART allgemein, FIL Filament, RES UV-Harz
+ITEM_PREFIXES = (ITEM_PREFIX, "FIL", "RES")
 TYPE_PREFIX = "TYP"  # Typen/Kategorien von Teilen (item_type)
 # Präfix -> Art (None = Teil/Typ), Präfix -> Name, Art -> Präfix; gefüllt von app.kinds
 PREFIX_KIND: dict[str, str | None] = {}

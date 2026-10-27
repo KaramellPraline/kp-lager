@@ -192,7 +192,7 @@
     fetch("/api/code/" + encodeURIComponent(code)).then(function (r) { return r.json(); }).then(function (d) {
       if (d.type === "item" || d.type === "container") {
         pending.push({ code: d.code, name: d.name, isNew: false });
-      } else if (d.prefix === "ART") {
+      } else if (["ART", "FIL", "RES"].indexOf(d.prefix) >= 0) {
         pending.push({ code: d.code, name: "", isNew: true });
       } else { note(code + " ist noch nicht angelegt", false); return; }
       render(); beep(true);

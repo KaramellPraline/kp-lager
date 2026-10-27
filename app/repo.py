@@ -323,11 +323,11 @@ def move_item(conn: sqlite3.Connection, item_id: int, container_id: int) -> None
         )
 
 
-def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | None) -> None:
+def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | float | None) -> None:
     allowed = {
         "name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list",
         "full_name", "type_id", "model", "datasheet_url", "datasheet", "review", "archived",
-        "ai_backup",
+        "ai_backup", "order_url", "price",
     }  # fmt: skip
     if not fields or not set(fields) <= allowed:
         raise LagerError(f"Erlaubte Felder: {sorted(allowed)}")
