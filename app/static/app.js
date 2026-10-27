@@ -181,4 +181,60 @@
     var btn = form.querySelector("button");
     if (btn) { btn.disabled = true; btn.textContent = form.dataset.busy; }
   });
+
+  // Sprach-Tab „Teil für Teil“: eine Mikrofon-Sitzung, Abschnitte per Weiter-Knopf,
+  // im Text zusätzlich am gesprochenen „weiter“ getrennt (serverseitig).
+  document.addEventListener("DOMContentLoaded", function () {
+    var start = document.getElementById("cont-start");
+    if (!start) return;
+    var next = document.getElementById("cont-next"), stop = document.getElementById("cont-stop");
+    var state = document.getElementById("cont-state"), log = document.getElementById("cont-log");
+    var stream = null, rec = null, finishing = false, pending = 0, total = 0;
+    function setButtons(on) { start.disabled = on; next.disabled = !on; stop.disabled = !on; }
+    function upload(blob) {
+      if (!blob.size) return;
+      pending++; state.textContent = "Erkenne …";
+      var f = new FormData();
+      f.append("audio", blob, "teil.webm");
+      fetch("/api/sprache/segment", { method: "POST", body: f })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          log.hidden = false;
+          (d.items || []).forEach(function (name) {
+            var li = document.createElement("li"); li.className = "item";
+            li.innerHTML = '<span class="ic tone-ok">check_circle</span><span class="name"></span>';
+            li.querySelector(".name").textContent = name; log.prepend(li); total++;
+          });
+          if (!d.ok) state.textContent = d.msg;
+        })
+        .finally(function () {
+          pending--;
+          if (!pending) state.textContent = (rec ? "Aufnahme läuft · " : "") + total + " Teile erfasst";
+        });
+    }
+    function record() {
+      var chunks = [];
+      rec = new MediaRecorder(stream);
+      rec.ondataavailable = function (e) { if (e.data.size) chunks.push(e.data); };
+      rec.onstop = function () {
+        upload(new Blob(chunks, { type: rec.mimeType }));
+        if (finishing) {
+          stream.getTracks().forEach(function (t) { t.stop(); });
+          stream = null; rec = null; setButtons(false);
+        } else { record(); }
+      };
+      rec.start();
+      state.textContent = "Aufnahme läuft · " + total + " Teile erfasst";
+    }
+    start.addEventListener("click", function () {
+      if (!navigator.mediaDevices || !window.MediaRecorder || !window.isSecureContext) {
+        alert("Aufnahme braucht HTTPS (Zertifikat installiert?)."); return;
+      }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (s) {
+        stream = s; finishing = false; setButtons(true); record();
+      }).catch(function () { alert("Kein Zugriff aufs Mikrofon"); });
+    });
+    next.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); });
+    stop.addEventListener("click", function () { finishing = true; if (rec) rec.stop(); });
+  });
 })();

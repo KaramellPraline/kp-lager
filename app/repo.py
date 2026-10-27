@@ -583,3 +583,23 @@ def containers_by_ids(conn: sqlite3.Connection, ids: list[int]) -> list[Row]:
 
 def favorites(conn: sqlite3.Connection) -> list[Row]:
     return conn.execute("SELECT * FROM container WHERE favorite = 1 ORDER BY name").fetchall()
+
+
+# --- Eingang „Zu sortieren“ ----------------------------------------------------------
+
+INBOX_NAME = "Zu sortieren"
+
+
+def inbox(conn: sqlite3.Connection) -> int:
+    """Eingangs-Behälter für Teile ohne Ort (Sprach-Erfassung); wird bei Bedarf angelegt."""
+    row = conn.execute("SELECT value FROM meta WHERE key = 'inbox_id'").fetchone()
+    if row and get_container(conn, int(row["value"])) is not None:
+        return int(row["value"])
+    cid = create_container(conn, INBOX_NAME, "sonstiges", notes="Eingang: Teile ohne festen Ort")
+    with conn:
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('inbox_id', ?)"
+            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (str(cid),),
+        )
+    return cid

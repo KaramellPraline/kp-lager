@@ -610,7 +610,60 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/sprache", response_class=HTMLResponse)
     def voice_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(request, conn, "sprache.html", notes=note_rows(conn))
+        inbox_id = repo.inbox(conn)
+        return render(
+            request,
+            conn,
+            "sprache.html",
+            notes=note_rows(conn),
+            n_inbox=len(repo.items_in(conn, inbox_id)),
+        )
+
+    @app.post("/api/sprache/segment")
+    async def voice_segment(audio: UploadFile, conn: Conn) -> JSONResponse:
+        """Dauer-Aufnahme Teil für Teil: Abschnitt erkennen, an „weiter“ trennen, in den Eingang."""
+        if not settings.whisper_url:
+            return JSONResponse({"ok": False, "msg": "Kein Sprachdienst konfiguriert"}, 503)
+        data = await audio.read()
+        if not data:
+            return JSONResponse({"ok": True, "text": "", "items": []})
+        try:
+            text = await speech_to_text(
+                conn, data, audio.filename or "teil.webm", audio.content_type
+            )
+        except httpx.HTTPError as exc:
+            return JSONResponse({"ok": False, "msg": f"Whisper nicht erreichbar: {exc}"}, 502)
+        inbox_id = repo.inbox(conn)
+        added = []
+        for part in quick.split_weiter(text):
+            for amount, unit, name in entries(conn, part):
+                if not name:
+                    continue
+                repo.add_item(conn, inbox_id, name, qty=amount, unit=unit,
+                              code=codes.new_item_code(conn))  # fmt: skip
+                added.append(" ".join(x for x in (str(amount or ""), unit, name) if x))
+        return JSONResponse({"ok": True, "text": text, "items": added})
+
+    @app.get("/zu-sortieren", response_class=HTMLResponse)
+    def inbox_page(request: Request, conn: Conn) -> HTMLResponse:
+        inbox_id = repo.inbox(conn)
+        return render(
+            request,
+            conn,
+            "inbox.html",
+            items=repo.items_in(conn, inbox_id),
+            targets=[p for p in repo.all_paths(conn) if p["id"] != inbox_id],
+            target=last_target(request),
+        )
+
+    @app.post("/zu-sortieren/{item_id}/move")
+    def inbox_move(item_id: int, conn: Conn, target: Annotated[int, Form()]) -> RedirectResponse:
+        repo.move_item(conn, item_id, need_node(conn, target)["id"])
+        return redirect(
+            "/zu-sortieren",
+            f"Einsortiert nach {repo.path_label(conn, target)}",
+            repo.last_event_id(conn),
+        )
 
     def note_rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
         return [

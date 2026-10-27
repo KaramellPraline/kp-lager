@@ -9,6 +9,21 @@
   <button type="button" class="primary" data-start-note {% if not VOICE %}disabled{% endif %}>{{ icon('media.dictate') }} Langes Diktat starten</button>
 </section>
 
+<section class="card stack" id="dauer">
+  <div class="title-row">
+    <b>Teil für Teil</b>
+    <a href="/zu-sortieren" class="chip">{{ icon('content.inbox', size='xs') }} Zu sortieren · {{ n_inbox }}</a>
+  </div>
+  <p class="meta" style="margin:0">Starten, ein Teil nennen, „weiter“ sagen oder Weiter tippen – das nächste. Alles landet in „Zu sortieren“.</p>
+  <div class="row">
+    <button type="button" class="primary" id="cont-start" {% if not VOICE %}disabled{% endif %}>{{ icon('media.mic', size='sm') }} Starten</button>
+    <button type="button" id="cont-next" disabled>{{ icon('nav.forward', size='sm') }} Weiter</button>
+    <button type="button" id="cont-stop" disabled>{{ icon('media.stop', size='sm') }} Fertig</button>
+  </div>
+  <p class="meta" id="cont-state" style="margin:0"></p>
+  <ul class="list" id="cont-log" hidden></ul>
+</section>
+
 <h2 id="aufnahmen">Aufnahmen ({{ notes|length }})</h2>
 {% for n in notes %}
 <section class="card note">

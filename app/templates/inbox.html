@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Zu sortieren · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Zu sortieren</h1>
+<p class="meta">Teile ohne festen Ort, z. B. aus der Sprach-Erfassung. Ort wählen und einsortieren, oder mit der lokalen KI ergänzen.</p>
+{% for i in items %}
+<section class="card">
+  <div class="title-row">
+    <a href="/items/{{ i.id }}"><b>{{ i.name }}</b></a>
+    <span class="chip">{% if i.qty is not none %}{{ i.qty }} {{ i.unit }}{% else %}{{ i.qty_hint or 'ungezählt' }}{% endif %}</span>
+  </div>
+  <form method="post" action="/zu-sortieren/{{ i.id }}/move" class="add-item">
+    <select name="target" aria-label="Ort für {{ i.name }}">
+      {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+    </select>
+    <button class="primary">{{ icon('action.move', size='sm') }} Einsortieren</button>
+  </form>
+  {% if AI %}<form method="post" action="/items/{{ i.id }}/ai" data-busy="KI arbeitet …"><button>{{ icon('action.ai', size='sm') }} Mit lokaler KI ergänzen</button></form>{% endif %}
+</section>
+{% else %}<p class="empty">Alles einsortiert.</p>{% endfor %}
+{% endblock %}
