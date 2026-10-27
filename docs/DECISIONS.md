@@ -49,3 +49,6 @@
 | 2026-10-26 | Diktat mit „und“/Komma vor einer Zahl wird in mehrere Teile getrennt | Natürliche Spracheingabe „3 Rollen Lötzinn und 50 M3 Muttern“. |
 | 2026-10-26 | Spracheingabe jetzt über Gateway-Port 8766 (`http://127.0.0.1:8766`) | User: Whisper-Gateway umgezogen; 127.0.0.1 statt localhost (eindeutig IPv4, kein Token). |
 | 2026-10-26 | Admin-Tab: Zähler je Präfix setzen/zurücksetzen, Codes einzeln von Objekten lösen; nie unter höchste vergebene Nummer | Fehler korrigierbar, ohne doppelte Codes zu riskieren. |
+| 2026-10-27 | Design: Crimson Night Core (Artifact JHToaeZoynmKmu53rCfFU4), Icons nur über Rollen, Fonts lokal gebündelt | User-Vorgabe; App läuft offline im LAN. |
+| 2026-10-27 | Datenblatt: PDF wird von einer eingetragenen/KI-vorgeschlagenen URL automatisch lokal gespeichert, plus Such-Link | Keine kostenlose Datenblatt-API ohne neues Konto. |
+| 2026-10-27 | Entnahme: gezählte Teile sofort −Menge, Storno stellt her, Bestätigung nach 7 Tagen automatisch; ungezählte → „entnommen“, nach 7 Tagen archiviert (nicht gelöscht) | Fehlerfrei rückgängig machbar, nichts geht verloren. |
