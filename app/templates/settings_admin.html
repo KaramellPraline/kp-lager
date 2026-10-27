@@ -45,4 +45,23 @@ Nummern (z. B. gedruckte Vorrats-Etiketten) wieder frei – diese Etiketten kön
   {% endif %}
 </section>
 {% endfor %}
+<section class="card" id="api">
+  <h2 style="margin-top:0">API-Schlüssel (CLI, MCP)</h2>
+  <p class="meta">Suchen und Lesen über <code>/api/v1</code> geht ohne Schlüssel. Schreiben (Teile anlegen, entnehmen, umlagern, importieren) nur mit Schlüssel im Header <code>X-API-Key</code>.</p>
+  {% if new_key %}
+  <div class="msg"><b>Neuer Schlüssel – jetzt kopieren, er wird nicht wieder angezeigt:</b>
+    <textarea id="new-key" readonly rows="2" style="margin-top:6px">{{ new_key }}</textarea>
+    <button type="button" class="copy" data-target="new-key">{{ icon('action.copy', size='sm') }} Kopieren</button></div>
+  {% endif %}
+  <ul class="list" style="margin:8px 0">
+    {% for k in keys %}
+    <li class="item"><span class="name">{{ k.name }}<small style="display:block">angelegt {{ k.created_at[:16] }}{% if k.last_used %} · zuletzt {{ k.last_used[:16] }}{% else %} · nie benutzt{% endif %}</small></span>
+      <form method="post" action="/settings/admin/keys/{{ k.id }}/delete" onsubmit="return confirm('Schlüssel {{ k.name }} löschen?')"><button class="danger">{{ icon('action.delete', size='sm') }} Löschen</button></form></li>
+    {% else %}<li class="empty">Noch keine Schlüssel.</li>{% endfor %}
+  </ul>
+  <form method="post" action="/settings/admin/keys" class="add-item">
+    <input name="name" placeholder="Name, z. B. Claude Code" required>
+    <button class="primary">{{ icon('system.lock', size='sm') }} Schlüssel erzeugen</button>
+  </form>
+</section>
 {% endblock %}

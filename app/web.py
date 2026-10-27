@@ -14,6 +14,8 @@ from fastapi.templating import Jinja2Templates
 
 from app import (
     ai,
+    api,
+    apikeys,
     backup,
     codes,
     datasheets,
@@ -125,6 +127,7 @@ def create_app(settings: Settings) -> FastAPI:
             conn.close()
 
     Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
+    app.include_router(api.build_router(get_conn))
 
     @app.exception_handler(LagerError)
     def lager_error(request: Request, exc: LagerError) -> RedirectResponse:
@@ -554,6 +557,11 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/settings/admin", response_class=HTMLResponse)
     def admin_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render_admin(request, conn, new_key=None)
+
+    def render_admin(
+        request: Request, conn: sqlite3.Connection, new_key: str | None
+    ) -> HTMLResponse:
         counters = [
             {
                 "prefix": p,
@@ -565,7 +573,26 @@ def create_app(settings: Settings) -> FastAPI:
             }
             for p, label in codes.PREFIX_LABELS.items()
         ]
-        return render(request, conn, "settings_admin.html", counters=counters)
+        return render(
+            request,
+            conn,
+            "settings_admin.html",
+            counters=counters,
+            keys=apikeys.all_keys(conn),
+            new_key=new_key,
+        )
+
+    @app.post("/settings/admin/keys", response_class=HTMLResponse)
+    def admin_create_key(
+        request: Request, conn: Conn, name: Annotated[str, Form()]
+    ) -> HTMLResponse:
+        """Neuen API-Schlüssel erzeugen und genau einmal anzeigen (nie in der URL)."""
+        return render_admin(request, conn, new_key=apikeys.create(conn, name))
+
+    @app.post("/settings/admin/keys/{key_id}/delete")
+    def admin_delete_key(key_id: int, conn: Conn) -> RedirectResponse:
+        apikeys.delete(conn, key_id)
+        return redirect("/settings/admin#api", "Schlüssel gelöscht")
 
     @app.post("/settings/admin/next")
     def admin_set_next(
