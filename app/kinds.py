@@ -18,8 +18,10 @@ class Kind(NamedTuple):
     key: str
     prefix: str | None  # None = Strukturteil ohne eigenen Code (Ebene, Fach)
     group: str
-    de: str
+    de: str  # ein Name, kurz, ohne Schrägstrich (steht in Auswahllisten)
     en: str
+    desc_de: str = ""  # Beschreibung nur auf der Codes-Seite
+    desc_en: str = ""
 
 
 GROUPS = {
@@ -31,31 +33,164 @@ GROUPS = {
     "item": ("Gegenstände & Kategorien", "Items & System Classification"),
 }
 BUILTIN = (
-    Kind("room", "RAU", "loc", "Raum", "Room"),
-    Kind("shelf", "REG", "loc", "Regal", "Shelf / Racking"),
-    Kind("workbench", "WBA", "loc", "Werkbank", "Workbench"),
-    Kind("wall", "WAL", "loc", "Lochwand / Werkzeugwand", "Wall / Pegboard"),
-    Kind("drawer", "DRW", "loc", "Schubladenelement / Schrank", "Drawer Unit"),
-    Kind("level", None, "loc", "Ebene", "Level"),
-    Kind("toolbox", "TBX", "box", "Werkzeugbox / Kistenberg Pro", "Tool Box"),
-    Kind("case", "MCF", "box", "Maschinenkoffer", "Machine Case"),
-    Kind("module", "MOD", "box", "Modulbox / Stapelbox", "Modular Box"),
-    Kind("sortingbox", "SOR", "box", "Sortierkasten", "Sorting Box"),
-    Kind("eurobox", "EUR", "box", "Eurobox", "Eurobox"),
-    Kind("crate", "KIS", "box", "Kiste (groß)", "Crate / Large Box"),
-    Kind("box", "BOX", "box", "Box", "Box"),
-    Kind("bin", "BIN", "box", "Einsatz / Sichtlagerbox", "Bin / Insert"),
-    Kind("compartment", None, "box", "Fach", "Compartment"),
-    Kind("consumables", "CNS", "mat", "Verbrauchsmaterial", "Consumables"),
-    Kind("raw", "RAW", "mat", "Rohmaterial", "Raw Material"),
-    Kind("cables", "CBL", "mat", "Kabel & Leitungen", "Cables & Wire"),
-    Kind("components", "CMP", "mat", "Elektronikbauteile", "Electronic Components"),
-    Kind("ppe", "PPE", "ppe", "Schutzausrüstung (PSA)", "Personal Protective Equipment"),
+    Kind("room", "RAU", "loc", "Raum", "Room", "Raum oder Bereich", "Room or area"),
+    Kind("shelf", "REG", "loc", "Regal", "Shelf", "Regal, Schwerlastregal", "Shelf or racking"),
+    Kind(
+        "workbench",
+        "WBA",
+        "loc",
+        "Werkbank",
+        "Workbench",
+        "Werkbank mit Ablagen",
+        "Workbench with storage",
+    ),
+    Kind(
+        "wall",
+        "WAL",
+        "loc",
+        "Lochwand",
+        "Pegboard",
+        "Lochwand oder Werkzeugwand",
+        "Wall or pegboard for tools",
+    ),
+    Kind(
+        "drawer",
+        "DRW",
+        "loc",
+        "Schubladenschrank",
+        "Drawer Unit",
+        "Schubladenelement oder Schrank",
+        "Drawer unit or cabinet",
+    ),
+    Kind(
+        "level",
+        None,
+        "loc",
+        "Ebene",
+        "Level",
+        "Regalebene, ohne eigenen Code",
+        "Shelf level, no own code",
+    ),
+    Kind(
+        "toolbox",
+        "TBX",
+        "box",
+        "Werkzeugbox",
+        "Tool Box",
+        "Werkzeugbox, z. B. Kistenberg Pro",
+        "Tool box, e.g. Kistenberg Pro",
+    ),
+    Kind(
+        "case",
+        "MCF",
+        "box",
+        "Maschinenkoffer",
+        "Machine Case",
+        "Koffer einer Maschine",
+        "Case of a power tool or machine",
+    ),
+    Kind(
+        "module",
+        "MOD",
+        "box",
+        "Modulbox",
+        "Modular Box",
+        "Modulbox oder Stapelbox",
+        "Modular or stackable box",
+    ),
+    Kind(
+        "sortingbox",
+        "SOR",
+        "box",
+        "Sortierkasten",
+        "Sorting Box",
+        "Sortierkasten für Kleinteile, mit Fächern oder Einsätzen",
+        "Sorting box for small parts, with compartments or bins",
+    ),
+    Kind(
+        "eurobox",
+        "EUR",
+        "box",
+        "Eurobox",
+        "Eurobox",
+        "Standardisierte Eurobox",
+        "Standard Euro container",
+    ),
+    Kind("crate", "KIS", "box", "Kiste", "Crate", "Grobe oder große Kiste", "Crate or large box"),
+    Kind("box", "BOX", "box", "Box", "Box", "Allgemeine Box", "General box"),
+    Kind(
+        "bin",
+        "BIN",
+        "box",
+        "Einsatz",
+        "Bin",
+        "Kleiner Einsatz oder Sichtlagerbox",
+        "Small insert or visible storage bin",
+    ),
+    Kind(
+        "compartment",
+        None,
+        "box",
+        "Fach",
+        "Compartment",
+        "Fach im Sortierkasten, ohne eigenen Code",
+        "Compartment of a sorting box, no own code",
+    ),
+    Kind(
+        "consumables",
+        "CNS",
+        "mat",
+        "Verbrauchsmaterial",
+        "Consumables",
+        "Schrauben, Dübel, Kleber, Tape",
+        "Screws, anchors, glue, tape",
+    ),
+    Kind(
+        "raw",
+        "RAW",
+        "mat",
+        "Rohmaterial",
+        "Raw Material",
+        "Holzleisten, Metallprofile, Rohre",
+        "Wood strips, metal profiles, pipes",
+    ),
+    Kind(
+        "cables",
+        "CBL",
+        "mat",
+        "Kabel",
+        "Cables",
+        "Kabel, Stecker, Kabelbinder",
+        "Cables, connectors, cable ties",
+    ),
+    Kind(
+        "components",
+        "CMP",
+        "mat",
+        "Elektronikbauteile",
+        "Components",
+        "Elektronikbauteile, Platinen, Sensoren",
+        "Electronic components, boards, sensors",
+    ),
+    Kind(
+        "ppe",
+        "PPE",
+        "ppe",
+        "Schutzausrüstung",
+        "Protective Equipment",
+        "Schutzbrille, Gehörschutz, Handschuhe, Masken",
+        "Safety glasses, hearing protection, gloves, masks",
+    ),
 )
 ITEM_LABELS = {
-    codes.ITEM_PREFIX: ("Gegenstand / Werkzeug", "Article / Item"),
-    codes.TYPE_PREFIX: ("Typ (immer klein, z. B. makita)", "Type (always lowercase, e.g. makita)"),
-}
+    codes.ITEM_PREFIX: (
+        "Gegenstand", "Item", "Einzelner Gegenstand oder Werkzeug", "Single article or tool"
+    ),
+    codes.TYPE_PREFIX: (
+        "Typ", "Type", "Kategorie, immer kleingeschrieben, z. B. makita, handwerkzeug",
+        "Category, always lowercase, e.g. makita, hand tool",
+    ),
+}  # fmt: skip
 # Behälter, in die man direkt Teile legt (für „Freie Plätze“)
 STORAGE = ("toolbox", "case", "module", "eurobox", "crate", "box", "consumables", "raw", "cables",
            "components", "ppe", "drawer")  # fmt: skip
@@ -67,6 +202,17 @@ ALIASES = {"raum": "room", "regal": "shelf", "ebene": "level", "stapel": "toolbo
 KIND_LABELS: dict[str, str] = {}
 KIND_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Schlüssel) für Auswahllisten
 SCHEMA_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Präfixe) fürs Code-Schema
+PREFIX_DESC: dict[str, str] = {}  # Präfix -> Beschreibung (nur Codes-Seite)
+
+
+def set_lang(conn: sqlite3.Connection, value: str) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('setting:lang', ?)"
+            " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            ("en" if value == "en" else "de",),
+        )
+    sync(conn)
 
 
 def lang(conn: sqlite3.Connection) -> str:
@@ -82,12 +228,12 @@ def custom(conn: sqlite3.Connection) -> list[Row]:
 
 
 def sync(conn: sqlite3.Connection) -> None:
-    rows = conn.execute("SELECT kind, label, prefix FROM container_kind").fetchall()
+    rows = conn.execute("SELECT kind, label, prefix, description FROM container_kind").fetchall()
     _apply(rows, lang(conn) == "en")
 
 
 def _apply(rows: list[Row], en: bool) -> None:
-    for d in (KIND_LABELS, codes.PREFIX_KIND, codes.PREFIX_LABELS, codes.KIND_PREFIX):
+    for d in (KIND_LABELS, codes.PREFIX_KIND, codes.PREFIX_LABELS, codes.KIND_PREFIX, PREFIX_DESC):
         d.clear()
     groups: dict[str, list[str]] = {}
     prefixes: dict[str, list[str]] = {}
@@ -98,6 +244,7 @@ def _apply(rows: list[Row], en: bool) -> None:
             codes.PREFIX_KIND[k.prefix] = k.key
             codes.PREFIX_LABELS[k.prefix] = KIND_LABELS[k.key]
             codes.KIND_PREFIX[k.key] = k.prefix
+            PREFIX_DESC[k.prefix] = k.desc_en if en else k.desc_de
             prefixes.setdefault(k.group, []).append(k.prefix)
     for r in rows:
         if r["prefix"] in codes.PREFIX_KIND or r["kind"] in KIND_LABELS:
@@ -107,10 +254,12 @@ def _apply(rows: list[Row], en: bool) -> None:
         codes.PREFIX_KIND[r["prefix"]] = r["kind"]
         codes.PREFIX_LABELS[r["prefix"]] = r["label"]
         codes.KIND_PREFIX[r["kind"]] = r["prefix"]
+        PREFIX_DESC[r["prefix"]] = r["description"]
         prefixes.setdefault("own", []).append(r["prefix"])
-    for p, (de, en_label) in ITEM_LABELS.items():
+    for p, (de, en_label, desc_de, desc_en) in ITEM_LABELS.items():
         codes.PREFIX_KIND[p] = None
         codes.PREFIX_LABELS[p] = en_label if en else de
+        PREFIX_DESC[p] = desc_en if en else desc_de
         prefixes.setdefault("item", []).append(p)
     i = 1 if en else 0
     KIND_GROUPS[:] = [(GROUPS[g][i], groups[g]) for g in GROUPS if g in groups]
@@ -143,9 +292,11 @@ def _slug(label: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s).strip("-")
 
 
-def create(conn: sqlite3.Connection, label: str, prefix: str) -> str:
+def create(conn: sqlite3.Connection, label: str, prefix: str, description: str = "") -> str:
     """Neue Art anlegen; gibt den internen Schlüssel zurück."""
     label, prefix = label.strip(), prefix.strip().upper()
+    if "/" in label:
+        raise LagerError("Bitte ein Name ohne Schrägstrich; Details gehören in die Beschreibung")
     if not label:
         raise LagerError("Name der Art fehlt")
     if not re.fullmatch(r"[A-Z]{3}", prefix):
@@ -158,8 +309,8 @@ def create(conn: sqlite3.Connection, label: str, prefix: str) -> str:
         raise LagerError(f"Art „{label}“ gibt es schon")
     with conn:
         conn.execute(
-            "INSERT INTO container_kind (kind, label, prefix) VALUES (?, ?, ?)",
-            (kind, label, prefix),
+            "INSERT INTO container_kind (kind, label, prefix, description) VALUES (?, ?, ?, ?)",
+            (kind, label, prefix, description.strip()),
         )
     sync(conn)
     return kind

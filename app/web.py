@@ -414,14 +414,35 @@ def create_app(settings: Settings) -> FastAPI:
             },
             pending=labels.pending(conn, settings.base_url),
             queue=labels.queue(conn, settings.base_url),
+        )
+
+    @app.get("/codes", response_class=HTMLResponse)
+    def codes_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request,
+            conn,
+            "codes.html",
+            prefixes=codes.PREFIX_LABELS,
+            desc=kinds.PREFIX_DESC,
             custom_kinds={k["prefix"]: k for k in kinds.custom(conn)},
         )
 
+    @app.post("/lang")
+    def set_lang(
+        conn: Conn, lang: Annotated[str, Form()], back: Annotated[str, Form()] = "/mehr"
+    ) -> RedirectResponse:
+        kinds.set_lang(conn, lang)
+        target = back if back.startswith("/") and not back.startswith("//") else "/mehr"
+        return redirect(target, "Sprache: English" if lang == "en" else "Sprache: Deutsch")
+
     @app.post("/arten")
     def kind_create(
-        conn: Conn, label: Annotated[str, Form()], prefix: Annotated[str, Form()]
+        conn: Conn,
+        label: Annotated[str, Form()],
+        prefix: Annotated[str, Form()],
+        description: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
-        kinds.create(conn, label, prefix)
+        kinds.create(conn, label, prefix, description)
         return redirect(
             "/labels#schema", f"Art „{label.strip()}“ mit {prefix.upper()}-001 angelegt"
         )
@@ -429,7 +450,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/arten/{kind}/delete")
     def kind_delete(kind: str, conn: Conn) -> RedirectResponse:
         kinds.delete(conn, kind)
-        return redirect("/labels#schema", "Art gelöscht")
+        return redirect("/codes", "Art gelöscht")
 
     @app.post("/labels/preview", response_class=HTMLResponse)
     def labels_preview(

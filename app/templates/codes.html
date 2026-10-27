@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Codes · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Codes</h1>
+<p class="meta">Der Code sagt, was etwas ist, nicht wo es steht. Umzüge ändern kein Etikett.</p>
+{% for group, pfx in SCHEMA_GROUPS %}
+<h2>{{ group }}</h2>
+<ul class="list">
+  {% for p in pfx %}<li class="code-row">
+    <div><b>{{ p }}</b>-{{ '0001' if p == 'ART' else '001' }} · {{ prefixes[p] }}
+      {% if desc.get(p) %}<br><small class="meta">{{ desc[p] }}</small>{% endif %}</div>
+    {% if p == 'TYP' %}<a href="/typen">Typen verwalten</a>{% endif %}
+    {% if p in custom_kinds %}<small class="meta">{{ custom_kinds[p].n }} Behälter</small>
+      {% if not custom_kinds[p].n %}<form method="post" action="/arten/{{ custom_kinds[p].kind }}/delete"><button class="link" aria-label="Art {{ prefixes[p] }} löschen">{{ icon('action.delete') }}</button></form>{% endif %}
+    {% endif %}
+  </li>{% endfor %}
+</ul>
+{% endfor %}
+<h2>Neue Behälter-Art</h2>
+<form method="post" action="/arten" class="card stack" aria-label="Neue Behälter-Art">
+  <div class="row">
+    <label>Name <input name="label" placeholder="z. B. Schublade" required pattern="[^/]+" title="ohne Schrägstrich"></label>
+    <label>Präfix <input name="prefix" placeholder="SCH" maxlength="3" pattern="[A-Za-z]{3}" required style="text-transform:uppercase"></label>
+  </div>
+  <label>Beschreibung (nur hier sichtbar) <input name="description" placeholder="z. B. Schublade im Werkbank-Unterschrank"></label>
+  <button class="primary">{{ icon('action.add') }} Anlegen</button>
+</form>
+{% endblock %}
