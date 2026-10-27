@@ -267,3 +267,5 @@ mark { background: var(--raised); color: var(--glow); }
 .codes { align-items: center; justify-content: space-between; }
 [hidden] { display: none !important; }
 @media print { .bottomnav, .sidenav, .topbar, .toast { display: none !important; } }
+.add-anything .seg { margin: 0; }
+button.icon-only { width: var(--tap); padding: 0; flex: none; }

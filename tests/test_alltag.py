@@ -120,7 +120,8 @@ def test_free_places(client: TestClient) -> None:
 
 def test_favorites_and_recent(client: TestClient) -> None:
     b = box(client, "Werkzeugkiste")
-    assert "Zuletzt angesehen" in client.get("/").text  # Besuch beim Anlegen
+    assert "Werkzeugkiste" in client.get("/verlauf?tab=gesehen").text  # Besuch beim Anlegen
+    assert "Zuletzt angesehen</h2>" not in client.get("/").text
     r = client.post(f"/n/{b}/favorite")
     assert "Als Favorit gemerkt" in r.text and 'class="star on"' in r.text
     assert ">Favoriten</h2>" in client.get("/").text
@@ -298,3 +299,42 @@ def test_home_where_favorites_and_last_three(client: TestClient) -> None:
     recent = re.findall(r'class="pick" data-id="(\d+)"', page)
     assert recent == [ids[3], ids[2], ids[1]]  # letzte drei, neueste zuerst
     assert re.search(rf'<option value="{ids[3]}" selected>', page)
+
+
+def test_add_anything_container_type_and_item(client: TestClient) -> None:
+    r = client.post(
+        "/quickadd", data={"mode": "container", "text": "Werkstatt", "kind": "raum", "target": ""}
+    )
+    assert "„Werkstatt“ angelegt" in r.text
+    werk = node_of(r)
+    r = client.post(
+        "/quickadd", data={"mode": "container", "text": "Kiste A", "kind": "kiste", "target": werk}
+    )
+    assert "Werkstatt" in r.text.split('class="crumbs"')[1].split("</nav>")[0]
+    r = client.post("/quickadd", data={"mode": "type", "text": "pneumatic"})
+    assert "Typ TYP-005 „pneumatic“ angelegt" in r.text
+    r = client.post("/quickadd", data={"mode": "item", "text": "2 Zangen", "target": werk})
+    assert "„Zangen“ → Werkstatt" in r.text
+    r = client.post(
+        "/quickadd", data={"mode": "item", "text": "Zange", "target": ""}, headers={"referer": "/"}
+    )
+    assert "Erst einen Ort wählen" in r.text
+
+
+def test_home_sections_configurable(client: TestClient) -> None:
+    box(client, "Werkstatt")
+    page = client.get("/").text
+    assert 'class="tiles"' in page and "Räume und Orte" in page
+    form = {
+        p: "1"
+        for p in (
+            "auto_item_code",
+            "quick_parse",
+            "queue_on_quickadd",
+            "queue_on_place",
+            "typo_correction",
+        )
+    }
+    client.post("/settings", data={**form, "home_tiles": "", "home_rooms": ""})
+    page = client.get("/").text
+    assert 'class="tiles"' not in page and "Räume und Orte" not in page

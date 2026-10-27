@@ -2,6 +2,13 @@
 {% block title %}Verlauf · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Verlauf</h1>
+<nav class="seg tabs" aria-label="Verlauf">
+  <a href="/verlauf" class="{% if tab == 'aktionen' %}active{% endif %}">Aktionen</a>
+  <a href="/verlauf?tab=gesehen" class="{% if tab == 'gesehen' %}active{% endif %}">Zuletzt angesehen</a>
+</nav>
+{% if tab == 'gesehen' %}
+{% if recent %}{% with kids=recent, cols=0 %}{% include "_kids.html" %}{% endwith %}{% else %}<p class="empty">Noch nichts angesehen.</p>{% endif %}
+{% else %}
 {% set labels = {'add': 'neu', 'take': 'entnommen', 'put': 'eingelagert', 'move': 'umgelagert',
   'edit': 'bearbeitet', 'delete': 'gelöscht', 'import': 'importiert', 'lend': 'verliehen',
   'return': 'zurück', 'undo': 'rückgängig'} %}
@@ -18,4 +25,5 @@
   </li>
   {% else %}<li class="empty">Noch nichts passiert.</li>{% endfor %}
 </ul>
+{% endif %}
 {% endblock %}

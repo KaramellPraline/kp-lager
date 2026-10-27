@@ -3,7 +3,7 @@
 <a class="nav {% if cur == href or (href != '/' and cur.startswith(href)) %}active{% endif %}" href="{{ href }}">
   {{ icon(role) }}<span>{{ text }}</span>{% if count %}<b class="count">{{ count }}</b>{% endif %}</a>
 {%- endmacro -%}
-{%- macro tab(href, role, text, count=0, extra='') -%}
+{%- macro navtab(href, role, text, count=0, extra='') -%}
 <a href="{{ href }}" class="{% if cur == href or (href != '/' and cur.startswith(href)) %}active{% endif %} {{ extra }}">
   {{ icon(role) }}<span>{{ text }}</span>{% if count %}<b class="count">{{ count }}</b>{% endif %}</a>
 {%- endmacro -%}
@@ -66,11 +66,11 @@
   </div>
 </div>
 <nav class="bottomnav mobile-only" aria-label="Navigation">
-  {{ tab('/', 'nav.home', 'Start') }}
-  {{ tab('/suche', 'nav.search', 'Suche') }}
-  {{ tab('/scan', 'action.scan', 'Scannen', extra='scan') }}
-  {{ tab('/sprache', 'media.dictate', 'Sprache') }}
-  {{ tab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
+  {{ navtab('/', 'nav.home', 'Start') }}
+  {{ navtab('/suche', 'nav.search', 'Suche') }}
+  {{ navtab('/scan', 'action.scan', 'Scannen', extra='scan') }}
+  {{ navtab('/sprache', 'media.dictate', 'Sprache') }}
+  {{ navtab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
 </nav>
 {% if msg %}
 <div class="toast" role="status" {% if not undo %}data-autohide{% endif %}>

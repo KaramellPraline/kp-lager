@@ -209,9 +209,6 @@ def create_app(settings: Settings) -> FastAPI:
             "index.html",
             roots=repo.children(conn, None),
             favorites=repo.favorites(conn),
-            recent=repo.containers_by_ids(conn, recent_ids(request))[
-                : prefs.number(conn, "home_recent")
-            ],
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
             n_queue=labels.queue_count(conn),
@@ -226,13 +223,23 @@ def create_app(settings: Settings) -> FastAPI:
     def home_quick_add(
         request: Request,
         conn: Conn,
-        target: Annotated[int, Form()],
         text: Annotated[str, Form()],
+        target: Annotated[str, Form()] = "",
+        mode: Annotated[str, Form()] = "item",
+        kind: Annotated[str, Form()] = "kiste",
     ) -> RedirectResponse:
-        """Schnell eintragen von der Startseite (getippt oder diktiert), Ziel wird gemerkt."""
-        dest = need_node(conn, target)
+        """„Hinzufügen“ auf der Startseite: Teil (getippt/diktiert), Behälter oder Typ."""
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
+        if mode == "type":
+            t = itemtypes.get(conn, itemtypes.create(conn, text))
+            return redirect("/", f"Typ {t['code']} „{t['name']}“ angelegt")
+        if mode == "container":
+            cid = repo.create_container(conn, text.strip(), kind, parent_id=opt_int(target))
+            return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt")
+        if not target:
+            raise LagerError("Erst einen Ort wählen oder anlegen")
+        dest = need_node(conn, int(target))
         names = []
         for amount, unit, name in entries(conn, text):
             repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
@@ -584,9 +591,16 @@ def create_app(settings: Settings) -> FastAPI:
         return redirect(back, msg)
 
     @app.get("/verlauf", response_class=HTMLResponse)
-    def history_page(request: Request, conn: Conn) -> HTMLResponse:
+    def history_page(request: Request, conn: Conn, tab: str = "aktionen") -> HTMLResponse:
+        recent = repo.containers_by_ids(conn, recent_ids(request))
         return render(
-            request, conn, "history.html", events=repo.recent_events(conn), undoable=repo.UNDOABLE
+            request,
+            conn,
+            "history.html",
+            tab="gesehen" if tab == "gesehen" else "aktionen",
+            events=repo.recent_events(conn),
+            undoable=repo.UNDOABLE,
+            recent=recent[: prefs.number(conn, "home_recent")],
         )
 
     @app.get("/verliehen", response_class=HTMLResponse)

@@ -159,4 +159,18 @@
     field.hidden = ev.target.value !== "neu";
     if (!field.hidden) field.focus();
   });
+
+  // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest(".add-anything .seg button");
+    if (!b) return;
+    var form = b.closest("form");
+    form.querySelectorAll(".seg button").forEach(function (x) { x.classList.toggle("active", x === b); });
+    form.querySelector("#add-mode").value = b.dataset.mode;
+    form.querySelector("#quick-home").placeholder = b.dataset.ph;
+    form.querySelectorAll("[data-for]").forEach(function (el) {
+      el.hidden = el.dataset.for.split(" ").indexOf(b.dataset.mode) < 0;
+    });
+    form.querySelector("#quick-home").focus();
+  });
 })();
