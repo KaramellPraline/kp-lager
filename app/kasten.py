@@ -66,7 +66,7 @@ def model_of(kasten: Row) -> Model | None:
 
 def bins(conn: sqlite3.Connection, kasten_id: int) -> list[Row]:
     return conn.execute(
-        "SELECT * FROM container WHERE parent_id = ? AND kind = 'einsatz' ORDER BY position",
+        "SELECT * FROM container WHERE parent_id = ? AND kind = 'bin' ORDER BY position",
         (kasten_id,),
     ).fetchall()
 
@@ -97,11 +97,11 @@ def place_bin(
     pos = pos.strip().upper()
     check_place(model, occupied(conn, kasten_id), pos, size)
     w, d = parse_size(size)
-    code = codes.reserve(conn, "EIN", 1)[0]
+    code = codes.reserve(conn, "BIN", 1)[0]
     return repo.create_container(
         conn,
         f"Einsatz {pos}",
-        "einsatz",
+        "bin",
         parent_id=kasten_id,
         code=code,
         position=pos,
@@ -212,6 +212,6 @@ def quick_targets(conn: sqlite3.Connection, kasten: Row) -> list[dict[str, Any]]
 def bin_of(conn: sqlite3.Connection, container_id: int) -> Row | None:
     """Einsatz, zu dem ein Fach/Einsatz gehört (für das Bin-Etikett)."""
     for node in reversed(repo.container_path(conn, container_id)):
-        if node["kind"] == "einsatz":
+        if node["kind"] == "bin":
             return node
     return None

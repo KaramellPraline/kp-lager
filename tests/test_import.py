@@ -86,7 +86,7 @@ def test_errors_leave_db_untouched(conn: sqlite3.Connection, payload: str, error
 
 def test_unknown_kind_warns(conn: sqlite3.Connection) -> None:
     r = importer.run(conn, '{"code":"KIS-1","name":"Schrank","kind":"schrank"}', commit=True)
-    assert r.warnings and repo.get_container_by_code(conn, "KIS-001")["kind"] == "sonstiges"  # type: ignore[index]
+    assert r.warnings and repo.get_container_by_code(conn, "KIS-001")["kind"] == "box"  # type: ignore[index]
 
 
 def test_import_page_and_export(client: TestClient) -> None:

@@ -38,6 +38,7 @@ Stand: 2026-10-26
 - [x] **M14 Etiketten**: Export immer XLSX; A4 als eigene Seite mit Auswahl aus allen etikettierten Teilen.
 - [x] **M15 Lokale KI** (Gateway Chat): Teil vollständig ausfüllen ohne Haiku; „An lokale KI senden“ neben jedem Prompt-Kopieren; kompakter Prompt für lokale Modelle inkl. dynamischer Typen; alle KI-Ergebnisse mit Flag „zu prüfen“ → Tab „Freigaben“ unter Mehr (freigeben/ändern).
 - [x] **M16 Sprach-Tab** in der unteren Leiste: langes Diktat + Dauer-Aufnahme Teil für Teil, getrennt durch „weiter“ oder Knopf → Einträge in „Zu sortieren“.
+- [x] **M19 Neues Code-Schema** (20 Arten in 5 Gruppen, englische Schlüssel, Namen DE/EN per Einstellung, STA→TBX, EIN→BIN, Typen immer klein).
 - [x] **M18 Eigene Behälter-Arten** mit eigenem Präfix (Start „Neue Art …“, Etiketten → Code-Schema); Start-Kacheln ohne Dopplung zur unteren Leiste.
 - [x] **M17 API**: REST `/api/v1` (Suchen/Lesen offen, Schreiben nur mit Schlüssel), CLI `tools/lager_cli.py`, MCP-Server `tools/lager_mcp.py`.
 

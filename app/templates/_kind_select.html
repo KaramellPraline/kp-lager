@@ -1,5 +1,6 @@
 <select name="kind" required>
-  {% for k, label in KIND_LABELS.items() if k != 'fach' %}
-  <option value="{{ k }}" {% if k == (default_kind or 'eurobox') %}selected{% endif %}>{{ label }}</option>
-  {% endfor %}
+  {% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">
+  {% for k in keys if k != 'compartment' %}
+  <option value="{{ k }}" {% if k == (default_kind or 'eurobox') %}selected{% endif %}>{{ KIND_LABELS[k] }}{% if KIND_PREFIX.get(k) %} · {{ KIND_PREFIX[k] }}{% endif %}</option>
+  {% endfor %}</optgroup>{% endfor %}
 </select>

@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app import codes as code_schema
-from app import itemtypes, repo
+from app import itemtypes, kinds, repo
 from app.db import connect
 
 
@@ -86,7 +86,9 @@ def _slot_container(conn: sqlite3.Connection, parent_id: int, slot: str) -> int:
     ).fetchone()
     if row:
         return int(row["id"])
-    return repo.create_container(conn, f"Fach {slot}", "fach", parent_id=parent_id, position=slot)
+    return repo.create_container(
+        conn, f"Fach {slot}", "compartment", parent_id=parent_id, position=slot
+    )
 
 
 def apply(
@@ -116,10 +118,10 @@ def _apply_container(
     parent_code = _str(c.get("parent"))
     parent = repo.get_container_by_code(conn, parent_code) if parent_code else None
     parent_id = parent["id"] if parent else None
-    kind = _str(c.get("kind")) or "sonstiges"
-    if kind not in repo.KINDS:
-        report.warnings.append(f"{code}: Art '{kind}' unbekannt → sonstiges")
-        kind = "sonstiges"
+    raw_kind = _str(c.get("kind")) or "box"
+    kind = kinds.resolve(raw_kind) or "box"
+    if kinds.resolve(raw_kind) is None:
+        report.warnings.append(f"{code}: Art '{raw_kind}' unbekannt → box")
     node = repo.get_container_by_code(conn, code)
     if node is None:
         grid = _str(c.get("grid")) or None

@@ -49,13 +49,16 @@ D30-Vorlage einmal anlegen: QR-Feld aus Spalte <b>QR</b>, Text aus <b>Code</b> u
 
 <section id="schema">
   <h2>Code-Schema</h2>
+  {% for group, pfx in SCHEMA_GROUPS %}
+  <h3>{{ group }}</h3>
   <ul class="history">
-    {% for p, label in prefixes.items() %}<li><b>{{ p }}</b>-{{ '0001' if p == 'ART' else '001' }} · {{ label }}
+    {% for p in pfx %}<li><b>{{ p }}</b>-{{ '0001' if p == 'ART' else '001' }} · {{ prefixes[p] }}
       {% if p == 'TYP' %}<a href="/typen">Typen verwalten</a>{% endif %}
-      {% if p in custom_kinds %}<span class="meta">eigene Art · {{ custom_kinds[p].n }} Behälter</span>
-        {% if not custom_kinds[p].n %}<form method="post" action="/arten/{{ custom_kinds[p].kind }}/delete" style="display:inline"><button class="link" aria-label="Art {{ label }} löschen">{{ icon('action.delete') }}</button></form>{% endif %}
+      {% if p in custom_kinds %}<span class="meta">{{ custom_kinds[p].n }} Behälter</span>
+        {% if not custom_kinds[p].n %}<form method="post" action="/arten/{{ custom_kinds[p].kind }}/delete" style="display:inline"><button class="link" aria-label="Art {{ prefixes[p] }} löschen">{{ icon('action.delete') }}</button></form>{% endif %}
       {% endif %}</li>{% endfor %}
   </ul>
+  {% endfor %}
   <form method="post" action="/arten" class="row" aria-label="Neue Behälter-Art">
     <label>Neue Behälter-Art <input name="label" placeholder="z. B. Schublade" required></label>
     <label>Präfix <input name="prefix" placeholder="SCH" maxlength="3" pattern="[A-Za-z]{3}" required style="text-transform:uppercase"></label>

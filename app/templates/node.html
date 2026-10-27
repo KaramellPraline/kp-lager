@@ -61,7 +61,7 @@
       {% if items or kids %}
       <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>{{ icon('action.print') }} Teile-Etiketten</button></form>
       {% endif %}
-      {% if node.kind != 'fach' %}
+      {% if node.kind != 'compartment' %}
       <form method="post" action="/carry/node/{{ node.id }}"><button>{{ icon('action.move') }} Umlagern</button></form>
       {% endif %}
       <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
@@ -69,7 +69,7 @@
           <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
       </form>
     </div>
-    {% if node.kind == 'einsatz' %}
+    {% if node.kind == 'bin' %}
     <p class="meta">3D-Druck dieses Einsatzes:<br><code>{{ cad }}</code></p>
     {% endif %}
   </div>
@@ -87,7 +87,7 @@
     </form>
   </details>
 
-  {% if node.kind not in ('fach', 'einsatz') %}
+  {% if node.kind not in ('compartment', 'bin') %}
   <details>
     <summary>Darin anlegen</summary>
     <form method="post" action="/containers" class="stack">

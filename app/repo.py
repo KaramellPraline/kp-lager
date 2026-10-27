@@ -5,11 +5,8 @@ from string import ascii_uppercase
 
 Row = sqlite3.Row
 
-# Feste Arten; eigene ergänzt app/kinds.sync zur Laufzeit.
-KINDS = [
-    "raum", "regal", "ebene", "stapel", "eurobox", "kiste", "sortierkasten", "einsatz", "fach",
-    "sonstiges",
-]  # fmt: skip
+# Gültige Arten; füllt app/kinds (feste + eigene, zur Laufzeit aktuell)
+KINDS: list[str] = []
 
 
 class LagerError(ValueError):
@@ -43,6 +40,9 @@ def create_container(
     model: str | None = None,
 ) -> int:
     """Legt einen Behälter an. Mit `grid` werden die Fächer als Kind-Behälter erzeugt."""
+    from app.kinds import resolve  # spät: kinds importiert repo
+
+    kind = resolve(kind) or kind
     if kind not in KINDS:
         raise LagerError(f"Unbekannte Art '{kind}'")
     slots = parse_grid(grid) if grid else []
@@ -55,7 +55,8 @@ def create_container(
         cid = cur.lastrowid
         assert cid is not None
         conn.executemany(
-            "INSERT INTO container (parent_id, kind, name, position) VALUES (?, 'fach', ?, ?)",
+            "INSERT INTO container (parent_id, kind, name, position)"
+            " VALUES (?, 'compartment', ?, ?)",
             [(cid, f"Fach {s}", s) for s in slots],
         )
     return cid
@@ -82,7 +83,7 @@ def children(conn: sqlite3.Connection, container_id: int | None) -> list[Row]:
         FROM container c LEFT JOIN item i ON i.container_id = c.id
         WHERE c.parent_id IS ?
         GROUP BY c.id
-        ORDER BY CASE WHEN c.kind = 'fach' THEN printf('%09d', c.id) ELSE lower(c.name) END
+        ORDER BY CASE WHEN c.kind = 'compartment' THEN printf('%09d', c.id) ELSE lower(c.name) END
         """,
         (container_id,),
     ).fetchall()
@@ -98,7 +99,7 @@ def all_paths(conn: sqlite3.Connection) -> list[Row]:
             SELECT c.id, t.label || ' › ' || c.name, c.kind
             FROM container c JOIN t ON c.parent_id = t.id
         )
-        SELECT id, label FROM t WHERE kind != 'fach' ORDER BY lower(label)
+        SELECT id, label FROM t WHERE kind != 'compartment' ORDER BY lower(label)
         """
     ).fetchall()
 
@@ -136,7 +137,7 @@ def delete_container(conn: sqlite3.Connection, container_id: int) -> int | None:
     marks = ",".join("?" * len(ids))
     if conn.execute(f"SELECT 1 FROM item WHERE container_id IN ({marks})", ids).fetchone():
         raise LagerError("Behälter ist nicht leer")
-    if any(c["kind"] != "fach" for c in children(conn, container_id)):
+    if any(c["kind"] != "compartment" for c in children(conn, container_id)):
         raise LagerError("Behälter enthält noch Unterbehälter")
     parent = get_container(conn, container_id)
     with conn:
@@ -391,7 +392,7 @@ def search_containers(conn: sqlite3.Connection, q: str, limit: int = 20) -> list
     where = " AND ".join(["fold(name || ' ' || notes) LIKE ?"] * len(terms))
     rows = conn.execute(
         f"SELECT * FROM container WHERE (code = ? OR ({where}))"
-        " AND NOT (kind = 'fach' AND name = 'Fach ' || position) ORDER BY name LIMIT ?",
+        " AND NOT (kind = 'compartment' AND name = 'Fach ' || position) ORDER BY name LIMIT ?",
         (q.strip(), *(f"%{t.casefold()}%" for t in terms), limit),
     ).fetchall()
     return [{**dict(r), "path": path_label(conn, r["id"])} for r in rows]
@@ -544,7 +545,8 @@ def shopping_list(conn: sqlite3.Connection) -> list[dict[str, object]]:
 def free_places(conn: sqlite3.Connection) -> dict[str, list[dict[str, object]]]:
     """Leere Boxen/Kisten und Sortierkästen mit freien Fächern."""
     empty = conn.execute(
-        "SELECT c.* FROM container c WHERE c.kind IN ('eurobox', 'kiste', 'sonstiges')"
+        "SELECT c.* FROM container c WHERE c.kind IN"
+        " ('toolbox', 'case', 'module', 'eurobox', 'crate', 'box', 'drawer')"
         " AND NOT EXISTS (SELECT 1 FROM item i WHERE i.container_id = c.id)"
         " AND NOT EXISTS (SELECT 1 FROM container k WHERE k.parent_id = c.id) ORDER BY c.name"
     ).fetchall()
@@ -554,8 +556,8 @@ def free_places(conn: sqlite3.Connection) -> dict[str, list[dict[str, object]]]:
                SUM(NOT EXISTS (SELECT 1 FROM item i WHERE i.container_id = f.id)) AS free,
                GROUP_CONCAT(CASE WHEN NOT EXISTS (SELECT 1 FROM item i WHERE i.container_id = f.id)
                             THEN f.position END, ' ') AS free_slots
-        FROM container k JOIN container f ON f.parent_id = k.id AND f.kind = 'fach'
-        WHERE k.kind = 'sortierkasten' GROUP BY k.id HAVING free > 0 ORDER BY k.name
+        FROM container k JOIN container f ON f.parent_id = k.id AND f.kind = 'compartment'
+        WHERE k.kind = 'sortingbox' GROUP BY k.id HAVING free > 0 ORDER BY k.name
         """
     ).fetchall()
     return {
@@ -596,7 +598,7 @@ def inbox(conn: sqlite3.Connection) -> int:
     row = conn.execute("SELECT value FROM meta WHERE key = 'inbox_id'").fetchone()
     if row and get_container(conn, int(row["value"])) is not None:
         return int(row["value"])
-    cid = create_container(conn, INBOX_NAME, "sonstiges", notes="Eingang: Teile ohne festen Ort")
+    cid = create_container(conn, INBOX_NAME, "box", notes="Eingang: Teile ohne festen Ort")
     with conn:
         conn.execute(
             "INSERT INTO meta (key, value) VALUES ('inbox_id', ?)"
