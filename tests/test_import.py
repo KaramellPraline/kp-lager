@@ -67,7 +67,7 @@ def test_existing_parent_and_move(conn: sqlite3.Connection) -> None:
 @pytest.mark.parametrize(
     ("payload", "error"),
     [
-        ('{"name":"X"}', "'code' fehlt"),
+        ('{"name":"X","kind":"level"}', "Art mit Präfix"),
         ('{"code":"KIS-1"}', "'name' fehlt"),
         ('{"code":"KIS-1","name":"X","parent":"KIS-9"}', "unbekannt"),
         ('{"code":"KIS-1","name":"X","items":[{"name":"Y","qty":-1}]}', "ungültig"),

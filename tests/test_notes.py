@@ -56,7 +56,7 @@ def test_note_becomes_haiku_prompt_with_timestamp(voice: TestClient, tmp_path: P
     assert re.search(
         r'filename="haiku-diktat_\d{4}-\d{2}-\d{2}_\d{4}\.txt"', r.headers["content-disposition"]
     )
-    assert r.text.startswith("Du hilfst mir bei einer Lagerinventur") and "--- Diktat ---" in r.text
+    assert r.text.startswith("Lagerinventur. Antworte NUR mit JSON") and "--- Diktat ---" in r.text
     assert len(list((tmp_path / "notes").iterdir())) == 1  # Audio gesichert
 
 

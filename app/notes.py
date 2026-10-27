@@ -68,9 +68,9 @@ def duration_label(seconds: int) -> str:
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def chat_prompt(note: Row, types: list[str] | None = None) -> str:
+def chat_prompt(note: Row, ctx: "prompt.Context | None" = None) -> str:
     return prompt.for_dictation(
-        note["transcript"], stamp(note), duration_label(note["duration"]), types
+        note["transcript"], stamp(note), duration_label(note["duration"]), ctx
     )
 
 
