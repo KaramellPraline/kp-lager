@@ -68,8 +68,10 @@ def duration_label(seconds: int) -> str:
     return f"{seconds // 60}:{seconds % 60:02d}"
 
 
-def chat_prompt(note: Row) -> str:
-    return prompt.for_dictation(note["transcript"], stamp(note), duration_label(note["duration"]))
+def chat_prompt(note: Row, types: list[str] | None = None) -> str:
+    return prompt.for_dictation(
+        note["transcript"], stamp(note), duration_label(note["duration"]), types
+    )
 
 
 def filename(note: Row) -> str:

@@ -25,6 +25,7 @@
   <div class="actions">
     {% if n.note.status == 'fertig' %}
     <button type="button" class="copy primary" data-target="note-{{ n.note.id }}">{{ icon('action.copy', size='sm') }} Prompt kopieren</button>
+    {% if AI %}<form method="post" action="/ai/note/{{ n.note.id }}" data-busy="KI arbeitet …"><button>{{ icon('action.ai', size='sm') }} An lokale KI senden</button></form>{% endif %}
     <a class="button" href="/notes/{{ n.note.id }}.txt" download>{{ icon('action.download', size='sm') }} Herunterladen</a>
     {% else %}
     <form method="post" action="/notes/{{ n.note.id }}/retry"><button class="primary">{{ icon('action.refresh', size='sm') }} Erneut erkennen</button></form>

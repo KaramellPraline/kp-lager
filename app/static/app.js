@@ -173,4 +173,12 @@
     });
     form.querySelector("#quick-home").focus();
   });
+
+  // Lange Server-Aktionen (lokale KI): Knopf sperren und Status zeigen
+  document.addEventListener("submit", function (ev) {
+    var form = ev.target;
+    if (!form.matches("form[data-busy]")) return;
+    var btn = form.querySelector("button");
+    if (btn) { btn.disabled = true; btn.textContent = form.dataset.busy; }
+  });
 })();

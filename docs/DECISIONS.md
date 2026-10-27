@@ -52,3 +52,5 @@
 | 2026-10-27 | Design: Crimson Night Core (Artifact JHToaeZoynmKmu53rCfFU4), Icons nur über Rollen, Fonts lokal gebündelt | User-Vorgabe; App läuft offline im LAN. |
 | 2026-10-27 | Datenblatt: PDF wird von einer eingetragenen/KI-vorgeschlagenen URL automatisch lokal gespeichert, plus Such-Link | Keine kostenlose Datenblatt-API ohne neues Konto. |
 | 2026-10-27 | Entnahme: gezählte Teile sofort −Menge, Storno stellt her, Bestätigung nach 7 Tagen automatisch; ungezählte → „entnommen“, nach 7 Tagen archiviert (nicht gelöscht) | Fehlerfrei rückgängig machbar, nichts geht verloren. |
+| 2026-10-27 | Lokale KI über Gateway 8766 (`LAGER_AI_URL`, Standard = Whisper-URL), Modell `mid` wählbar; kompakter Prompt mit dynamischen Typen | Getestet: Diktat mit 2 Behältern → 6 Teile in ~15–28 s, Zahlwörter → Mengen, Modellnummern erkannt. |
+| 2026-10-27 | KI-Ergebnisse immer mit Flag „zu prüfen“; Vervollständigen sichert alten Stand (`item.ai_backup`) für Ablehnen | Keine stillen KI-Änderungen am Bestand. |

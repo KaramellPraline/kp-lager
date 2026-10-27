@@ -108,6 +108,13 @@
     <p class="meta">Prompt kopieren, im Chat einfügen, Foto dazu → Antwort unter <a href="/import">Import</a> einfügen.</p>
     <textarea id="chat-prompt" rows="6" readonly>{{ chat_prompt }}</textarea>
     <button type="button" class="copy" data-target="chat-prompt">Prompt kopieren</button>
+      {% if AI %}
+    <form method="post" action="/ai/node/{{ node.id }}" class="stack" data-busy="KI arbeitet …">
+      <label>Oder direkt an die lokale KI: Inhalt beschreiben
+        <textarea name="text" rows="3" placeholder="z. B. zwei Rollen Lötzinn, ein Multimeter, viele Kabelbinder" required></textarea></label>
+      <button class="primary">{{ icon('action.ai', size='sm') }} An lokale KI senden</button>
+    </form>
+    {% endif %}
   </details>
 </aside>
 </div>

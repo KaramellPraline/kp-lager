@@ -325,6 +325,7 @@ def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | No
     allowed = {
         "name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list",
         "full_name", "type_id", "model", "datasheet_url", "datasheet", "review", "archived",
+        "ai_backup",
     }  # fmt: skip
     if not fields or not set(fields) <= allowed:
         raise LagerError(f"Erlaubte Felder: {sorted(allowed)}")

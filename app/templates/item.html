@@ -85,6 +85,7 @@
       {% else %}
       <form method="post" action="/items/{{ item.id }}/code"><button>{{ icon('content.tag') }} Etikett vergeben</button></form>
       {% endif %}
+      {% if AI %}<form method="post" action="/items/{{ item.id }}/ai" data-busy="KI arbeitet …"><button>{{ icon('action.ai') }} Mit lokaler KI ergänzen</button></form>{% endif %}
       <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
         <label class="file-btn">{{ icon('media.camera') }} Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
       </form>

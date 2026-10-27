@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import (
+    ai,
     backup,
     codes,
     datasheets,
@@ -160,6 +161,8 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["NQUEUE"] = labels.queue_count(conn)
         ctx["P"] = prefs.values(conn)
         ctx["VOICE"] = bool(settings.whisper_url)
+        ctx["AI"] = bool(ai_url)
+        ctx["NREVIEW"] = ai.count(conn)
         return templates.TemplateResponse(request, name, ctx)
 
     def entries(conn: sqlite3.Connection, text: str) -> list[tuple[int | None, str, str]]:
@@ -305,7 +308,12 @@ def create_app(settings: Settings) -> FastAPI:
             items=repo.items_in(conn, node_id),
             cols=cols,
             chat_prompt=prompt.for_container(
-                node["code"] or "(Code)", node["kind"], node["name"], parent_code, node["grid"]
+                node["code"] or "(Code)",
+                node["kind"],
+                node["name"],
+                parent_code,
+                node["grid"],
+                itemtypes.names(conn),
             ),
             voice=bool(settings.whisper_url),
             topview=kasten.topview(conn, node),
@@ -610,7 +618,7 @@ def create_app(settings: Settings) -> FastAPI:
                 "note": n,
                 "stamp": notes.stamp(n),
                 "duration": notes.duration_label(n["duration"]),
-                "prompt": notes.chat_prompt(n),
+                "prompt": notes.chat_prompt(n, itemtypes.names(conn)),
             }
             for n in notes.all_notes(conn)
         ]
@@ -863,6 +871,63 @@ def create_app(settings: Settings) -> FastAPI:
     # --- Diktate: lange Aufnahmen -> Haiku-Prompt (Mehr › Aufnahmen) ---------------
 
     note_dir = settings.data_dir / "notes"
+    ai_url = settings.ai_url or settings.whisper_url
+
+    def ai_args(conn: sqlite3.Connection) -> tuple[str, str, str]:
+        return ai_url, settings.whisper_token, prefs.raw(conn, "ai_model")
+
+    def report_msg(report: importer.Report) -> str:
+        if report.errors:
+            return "KI: " + "; ".join(report.errors)[:200]
+        made = f"{report.items_added} Teile, {len(report.containers_created)} Behälter"
+        return f"KI: {made} angelegt – bitte unter Freigaben prüfen"
+
+    @app.post("/items/{item_id}/ai")
+    def ai_enrich(item_id: int, conn: Conn) -> RedirectResponse:
+        msg = ai.enrich_item(conn, *ai_args(conn), item_id, sheet_dir)
+        return redirect(f"/items/{item_id}", msg)
+
+    @app.post("/ai/node/{node_id}")
+    def ai_node(node_id: int, conn: Conn, text: Annotated[str, Form()]) -> RedirectResponse:
+        """„An lokale KI senden“ auf der Behälterseite: Beschreibung -> Einträge (zu prüfen)."""
+        node = need_node(conn, node_id)
+        if not text.strip():
+            raise LagerError("Bitte den Inhalt beschreiben")
+        code = node["code"]
+        if not code:
+            raise LagerError("Behälter braucht einen Code (Bearbeiten › Code vergeben)")
+        report = ai.entries_from_text(conn, *ai_args(conn), text, code, node["name"], node["kind"])
+        return redirect(f"/n/{node_id}", report_msg(report))
+
+    @app.post("/ai/note/{note_id}")
+    def ai_note(note_id: int, conn: Conn) -> RedirectResponse:
+        note = notes.get(conn, note_id)
+        if note["status"] != "fertig":
+            raise LagerError("Aufnahme hat noch keinen Text")
+        report = ai.entries_from_text(conn, *ai_args(conn), note["transcript"])
+        return redirect("/freigaben" if not report.errors else "/sprache", report_msg(report))
+
+    @app.get("/freigaben", response_class=HTMLResponse)
+    def review_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "review.html", **ai.pending(conn))
+
+    @app.post("/freigaben/item/{item_id}/approve")
+    def approve_item(item_id: int, conn: Conn) -> RedirectResponse:
+        ai.approve_item(conn, item_id)
+        return redirect("/freigaben", "Freigegeben")
+
+    @app.post("/freigaben/item/{item_id}/reject")
+    def reject_item(item_id: int, conn: Conn) -> RedirectResponse:
+        return redirect("/freigaben", ai.reject_item(conn, item_id))
+
+    @app.post("/freigaben/node/{node_id}/approve")
+    def approve_node(node_id: int, conn: Conn) -> RedirectResponse:
+        ai.approve_node(conn, node_id)
+        return redirect("/freigaben", "Freigegeben")
+
+    @app.post("/freigaben/all")
+    def approve_all(conn: Conn) -> RedirectResponse:
+        return redirect("/freigaben", f"{ai.approve_all(conn)} Einträge freigegeben")
 
     async def transcribe_note(conn: sqlite3.Connection, note_id: int) -> None:
         note = notes.get(conn, note_id)
@@ -908,7 +973,7 @@ def create_app(settings: Settings) -> FastAPI:
     def download_note(note_id: int, conn: Conn) -> Response:
         note = notes.get(conn, note_id)
         return Response(
-            notes.chat_prompt(note),
+            notes.chat_prompt(note, itemtypes.names(conn)),
             media_type="text/plain; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="{notes.filename(note)}"'},
         )
