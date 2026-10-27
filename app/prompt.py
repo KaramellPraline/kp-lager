@@ -1,69 +1,121 @@
-"""Inventur-Prompts: ausführlich für den Haiku-Chat, kompakt für lokale Modelle.
+"""Inventur-Prompts: kompakt für den Haiku-Chat (mit Datenbank-Kontext) und für lokale Modelle.
 
-Beide nehmen die aktuellen Typen (inkl. unterwegs angelegter) dynamisch auf. Antwort ist immer
-JSON im Import-Format (`/import`, app/importer.py).
+Der Kontext kommt aus der DB (`context`): Behälter-Arten, Teile-Kategorien, Tags, Eigenschaften
+und alle vorhandenen Behälter mit Code – so kann Haiku gesprochene Namen den Codes zuordnen.
+Antwort ist immer JSON im Import-Format (`/import`, app/importer.py).
 """
 
-from app import codes
+import sqlite3
+from dataclasses import dataclass, field
 
-SCHEMA = """{"code":"EUR-001","name":"kurzer Name","kind":"KINDS",
- "parent":"REG-001 oder null","grid":"6x8 oder null",
- "items":[{"name":"Holzschrauben 4x40","full_name":"Spanplattenschrauben 4x40 Torx, verzinkt",
-           "type":"mechanical","model":"","qty":null,"qty_hint":"viele","unit":"Stk",
-           "slot":"B3 oder null","tags":"schrauben holz befestigung"}]}"""
+from app import codes, itemtypes, kinds, materials, repo
+
+SCHEMA = """{"code":"EUR-001","name":"Elektro","kind":"eurobox","parent":"REG-001","grid":null,
+ "items":[{"name":"Holzschrauben 4x40","full_name":"Spanplattenschraube 4x40 Torx verzinkt",
+   "cat":"CNS","tag":"mechanic","model":"","qty":200,"qty_hint":"","unit":"Stk","slot":null,
+   "tags":"schrauben holz befestigung","specs":{}}]}"""
+# Eigenschaften, die Haiku aus Diktat/Foto füllen darf (Auswahl: das, was man sagt/sieht)
+SPEC_KEYS = {
+    "fil": "material color diameter weight nozzle_min nozzle_max bed_min bed_max flow_max",
+    "res": "material color volume exposure bottom_exposure",
+    "cmp": "manufacturer function package value interface voltage",
+}
+MAX_CONTAINERS = 400  # Behälterliste im Prompt begrenzen (Tokens)
+
+
+@dataclass
+class Context:
+    kinds: list[tuple[str, str, str]] = field(default_factory=list)  # (Schlüssel, Name, Präfix)
+    cats: list[tuple[str, str]] = field(default_factory=list)  # (Präfix, Name)
+    tags: list[str] = field(default_factory=list)
+    containers: list[str] = field(default_factory=list)  # je Behälter eine Zeile
+    inbox: str = ""
+
+
+def context(conn: sqlite3.Connection) -> Context:
+    """Aktueller Stand der Datenbank, kompakt für den Prompt."""
+    kinds.sync(conn)
+    ctx = Context(
+        kinds=[(k, kinds.KIND_LABELS[k], p) for k, p in codes.KIND_PREFIX.items() if k != "bin"],
+        cats=list(kinds.ITEM_CATS),
+        tags=itemtypes.names(conn),
+    )
+    inbox = repo.get_container(conn, repo.inbox(conn))
+    ctx.inbox = (inbox["code"] or "") if inbox else ""
+    rows = conn.execute(
+        "SELECT c.code, c.name, c.kind, c.position, p.code AS parent FROM container c"
+        " LEFT JOIN container p ON p.id = c.parent_id"
+        " WHERE c.code IS NOT NULL AND c.kind != 'compartment' ORDER BY c.code LIMIT ?",
+        (MAX_CONTAINERS,),
+    ).fetchall()
+    for r in rows:
+        where = f" in {r['parent']}" + (f" {r['position']}" if r["position"] else "")
+        ctx.containers.append(
+            f"{r['code']} {r['name']} · {r['kind']}{where if r['parent'] else ''}"
+        )
+    return ctx
 
 
 def schema() -> str:
-    """Import-Schema mit den aktuellen Arten (feste + eigene, englische Schlüssel)."""
-    return SCHEMA.replace("KINDS", "|".join(k for k in codes.KIND_PREFIX if k != "bin"))
+    return SCHEMA
 
 
 def _types_line(types: list[str]) -> str:
-    known = ", ".join(types) if types else "mechanical, electronic, smart-home, TBD"
-    return f"type = einer von: {known}. Passt keiner, einen neuen kurzen Typ (englisch, klein) vorschlagen."
+    known = ", ".join(types) if types else "mechanic, electronic, smart-home, tbd"
+    return f"tag = einer von: {known}. Passt keiner, einen neuen kurzen Tag (klein) vorschlagen."
 
 
-def base_prompt(types: list[str]) -> str:
-    """Ausführlicher Prompt für den Haiku-Chat."""
-    return f"""Du hilfst mir bei einer Lagerinventur. Ich schicke pro Behälter: Code, Behältertyp,
-übergeordneten Behälter, ein Foto und/oder eine Notiz. Antworte NUR mit JSON nach diesem Schema,
-ohne Erklärtext:
+def base_prompt(ctx: Context) -> str:
+    """Prompt für den Haiku-Chat: Schema, Regeln, Kategorien und vorhandene Behälter."""
+    kinds_line = ", ".join(f"{k}={label} ({p})" for k, label, p in ctx.kinds)
+    cats_line = " | ".join(f"{p} {label}" for p, label in ctx.cats)
+    specs_line = "; ".join(f"{materials.MATERIALS[m][2]}: {keys}" for m, keys in SPEC_KEYS.items())
+    tags_line = ", ".join(ctx.tags) or "noch keine"
+    boxes = "\n".join(ctx.containers) or "(noch keine)"
+    inbox = (
+        f"in den Behälter {ctx.inbox} (Zu sortieren)" if ctx.inbox
+        else '{"code": null, "name": "Zu sortieren", "kind": "box"}'
+    )  # fmt: skip
+    return f"""Lagerinventur. Antworte NUR mit JSON (Array von Behältern), ohne Text drumherum:
+[{SCHEMA}]
 
-{schema()}
+Behälter: code = Code aus der Liste unten oder vom Etikett ("eur1" -> "EUR-001"). Neuer Behälter
+ohne Code: "code": null, das System vergibt einen. parent = Code des übergeordneten Behälters.
+kind = {kinds_line}. grid "SpaltenxZeilen" nur bei Sortierkästen, sonst null.
+Teile: name max. 24 Zeichen (Etikett), deutsch und suchbar; full_name mit Hersteller/Serie/Größe, sonst "".
+cat = {cats_line}. tag = einer von: {tags_line}; passt keiner: neuer kurzer Tag, klein.
+model = Teile-/Modellnummer (wichtig bei Elektronik), sonst "". qty nur bei genannter Zahl
+(Zahlwörter als Ziffern), sonst null + qty_hint ("ca. 20", "viele"). slot = Fach im Sortierkasten (B3).
+tags = 2-5 Suchwörter (Oberbegriff, Zweck). specs nur bei FIL/RES/CMP mit genannten oder sicher
+bekannten Werten (Zahl ohne Einheit), Schlüssel: {specs_line}; sonst {{}}.
+Gleiches zusammenfassen, nichts erfinden, Unsicheres mit "?" im Namen. Teile ohne erkennbaren
+Behälter {inbox}. Schon vorhandene Teile nicht doppelt anlegen.
 
-Regeln: Deutsche, suchbare Bezeichnungen. name = Anzeigename, kurz (max. 24 Zeichen, passt aufs Etikett).
-full_name = vollständige Bezeichnung (Hersteller, Serie, Größe), sonst leer.
-{_types_line(types)}
-model = Modell-/Teilenummer, wenn erkennbar (wichtig bei Elektronik), sonst leer.
-Gleichartiges zusammenfassen. qty nur bei genannter oder eindeutig zählbarer Zahl, sonst qty_hint ("ca. 20", "viele").
-slot = Fach im Sortierkasten (Zeile als Buchstabe, Spalte als Zahl, z. B. B3).
-tags = 2-5 Suchbegriffe inkl. Oberbegriff und Verwendungszweck. Nichts erfinden; Unsicheres
-mit "?" im Namen markieren. Wenn ich "alle" sage, gib alle bisherigen Behälter als JSON-Array aus."""
+Vorhandene Behälter (Code Name · Art · in Eltern-Code):
+{boxes}"""
 
 
 def for_container(
     code: str, kind: str, name: str, parent_code: str | None, grid: str | None,
-    types: list[str] | None = None,
+    ctx: Context | None = None,
 ) -> str:  # fmt: skip
     """Prompt + Kopfzeile für genau diesen Behälter – Foto dazu in den Chat, Antwort in /import."""
     head = f"Behälter: code={code}, kind={kind}, name={name}, parent={parent_code or 'null'}" + (
         f", grid={grid}" if grid else ""
     )
     return (
-        f"{base_prompt(types or [])}\n\n{head}\nInhalt: (Foto anhängen und/oder hier beschreiben)"
+        f"{base_prompt(ctx or Context())}\n\n{head}\n"
+        "Inhalt: (Foto anhängen und/oder hier beschreiben)"
     )
 
 
-def for_dictation(
-    transcript: str, stamp: str, duration: str, types: list[str] | None = None
-) -> str:
+def for_dictation(transcript: str, stamp: str, duration: str, ctx: Context | None = None) -> str:
     """Freies Diktat (mehrere Behälter am Stück) als fertiger Haiku-Prompt."""
     return (
-        f"{base_prompt(types or [])}\n\nDiktat vom {stamp} (Dauer {duration}). Darin beschreibe ich einen oder "
-        "mehrere Behälter mit Code und Inhalt. Erzeuge für jeden genannten Behälter ein Objekt "
-        "und gib alle als JSON-Array aus. Behälter ohne erkennbaren Code lässt du im JSON weg "
-        'und nennst sie danach in einer Zeile "Ohne Code: …".\n\n--- Diktat ---\n'
-        f"{transcript.strip() or '(kein Text erkannt)'}\n--- Ende ---"
+        f"{base_prompt(ctx or Context())}\n\nDiktat vom {stamp} (Dauer {duration}): ich beschreibe "
+        "einen oder mehrere Behälter und ihren Inhalt. Ordne gesprochene Namen den vorhandenen "
+        "Behältern zu (Name, Ort, Code). Ein Objekt je Behälter, alle als ein JSON-Array.\n\n"
+        f"--- Diktat ---\n{transcript.strip() or '(kein Text erkannt)'}\n--- Ende ---"
     )
 
 

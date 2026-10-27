@@ -340,7 +340,7 @@ def create_app(settings: Settings) -> FastAPI:
                 node["name"],
                 parent_code,
                 node["grid"],
-                itemtypes.names(conn),
+                prompt.context(conn),
             ),
             voice=bool(settings.whisper_url),
             topview=kasten.topview(conn, node),
@@ -784,12 +784,13 @@ def create_app(settings: Settings) -> FastAPI:
         )
 
     def note_rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+        ctx = prompt.context(conn)  # einmal je Seite, nicht je Aufnahme
         return [
             {
                 "note": n,
                 "stamp": notes.stamp(n),
                 "duration": notes.duration_label(n["duration"]),
-                "prompt": notes.chat_prompt(n, itemtypes.names(conn)),
+                "prompt": notes.chat_prompt(n, ctx),
             }
             for n in notes.all_notes(conn)
         ]
@@ -1229,7 +1230,7 @@ def create_app(settings: Settings) -> FastAPI:
     def download_note(note_id: int, conn: Conn) -> Response:
         note = notes.get(conn, note_id)
         return Response(
-            notes.chat_prompt(note, itemtypes.names(conn)),
+            notes.chat_prompt(note, prompt.context(conn)),
             media_type="text/plain; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="{notes.filename(note)}"'},
         )

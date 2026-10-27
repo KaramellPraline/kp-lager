@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app import codes as code_schema
-from app import itemtypes, kinds, repo
+from app import itemtypes, kinds, materials, repo
 from app.db import connect
 
 
@@ -57,9 +57,11 @@ def validate(conn: sqlite3.Connection, data: list[dict[str, Any]], report: Repor
         if raw and (norm is None or norm[:3] in code_schema.ITEM_PREFIXES):
             report.errors.append(f"Code {raw} passt nicht zum Schema (z. B. EUR-001)")
     for i, c in enumerate(data, 1):
-        label = f"Behälter {codes[i - 1] or '#' + str(i)}"
-        if not codes[i - 1]:
-            report.errors.append(f"{label}: 'code' fehlt")
+        label = f"Behälter {codes[i - 1] or _str(c.get('name')) or '#' + str(i)}"
+        if not codes[i - 1]:  # neuer Behälter ohne Etikett: Code kommt aus dem Präfix der Art
+            kind = kinds.resolve(_str(c.get("kind")) or "box") or "box"
+            if kind not in code_schema.KIND_PREFIX:
+                report.errors.append(f"{label}: ohne Code braucht es eine Art mit Präfix")
         if not _str(c.get("name")):
             report.errors.append(f"{label}: 'name' fehlt")
         parent = _str(c.get("parent"))
@@ -114,15 +116,22 @@ def apply(
 def _apply_container(
     conn: sqlite3.Connection, c: dict[str, Any], report: Report, review: bool = False
 ) -> None:
-    code, name = _str(c["code"]), _str(c["name"])
+    code, name = _str(c.get("code")), _str(c["name"])
     parent_code = _str(c.get("parent"))
     parent = repo.get_container_by_code(conn, parent_code) if parent_code else None
     parent_id = parent["id"] if parent else None
     raw_kind = _str(c.get("kind")) or "box"
     kind = kinds.resolve(raw_kind) or "box"
     if kinds.resolve(raw_kind) is None:
-        report.warnings.append(f"{code}: Art '{raw_kind}' unbekannt → box")
-    node = repo.get_container_by_code(conn, code)
+        report.warnings.append(f"{code or name}: Art '{raw_kind}' unbekannt → box")
+    node = repo.get_container_by_code(conn, code) if code else None
+    if not code:  # ohne Code: gleichnamigen Behälter am selben Ort nehmen, sonst neuen Code
+        node = conn.execute(
+            "SELECT * FROM container WHERE parent_id IS ? AND name = ? COLLATE NOCASE",
+            (parent_id, name),
+        ).fetchone()
+        if node is None:
+            code = code_schema.reserve(conn, code_schema.KIND_PREFIX[kind], 1)[0]
     if node is None:
         grid = _str(c.get("grid")) or None
         cid = repo.create_container(conn, name, kind, parent_id=parent_id, code=code, grid=grid)
@@ -143,6 +152,8 @@ def _apply_container(
         if any(i["name"].casefold() == iname.casefold() for i in repo.items_in(conn, target)):
             report.items_skipped += 1
             continue
+        cat = _str(item.get("cat")).upper()
+        cat = cat if cat in code_schema.ITEM_PREFIXES else code_schema.ITEM_PREFIX
         item_id = repo.add_item(
             conn,
             target,
@@ -153,14 +164,25 @@ def _apply_container(
             tags=_str(item.get("tags")),
             notes=_str(item.get("notes")),
             action="import",
-            code=code_schema.new_item_code(conn),
-        )
+            code=(
+                code_schema.new_item_code(conn) if cat == code_schema.ITEM_PREFIX
+                else code_schema.reserve(conn, cat, 1)[0]
+            ),
+        )  # fmt: skip
+        if profile := materials.PREFIX_MATERIAL.get(cat):
+            raw = item.get("specs") if isinstance(item.get("specs"), dict) else {}
+            keys = {f.key for f in materials.FIELDS[profile]}
+            form = {
+                f"spec_{k}": ok for k, v in raw.items()
+                if k in keys and (ok := materials.plausible(k, _str(v))) and _str(v)
+            }  # fmt: skip
+            materials.save_specs(conn, item_id, profile, form)
         extra: dict[str, str | int | None] = {}
         if full := _str(item.get("full_name")):
             extra["full_name"] = full
         if model := _str(item.get("model")):
             extra["model"] = model
-        if type_name := _str(item.get("type")):
+        if type_name := _str(item.get("tag")) or _str(item.get("type")):
             extra["type_id"] = itemtypes.create(conn, type_name)  # neu oder vorhanden
         if review:
             extra["review"] = 1
