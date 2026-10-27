@@ -3,42 +3,14 @@
 {% block content %}
 <h1>Mehr</h1>
 <ul class="list menu">
-  <li><a href="/verliehen"><span>↗ Verliehen{% if n_lent %} · <b>{{ n_lent }}</b>{% endif %}</span></a></li>
-  <li><a href="/einkauf"><span>🛒 Einkaufsliste{% if n_shopping %} · <b>{{ n_shopping }}</b>{% endif %}</span></a></li>
-  <li><a href="/platz"><span>▢ Freie Plätze</span></a></li>
-  <li><a href="/verlauf"><span>↶ Verlauf &amp; Rückgängig</span></a></li>
-  <li><a href="/import"><span>⇪ Import (Inventur-Chat)</span></a></li>
-  <li><a href="/export.json"><span>⇩ Export (JSON)</span></a></li>
-  <li><a href="/settings"><span>⚙ Einstellungen</span></a></li>
+  <li><a href="/sprache">{{ icon('media.dictate') }}<span>Sprache &amp; Aufnahmen</span></a></li>
+  <li><a href="/verliehen"><span>{{ icon('content.lent') }} Verliehen{% if n_lent %} · <b>{{ n_lent }}</b>{% endif %}</span></a></li>
+  <li><a href="/einkauf"><span>{{ icon('content.shopping') }} Einkaufsliste{% if n_shopping %} · <b>{{ n_shopping }}</b>{% endif %}</span></a></li>
+  <li><a href="/platz"><span>{{ icon('content.space') }} Freie Plätze</span></a></li>
+  <li><a href="/verlauf"><span>{{ icon('action.undo') }} Verlauf &amp; Rückgängig</span></a></li>
+  <li><a href="/import"><span>{{ icon('action.upload') }} Import (Inventur-Chat)</span></a></li>
+  <li><a href="/export.json"><span>{{ icon('action.download') }} Export (JSON)</span></a></li>
+  <li><a href="/settings"><span>{{ icon('nav.settings') }} Einstellungen</span></a></li>
 </ul>
 
-<h2 id="aufnahmen">🎙 Aufnahmen ({{ notes|length }})</h2>
-<p class="meta">Oben rechts 🎙 antippen, frei diktieren (z. B. „EUR-003: zwei Rollen Lötzinn, Multimeter …“), Stopp.
-Jede Aufnahme wird zum fertigen Haiku-Prompt mit Datum und Uhrzeit – kopieren oder herunterladen, im Chat einfügen,
-Antwort unter <a href="/import">Import</a> übernehmen.</p>
-{% for n in notes %}
-<section class="card note">
-  <div class="title-row">
-    <b>{{ n.stamp }}</b>
-    <span class="chip">{{ n.duration }} min</span>
-  </div>
-  {% if n.note.status == 'fertig' %}
-  <p class="note-text">{{ n.note.transcript|truncate(220, True, '…') }}</p>
-  {% elif n.note.status == 'fehler' %}
-  <p class="meta">Text konnte nicht erkannt werden: {{ n.note.error }}</p>
-  {% else %}<p class="meta">Wird verarbeitet …</p>{% endif %}
-  <textarea id="note-{{ n.note.id }}" hidden readonly>{{ n.prompt }}</textarea>
-  <div class="actions">
-    {% if n.note.status == 'fertig' %}
-    <button type="button" class="copy primary" data-target="note-{{ n.note.id }}">📋 Prompt kopieren</button>
-    <a class="button" href="/notes/{{ n.note.id }}.txt" download>⇩ Herunterladen</a>
-    {% else %}
-    <form method="post" action="/notes/{{ n.note.id }}/retry"><button class="primary">↻ Erneut erkennen</button></form>
-    {% endif %}
-    <form method="post" action="/notes/{{ n.note.id }}/delete" onsubmit="return confirm('Aufnahme löschen?')"><button class="danger">Löschen</button></form>
-  </div>
-</section>
-{% else %}
-<p class="empty">Noch keine Aufnahmen.{% if not VOICE %} Spracheingabe ist nicht eingerichtet (<code>LAGER_WHISPER_URL</code>).{% endif %}</p>
-{% endfor %}
 {% endblock %}

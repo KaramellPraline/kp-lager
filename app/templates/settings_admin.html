@@ -36,7 +36,7 @@ Nummern (z. B. gedruckte Vorrats-Etiketten) wieder frei – diese Etiketten kön
         <a class="name" href="{{ '/n/' if u.type == 'node' else '/items/' }}{{ u.id }}"><b>{{ u.code }}</b> · {{ u.name }}</a>
         <form method="post" action="/settings/admin/remove" onsubmit="return confirm('Code {{ u.code }} von „{{ u.name }}“ entfernen? Das Objekt bleibt erhalten.')">
           <input type="hidden" name="code" value="{{ u.code }}">
-          <button aria-label="Code {{ u.code }} entfernen">✕</button>
+          <button aria-label="Code {{ u.code }} entfernen">{{ icon('nav.close') }}</button>
         </form>
       </li>
       {% endfor %}

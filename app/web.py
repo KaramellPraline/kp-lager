@@ -12,7 +12,20 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import backup, codes, importer, kasten, labels, notes, photos, prefs, prompt, quick, repo
+from app import (
+    backup,
+    codes,
+    icons,
+    importer,
+    kasten,
+    labels,
+    notes,
+    photos,
+    prefs,
+    prompt,
+    quick,
+    repo,
+)
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -31,6 +44,7 @@ templates.env.globals["KIND_LABELS"] = KIND_LABELS
 templates.env.globals["APP_NAME"] = APP_NAME
 templates.env.globals["KIND_PREFIX"] = codes.KIND_PREFIX
 templates.env.globals["MODELS"] = kasten.MODELS
+templates.env.globals["icon"] = icons.icon
 
 
 def opt_int(value: str | None) -> int | None:
@@ -520,6 +534,21 @@ def create_app(settings: Settings) -> FastAPI:
         files = backup.run(settings.data_dir, settings.data_dir / "backups")
         return redirect("/settings", "Backup: " + ", ".join(f.name for f in files))
 
+    @app.get("/sprache", response_class=HTMLResponse)
+    def voice_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "sprache.html", notes=note_rows(conn))
+
+    def note_rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+        return [
+            {
+                "note": n,
+                "stamp": notes.stamp(n),
+                "duration": notes.duration_label(n["duration"]),
+                "prompt": notes.chat_prompt(n),
+            }
+            for n in notes.all_notes(conn)
+        ]
+
     @app.get("/mehr", response_class=HTMLResponse)
     def more_page(request: Request, conn: Conn) -> HTMLResponse:
         return render(
@@ -528,15 +557,6 @@ def create_app(settings: Settings) -> FastAPI:
             "more.html",
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
-            notes=[
-                {
-                    "note": n,
-                    "stamp": notes.stamp(n),
-                    "duration": notes.duration_label(n["duration"]),
-                    "prompt": notes.chat_prompt(n),
-                }
-                for n in notes.all_notes(conn)
-            ],
         )
 
     # --- Alltag: Rückgängig, Verlauf, Verliehen, Einkauf, Platz -------------------
@@ -698,12 +718,12 @@ def create_app(settings: Settings) -> FastAPI:
     async def retry_note(note_id: int, conn: Conn) -> RedirectResponse:
         await transcribe_note(conn, note_id)
         ok = notes.get(conn, note_id)["status"] == "fertig"
-        return redirect("/mehr#aufnahmen", "Text erkannt" if ok else "Erneut fehlgeschlagen")
+        return redirect("/sprache#aufnahmen", "Text erkannt" if ok else "Erneut fehlgeschlagen")
 
     @app.post("/notes/{note_id}/delete")
     def delete_note(note_id: int, conn: Conn) -> RedirectResponse:
         notes.delete(conn, note_id, note_dir)
-        return redirect("/mehr#aufnahmen", "Aufnahme gelöscht")
+        return redirect("/sprache#aufnahmen", "Aufnahme gelöscht")
 
     @app.get("/notes/{note_id}.txt")
     def download_note(note_id: int, conn: Conn) -> Response:

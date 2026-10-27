@@ -18,7 +18,7 @@
     var btn = ev.target.closest("button.copy");
     if (!btn) return;
     var el = document.getElementById(btn.dataset.target);
-    var done = function () { btn.textContent = "Kopiert ✓"; };
+    var done = function () { btn.textContent = "Kopiert"; };
     if (navigator.clipboard && window.isSecureContext) {
       navigator.clipboard.writeText(el.value).then(done);
     } else {  // Fallback ohne HTTPS: sichtbares Hilfsfeld kurz einblenden
@@ -82,6 +82,7 @@
         stream.getTracks().forEach(function (t) { t.stop(); });
         btn.recorder = null;
         btn.classList.remove("recording");
+        var orig = btn.innerHTML;
         btn.textContent = "…";
         var form = new FormData();
         form.append("audio", new Blob(chunks, { type: rec.mimeType }), "aufnahme.webm");
@@ -90,7 +91,7 @@
           .then(function (d) {
             if (d.text) { input.value = d.text; input.focus(); } else { alert(d.error || "Nichts erkannt"); }
           })
-          .finally(function () { btn.textContent = "🎤"; });
+          .finally(function () { btn.innerHTML = orig; });
       };
       rec.start();
     }).catch(function () { alert("Kein Zugriff aufs Mikrofon"); });
@@ -129,7 +130,7 @@
           form.append("duration", secs);
           fetch("/api/notes", { method: "POST", body: form })
             .then(function (r) { return r.json(); })
-            .then(function (d) { location.href = "/mehr?msg=" + encodeURIComponent(d.msg) + "#aufnahmen"; })
+            .then(function (d) { location.href = "/sprache?msg=" + encodeURIComponent(d.msg) + "#aufnahmen"; })
             .catch(function () { alert("Hochladen fehlgeschlagen"); bar.hidden = true; });
         };
         rec.start(1000);
@@ -142,6 +143,9 @@
       }).catch(function () { alert("Kein Zugriff aufs Mikrofon"); });
     }
     btn.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); else start(); });
+    document.querySelectorAll("[data-start-note]").forEach(function (b) {
+      b.addEventListener("click", function () { if (!(rec && rec.state === "recording")) start(); });
+    });
     document.getElementById("rec-stop").addEventListener("click", function () { if (rec) rec.stop(); });
     document.getElementById("rec-cancel").addEventListener("click", function () {
       if (rec && confirm("Aufnahme verwerfen?")) { keep = false; rec.stop(); }

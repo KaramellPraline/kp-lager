@@ -44,9 +44,9 @@ def test_settings_page_lists_all_groups(client: TestClient) -> None:
 
 
 def test_name_theme_compact(client: TestClient) -> None:
-    save(client, app_name="Werkstatt", theme="dark", compact="1")
+    save(client, app_name="Werkstatt", theme="light", compact="1")
     page = client.get("/").text
-    assert 'data-theme="dark"' in page and 'class="compact"' in page and ">Werkstatt</a>" in page
+    assert 'data-theme="light"' in page and 'class="compact"' in page and ">Werkstatt</a>" in page
     assert client.get("/manifest.webmanifest").json()["name"] == "Werkstatt"
     save(client, app_name="  ")
     assert ">KP Lager</a>" in client.get("/").text  # leer -> Standard
@@ -78,7 +78,7 @@ def test_invalid_values_fall_back(client: TestClient) -> None:
     save(client, label_text_max="abc", theme="neon", home_recent="999")
     page = client.get("/settings").text
     assert 'name="label_text_max" value="24"' in page and 'name="home_recent" value="20"' in page
-    assert 'data-theme="auto"' in page
+    assert 'data-theme="night"' in page
 
 
 def test_backup_and_more_page(client: TestClient) -> None:

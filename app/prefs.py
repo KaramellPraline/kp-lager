@@ -25,8 +25,9 @@ class Pref:
 
 PREFS = (
     Pref("app_name", "Name der App", "text", "KP Lager", "Allgemein"),
-    Pref("theme", "Darstellung", "choice", "auto", "Allgemein",
-         choices=(("auto", "Wie Gerät"), ("light", "Hell"), ("dark", "Dunkel"))),
+    Pref("theme", "Darstellung", "choice", "night", "Allgemein",
+         "Crimson Night ist das Designsystem; Hell nur als Ausweichlösung.",
+         choices=(("night", "Crimson Night"), ("light", "Hell"))),
     Pref("compact", "Kompakte Listen (mehr Zeilen pro Bildschirm)", "bool", "0", "Allgemein"),
     Pref("home_recent", "Anzahl „Zuletzt angesehen“ auf der Startseite", "int", "6", "Allgemein",
          min=0, max=20),

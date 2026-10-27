@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Sprache · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Sprache</h1>
+{% if not VOICE %}<p class="msg">Spracherkennung ist nicht eingerichtet (<code>LAGER_WHISPER_URL</code>).</p>{% endif %}
+
+<section class="card stack">
+  <p class="meta" style="margin:0">Frei diktieren, gern mehrere Behälter am Stück. Ergebnis: ein fertiger Prompt mit Datum und Uhrzeit.</p>
+  <button type="button" class="primary" data-start-note {% if not VOICE %}disabled{% endif %}>{{ icon('media.dictate') }} Langes Diktat starten</button>
+</section>
+
+<h2 id="aufnahmen">Aufnahmen ({{ notes|length }})</h2>
+{% for n in notes %}
+<section class="card note">
+  <div class="title-row">
+    <b>{{ n.stamp }}</b>
+    <span class="chip">{{ icon('content.time', size='xs') }} {{ n.duration }} min</span>
+  </div>
+  {% if n.note.status == 'fertig' %}
+  <p class="note-text">{{ n.note.transcript|truncate(220, True, '…') }}</p>
+  {% elif n.note.status == 'fehler' %}
+  <p class="meta">{{ icon('status.attention', size='sm', tone='attention') }} Text konnte nicht erkannt werden: {{ n.note.error }}</p>
+  {% else %}<p class="meta">{{ icon('status.pending', size='sm') }} Wird verarbeitet</p>{% endif %}
+  <textarea id="note-{{ n.note.id }}" hidden readonly>{{ n.prompt }}</textarea>
+  <div class="actions">
+    {% if n.note.status == 'fertig' %}
+    <button type="button" class="copy primary" data-target="note-{{ n.note.id }}">{{ icon('action.copy', size='sm') }} Prompt kopieren</button>
+    <a class="button" href="/notes/{{ n.note.id }}.txt" download>{{ icon('action.download', size='sm') }} Herunterladen</a>
+    {% else %}
+    <form method="post" action="/notes/{{ n.note.id }}/retry"><button class="primary">{{ icon('action.refresh', size='sm') }} Erneut erkennen</button></form>
+    {% endif %}
+    <form method="post" action="/notes/{{ n.note.id }}/delete" onsubmit="return confirm('Aufnahme löschen?')"><button class="danger">{{ icon('action.delete', size='sm') }} Löschen</button></form>
+  </div>
+</section>
+{% else %}
+<p class="empty">Noch keine Aufnahmen.</p>
+{% endfor %}
+{% endblock %}

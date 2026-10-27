@@ -43,7 +43,7 @@ def upload(c: TestClient) -> dict[str, Any]:
 def test_note_becomes_haiku_prompt_with_timestamp(voice: TestClient, tmp_path: Path) -> None:
     d = upload(voice)
     assert d["ok"] and d["msg"] == "Aufnahme gespeichert – Prompt bereit"
-    page = voice.get("/mehr").text
+    page = voice.get("/sprache").text
     assert "Aufnahmen (1)" in page and "2:31 min" in page
     assert re.search(r"<b>\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}</b>", page)
     assert (
@@ -64,7 +64,7 @@ def test_failed_transcription_keeps_audio_and_retries(voice: TestClient, tmp_pat
     STATE["fail"] = True
     d = upload(voice)
     assert not d["ok"] and "Text fehlt" in d["msg"]
-    page = voice.get("/mehr").text
+    page = voice.get("/sprache").text
     assert "Text konnte nicht erkannt werden" in page and "Erneut erkennen" in page
     STATE["fail"] = False
     r = voice.post(f"/notes/{d['id']}/retry")
@@ -83,5 +83,6 @@ def test_header_has_recorder_and_more_on_mobile(voice: TestClient, client: TestC
     header = page.split('<header class="topbar">')[1].split("</header>")[0]
     assert 'id="note-rec"' in header and 'href="/mehr"' in header
     bottom = page.split('class="bottomnav')[1].split("</nav>")[0]
-    assert 'href="/mehr"' not in bottom and bottom.count("<a ") == 4
+    assert 'href="/mehr"' not in bottom and bottom.count("<a ") == 5
+    assert 'href="/sprache"' in bottom
     assert 'id="note-rec"' not in client.get("/").text  # ohne Sprachdienst kein Aufnahmeknopf

@@ -41,7 +41,7 @@
     </select>
     <div class="add-item">
       <input name="text" id="quick-text" placeholder="z. B. 50 M3 Muttern" required>
-      {% if voice %}<button type="button" class="mic" data-target="quick-text" aria-label="Spracheingabe">🎤</button>{% endif %}
+      {% if voice %}<button type="button" class="mic" data-target="quick-text" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
       <button class="primary">Eintragen</button>
     </div>
     <label class="check"><input type="checkbox" name="queue" value="1" {% if P.queue_on_quickadd == '1' %}checked{% endif %}> Einsatz-Etikett in die Warteschlange</label>

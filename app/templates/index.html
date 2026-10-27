@@ -1,31 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
 <nav class="tiles" aria-label="Schnellzugriff">
-  <a href="/scan"><span class="ico">⌗</span>Scannen</a>
-  <a href="/labels"><span class="ico">🏷</span>Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
-  {% if targets %}<a href="#schnell" class="{% if voice %}mic-tile{% endif %}" data-target="quick-home" aria-label="Schnell eintragen{% if voice %} per Sprache{% endif %}"><span class="ico">🎤</span>Eintragen</a>{% endif %}
-  <a href="/einkauf"><span class="ico">🛒</span>Einkauf{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
-  <a href="/platz"><span class="ico">▢</span>Freie Plätze</a>
-  <a href="/verlauf"><span class="ico">↶</span>Verlauf</a>
+  <a href="/scan">{{ icon('action.scan') }}Scannen</a>
+  <a href="/labels">{{ icon('content.tag') }}Etiketten{% if n_queue %} <b>{{ n_queue }}</b>{% endif %}</a>
+  {% if targets %}<a href="#schnell" class="{% if voice %}mic-tile{% endif %}" data-target="quick-home" aria-label="Schnell eintragen{% if voice %} per Sprache{% endif %}">{{ icon('media.mic') }}Eintragen</a>{% endif %}
+  <a href="/einkauf">{{ icon('content.shopping') }}Einkauf{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
+  <a href="/platz">{{ icon('content.space') }}Freie Plätze</a>
+  <a href="/verlauf">{{ icon('content.history') }}Verlauf</a>
 </nav>
 
 {% if targets %}
 <form method="post" action="/quickadd" id="schnell" class="card stack" aria-label="Schnell eintragen">
   <div class="add-item" style="margin:0">
     <input name="text" id="quick-home" placeholder="z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off">
-    {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">🎤</button>{% endif %}
-    <button class="primary" aria-label="Eintragen">＋</button>
+    {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
+    <button class="primary" aria-label="Eintragen">{{ icon('action.add') }}</button>
   </div>
   <div class="where">
     <span class="where-label">Wohin</span>
     {% if fav_targets %}
     <div class="pick-scroll" aria-label="Favoriten">
-      {% for f in fav_targets %}<button type="button" class="pick fav" data-id="{{ f.id }}" title="{{ f.name }}">★ {{ f.name }}</button>{% endfor %}
+      {% for f in fav_targets %}<button type="button" class="pick fav" data-id="{{ f.id }}" title="{{ f.name }}">{{ f.name }}</button>{% endfor %}
     </div>
     {% endif %}
     {% if recent_targets %}
     <div class="pick-row" aria-label="Zuletzt verwendet">
-      {% for r in recent_targets %}<button type="button" class="pick" data-id="{{ r.id }}" title="{{ r.name }}">↺ {{ r.name }}</button>{% endfor %}
+      {% for r in recent_targets %}<button type="button" class="pick" data-id="{{ r.id }}" title="{{ r.name }}">{{ r.name }}</button>{% endfor %}
     </div>
     {% endif %}
     <select name="target" id="qa-target" aria-label="Wohin">
@@ -36,7 +36,7 @@
 {% endif %}
 
 {% if favorites %}
-<h2>★ Favoriten</h2>
+<h2>Favoriten</h2>
 {% with kids=favorites, cols=0 %}{% include "_kids.html" %}{% endwith %}
 {% endif %}
 

@@ -13,7 +13,7 @@
       <small>{{ labels.get(e.action, e.action) }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %} · {{ e.ts }}</small>
     </span>
     {% if e.action in undoable and not e.undone %}
-    <form method="post" action="/undo/{{ e.id }}"><button>↶</button></form>
+    <form method="post" action="/undo/{{ e.id }}"><button>{{ icon('action.undo') }} </button></form>
     {% endif %}
   </li>
   {% else %}<li class="empty">Noch nichts passiert.</li>{% endfor %}

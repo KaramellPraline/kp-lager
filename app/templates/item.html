@@ -13,7 +13,7 @@
       <h1>{{ item.name }}</h1>
       <div class="chips">
         {% if item.code %}<span class="chip code">{{ item.code }}</span>{% if not item.label_printed %}<span class="chip">Etikett offen</span>{% endif %}{% endif %}
-        <span class="chip">📍 {{ path[-1].name }}</span>
+        <span class="chip">{{ icon('content.place') }} {{ path[-1].name }}</span>
         {% if item.tags %}<span class="chip">{{ item.tags }}</span>{% endif %}
       </div>
     </div>
@@ -22,13 +22,13 @@
   <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
 
   {% if item.lent_to %}
-  <div class="lent">↗ Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
+  <div class="lent">{{ icon('content.lent') }} Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
     <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>
   </div>
   {% else %}
   <form method="post" action="/items/{{ item.id }}/lend" class="add-item card">
     <input name="to" placeholder="Verleihen an / in Benutzung bei …" aria-label="Verleihen an">
-    <button>↗ Verleihen</button>
+    <button>{{ icon('content.lent') }} Verleihen</button>
   </form>
   {% endif %}
 
@@ -44,16 +44,16 @@
   <div class="card">
     <h2 style="margin-top:0">Aktionen</h2>
     <div class="actions">
-      <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">📦 Umlagern</button></form>
-      <form method="post" action="/items/{{ item.id }}/list"><button>🛒 {% if item.on_list %}Von Liste{% else %}Auf Einkaufsliste{% endif %}</button></form>
+      <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">{{ icon('action.move') }} Umlagern</button></form>
+      <form method="post" action="/items/{{ item.id }}/list"><button>{{ icon('content.shopping') }} {% if item.on_list %}Von Liste{% else %}Auf Einkaufsliste{% endif %}</button></form>
       {% if item.code %}
-      <form method="post" action="/labels/queue/item/{{ item.id }}"><button>🏷 In Warteschlange</button></form>
-      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}"><button>🖨 Etikett drucken</button></form>
+      <form method="post" action="/labels/queue/item/{{ item.id }}"><button>{{ icon('content.tag') }} In Warteschlange</button></form>
+      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}"><button>{{ icon('action.print') }} Etikett drucken</button></form>
       {% else %}
-      <form method="post" action="/items/{{ item.id }}/code"><button>🏷 Etikett vergeben</button></form>
+      <form method="post" action="/items/{{ item.id }}/code"><button>{{ icon('content.tag') }} Etikett vergeben</button></form>
       {% endif %}
       <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
-        <label class="file-btn">📷 Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
+        <label class="file-btn">{{ icon('media.camera') }} Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
       </form>
     </div>
   </div>

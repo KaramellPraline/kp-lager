@@ -16,7 +16,7 @@
           <td><input type="hidden" name="code" value="{{ r.code }}"><b>{{ r.code }}</b></td>
           <td><input name="text" value="{{ r.text }}" data-max="{{ text_max }}" aria-label="Text für {{ r.code }}"></td>
           <td><input name="extra" value="{{ r.extra }}" class="short" aria-label="Zusatz für {{ r.code }}"></td>
-          {% if source == 'queue' %}<td><button formaction="/labels/queue/remove?code={{ r.code }}" formnovalidate aria-label="{{ r.code }} entfernen">✕</button></td>{% endif %}
+          {% if source == 'queue' %}<td><button formaction="/labels/queue/remove?code={{ r.code }}" formnovalidate aria-label="{{ r.code }} entfernen">{{ icon('nav.close') }}</button></td>{% endif %}
         </tr>
         {% endfor %}
       </tbody>

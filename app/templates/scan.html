@@ -33,11 +33,13 @@
   function note(text, ok, undo) {
     var li = document.createElement("li");
     li.className = "item";
-    li.innerHTML = '<span class="name"></span>';
-    li.firstChild.textContent = (ok ? "✓ " : "✗ ") + text;
+    li.innerHTML = '<span class="ic ' + (ok ? 'tone-ok">check_circle' : 'tone-critical">error') +
+      '</span><span class="name"></span>';
+    li.querySelector(".name").textContent = text;
     if (undo) {
       var b = document.createElement("button");
-      b.textContent = "↶";
+      b.innerHTML = '<span class="ic">undo</span>';
+      b.setAttribute("aria-label", "Rückgängig");
       b.onclick = function () {
         fetch("/undo/" + undo, { method: "POST" }).then(function () { li.classList.add("undone"); b.remove(); });
       };

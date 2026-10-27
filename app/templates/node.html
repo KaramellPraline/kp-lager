@@ -12,7 +12,7 @@
     <div class="grow">
       <div class="title-row">
         <h1>{{ node.name }}</h1>
-        <form method="post" action="/n/{{ node.id }}/favorite"><button class="star" aria-label="Favorit" title="Favorit">{% if node.favorite %}★{% else %}☆{% endif %}</button></form>
+        <form method="post" action="/n/{{ node.id }}/favorite"><button class="star {% if node.favorite %}on{% endif %}" aria-label="Favorit" title="Favorit">{{ icon('content.star') }}</button></form>
       </div>
       <div class="chips">
         <span class="chip">{{ KIND_LABELS[node.kind] }}</span>
@@ -28,9 +28,9 @@
   {% if not node.model %}
   <form method="post" action="/n/{{ node.id }}/items" class="add-item card" aria-label="Teil eintragen">
     <input name="name" placeholder="Teil eintragen, z. B. 3 Rollen Lötzinn" required id="add-name" autocomplete="off">
-    {% if voice %}<button type="button" class="mic" data-target="add-name" aria-label="Spracheingabe">🎤</button>{% endif %}
+    {% if voice %}<button type="button" class="mic" data-target="add-name" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
     <input name="qty" placeholder="Anz." inputmode="numeric" class="short" aria-label="Anzahl">
-    <button class="primary" aria-label="Eintragen">＋</button>
+    <button class="primary" aria-label="Eintragen">{{ icon('action.add') }}</button>
   </form>
   {% endif %}
 
@@ -54,18 +54,18 @@
     <h2 style="margin-top:0">Aktionen</h2>
     <div class="actions">
       {% if node.code %}
-      <form method="post" action="/labels/queue/node/{{ node.id }}"><button>🏷 In Warteschlange</button></form>
+      <form method="post" action="/labels/queue/node/{{ node.id }}"><button>{{ icon('content.tag') }} In Warteschlange</button></form>
       {% elif KIND_PREFIX.get(node.kind) %}
-      <form method="post" action="/n/{{ node.id }}/code"><button>🏷 {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
+      <form method="post" action="/n/{{ node.id }}/code"><button>{{ icon('content.tag') }} {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
       {% endif %}
       {% if items or kids %}
-      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>🖨 Teile-Etiketten</button></form>
+      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>{{ icon('action.print') }} Teile-Etiketten</button></form>
       {% endif %}
       {% if node.kind != 'fach' %}
-      <form method="post" action="/carry/node/{{ node.id }}"><button>📦 Umlagern</button></form>
+      <form method="post" action="/carry/node/{{ node.id }}"><button>{{ icon('action.move') }} Umlagern</button></form>
       {% endif %}
       <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
-        <label class="file-btn">📷 Foto
+        <label class="file-btn">{{ icon('media.camera') }} Foto
           <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
       </form>
     </div>

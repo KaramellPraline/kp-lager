@@ -122,8 +122,8 @@ def test_favorites_and_recent(client: TestClient) -> None:
     b = box(client, "Werkzeugkiste")
     assert "Zuletzt angesehen" in client.get("/").text  # Besuch beim Anlegen
     r = client.post(f"/n/{b}/favorite")
-    assert "Als Favorit gemerkt" in r.text and "★" in r.text
-    assert "★ Favoriten" in client.get("/").text
+    assert "Als Favorit gemerkt" in r.text and 'class="star on"' in r.text
+    assert ">Favoriten</h2>" in client.get("/").text
 
 
 def test_search_synonyms_and_typos(client: TestClient) -> None:

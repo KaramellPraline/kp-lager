@@ -15,7 +15,7 @@
     <li>{{ report.containers_created|length }} neue Behälter{% if report.containers_created %}: {{ report.containers_created|join(', ') }}{% endif %}</li>
     {% if report.containers_moved %}<li>Umgezogen: {{ report.containers_moved|join(', ') }}</li>{% endif %}
     <li>{{ report.items_added }} Teile neu, {{ report.items_skipped }} schon vorhanden</li>
-    {% for w in report.warnings %}<li>⚠ {{ w }}</li>{% endfor %}
+    {% for w in report.warnings %}<li>{{ icon('status.attention') }} {{ w }}</li>{% endfor %}
   </ul>
   {% endif %}
 </section>
