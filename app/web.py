@@ -24,9 +24,11 @@ from app import (
     notes,
     photos,
     prefs,
+    projects,
     prompt,
     quick,
     repo,
+    withdrawals,
 )
 from app.config import Settings
 from app.db import connect
@@ -115,6 +117,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     def get_conn() -> Iterator[sqlite3.Connection]:
         conn = connect(settings.db_path)
+        withdrawals.confirm_due(conn)  # fällige Entnahmen (7 Tage) bestätigen
         try:
             yield conn
         finally:
@@ -231,6 +234,9 @@ def create_app(settings: Settings) -> FastAPI:
         """„Hinzufügen“ auf der Startseite: Teil (getippt/diktiert), Behälter oder Typ."""
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
+        if mode == "project":
+            pid = projects.create(conn, text)
+            return redirect(f"/projekte/{pid}", f"Projekt „{text.strip()}“ angelegt")
         if mode == "type":
             t = itemtypes.get(conn, itemtypes.create(conn, text))
             return redirect("/", f"Typ {t['code']} „{t['name']}“ angelegt")
@@ -327,6 +333,7 @@ def create_app(settings: Settings) -> FastAPI:
             path=repo.container_path(conn, item["container_id"]),
             events=repo.history(conn, item_id)[:30],
             types=itemtypes.all_types(conn),
+            open_takes=withdrawals.open_for_item(conn, item_id),
             item_type=itemtypes.get(conn, item["type_id"]) if item["type_id"] else None,
             sheet_search=datasheets.search_url(item["model"]) if item["model"] else "",
         )
@@ -647,8 +654,114 @@ def create_app(settings: Settings) -> FastAPI:
     # --- Scan-Modus & Sprache (brauchen HTTPS für Kamera/Mikrofon) ---------------
 
     @app.get("/scan", response_class=HTMLResponse)
-    def scan_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(request, conn, "scan.html")
+    def scan_page(request: Request, conn: Conn, projekt: int = 0) -> HTMLResponse:
+        project = projects.get(conn, projekt) if projekt else None
+        return render(request, conn, "scan.html", project=project)
+
+    @app.post("/api/take")
+    def api_take(
+        conn: Conn, code: Annotated[str, Form()], qty: Annotated[int, Form()] = 1
+    ) -> JSONResponse:
+        """Scan-Modus „Entnehmen“: Teil per Code entnehmen (7 Tage stornierbar)."""
+        norm = codes.normalize(code) or code
+        item = repo.get_item_by_code(conn, norm)
+        if item is None:
+            return JSONResponse(
+                {"ok": False, "msg": f"{norm}: kein Teil (Behälter nicht entnehmbar)"}, 404
+            )
+        try:
+            wid = withdrawals.take(conn, item["id"], qty)
+        except LagerError as exc:
+            return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+        left = repo.get_item(conn, item["id"])["qty"]
+        rest = f" · noch {left}" if left is not None else ""
+        return JSONResponse({"ok": True, "msg": f"„{item['name']}“ entnommen{rest}", "cancel": wid})
+
+    @app.post("/api/projects/{pid}/gather")
+    def api_gather(pid: int, conn: Conn, code: Annotated[str, Form()]) -> JSONResponse:
+        try:
+            msg = projects.gather_by_code(conn, pid, codes.normalize(code) or code)
+        except LagerError as exc:
+            return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
+        lines = projects.lines(conn, pid)
+        done = sum(1 for line in lines if line["gathered"])
+        return JSONResponse({"ok": True, "msg": f"{msg} · {done} von {len(lines)}"})
+
+    # --- Entnahmen ---------------------------------------------------------------
+
+    @app.post("/items/{item_id}/take")
+    def take_item(item_id: int, conn: Conn, qty: Annotated[int, Form()] = 1) -> RedirectResponse:
+        withdrawals.take(conn, item_id, qty)
+        return redirect(
+            f"/items/{item_id}",
+            f"Entnommen – bis zur Bestätigung in {withdrawals.DAYS} Tagen stornierbar",
+        )
+
+    @app.post("/withdrawals/{wid}/cancel")
+    def cancel_withdrawal(request: Request, wid: int, conn: Conn) -> RedirectResponse:
+        msg = withdrawals.cancel(conn, wid)
+        return redirect(request.headers.get("referer", "/entnahmen").split("?")[0], msg)
+
+    @app.get("/entnahmen", response_class=HTMLResponse)
+    def withdrawals_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request, conn, "withdrawals.html", rows=withdrawals.recent(conn), days=withdrawals.DAYS
+        )
+
+    # --- Projekte ------------------------------------------------------------------
+
+    @app.get("/projekte", response_class=HTMLResponse)
+    def projects_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "projects.html", projects=projects.all_projects(conn))
+
+    @app.post("/projekte")
+    def create_project(conn: Conn, name: Annotated[str, Form()]) -> RedirectResponse:
+        pid = projects.create(conn, name)
+        return redirect(f"/projekte/{pid}", "Projekt angelegt")
+
+    @app.get("/projekte/{pid}", response_class=HTMLResponse)
+    def project_page(request: Request, pid: int, conn: Conn, q: str = "") -> HTMLResponse:
+        lines = projects.lines(conn, pid)
+        found = repo.search_synonyms(conn, q, synonyms(conn), limit=12) if q.strip() else []
+        return render(
+            request,
+            conn,
+            "project.html",
+            project=projects.get(conn, pid),
+            lines=lines,
+            done=sum(1 for line in lines if line["gathered"]),
+            found=found,
+            pq=q,
+        )
+
+    @app.post("/projekte/{pid}/lines")
+    def add_project_line(
+        pid: int,
+        conn: Conn,
+        item_id: Annotated[str, Form()] = "",
+        name: Annotated[str, Form()] = "",
+        qty: Annotated[str, Form()] = "",
+    ) -> RedirectResponse:
+        projects.add_line(conn, pid, opt_int(item_id), name, opt_int(qty))
+        return redirect(f"/projekte/{pid}", "Zur Liste hinzugefügt")
+
+    @app.post("/projekte/lines/{line_id}/gather")
+    def gather_line(request: Request, line_id: int, conn: Conn) -> RedirectResponse:
+        msg = projects.gather(conn, line_id)
+        return redirect(request.headers.get("referer", "/projekte").split("?")[0], msg)
+
+    @app.post("/projekte/lines/{line_id}/delete")
+    def delete_line(request: Request, line_id: int, conn: Conn) -> RedirectResponse:
+        projects.remove_line(conn, line_id)
+        return redirect(request.headers.get("referer", "/projekte").split("?")[0], "Entfernt")
+
+    @app.post("/projekte/{pid}/done")
+    def project_done(pid: int, conn: Conn) -> RedirectResponse:
+        p = projects.get(conn, pid)
+        projects.set_done(conn, pid, not p["done"])
+        return redirect(
+            f"/projekte/{pid}", "Wieder geöffnet" if p["done"] else "Als erledigt markiert"
+        )
 
     @app.post("/api/move")
     def api_move(

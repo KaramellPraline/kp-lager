@@ -25,6 +25,21 @@
 
   <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
 
+  {% if open_takes %}
+  <div class="card">
+    <h2 style="margin-top:0">Offene Entnahmen</h2>
+    {% for w in open_takes %}
+    <div class="title-row"><span>{% if w.qty %}{{ w.qty }} Stück{% else %}komplett{% endif %} · {{ w.created_at[:16] }} · Bestätigung in {{ w.days_left }} Tagen</span>
+      <form method="post" action="/withdrawals/{{ w.id }}/cancel"><button>{{ icon('action.undo', size='sm') }} Stornieren</button></form></div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <form method="post" action="/items/{{ item.id }}/take" class="add-item card">
+    {% if item.qty is not none %}<input name="qty" value="1" inputmode="numeric" class="short" aria-label="Menge">{% endif %}
+    <button class="primary">{{ icon('action.take', size='sm') }} Entnehmen</button>
+    <span class="meta">nach 7 Tagen bestätigt, bis dahin stornierbar</span>
+  </form>
+
   {% if item.lent_to %}
   <div class="lent">{{ icon('content.lent') }} Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
     <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>

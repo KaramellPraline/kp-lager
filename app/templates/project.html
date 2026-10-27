@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}{{ project.name }} · Projekt{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/projekte">Projekte</a> › {{ project.name }}</nav>
+<div class="title-row">
+  <h1>{{ project.name }}</h1>
+  <span class="chip">{{ done }} von {{ lines|length }}</span>
+</div>
+<div class="layout-2">
+<div>
+  {% if lines %}
+  <a class="button primary" href="/scan?projekt={{ project.id }}" style="width:100%;margin:8px 0">{{ icon('action.scan', size='sm') }} Einsammeln per Scan</a>
+  <h2>Sammelliste (Laufweg)</h2>
+  <ul class="list">
+    {% for l in lines %}
+    <li class="item {% if l.gathered %}undone{% endif %}">
+      <span class="name">
+        {% if l.item_id %}<a href="/items/{{ l.item_id }}">{{ l.name }}</a>{% else %}{{ l.name }}{% endif %}
+        <small>{% if l.qty %}{{ l.qty }} × · {% endif %}{% if l.path %}{{ icon('content.place', size='xs') }} {{ l.path }}{% if l.stock is not none %} · Bestand {{ l.stock }}{% endif %}{% else %}nicht im Lager{% endif %}</small>
+      </span>
+      {% if not l.gathered %}
+      <form method="post" action="/projekte/lines/{{ l.id }}/gather"><button aria-label="Einsammeln">{{ icon('select.check', size='sm') }}</button></form>
+      {% endif %}
+      <form method="post" action="/projekte/lines/{{ l.id }}/delete"><button aria-label="Entfernen">{{ icon('nav.close', size='sm') }}</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="empty">Noch keine Teile auf der Liste – rechts suchen und hinzufügen.</p>{% endif %}
+</div>
+<aside>
+  <section class="card">
+    <h2 style="margin-top:0">Teile hinzufügen</h2>
+    <form method="get" action="/projekte/{{ project.id }}" class="add-item" style="margin:0">
+      <input name="q" value="{{ pq }}" placeholder="Im Lager suchen" aria-label="Im Lager suchen">
+      <button aria-label="Suchen">{{ icon('nav.search', size='sm') }}</button>
+    </form>
+    {% if found %}
+    <ul class="list" style="margin-top:8px">
+      {% for i in found %}
+      <li class="item"><span class="name">{{ i.name }}<small style="display:block">{{ i.path }}</small></span>
+        <form method="post" action="/projekte/{{ project.id }}/lines"><input type="hidden" name="item_id" value="{{ i.id }}"><button aria-label="Hinzufügen">{{ icon('action.add', size='sm') }}</button></form></li>
+      {% endfor %}
+    </ul>
+    {% elif pq %}<p class="meta">Nichts im Lager gefunden.</p>{% endif %}
+    <form method="post" action="/projekte/{{ project.id }}/lines" class="stack">
+      <input name="name" placeholder="Fehlt im Lager: freier Eintrag" value="{{ pq }}">
+      <div class="row"><input name="qty" placeholder="Menge" inputmode="numeric" class="short"><button>Als Bedarf notieren</button></div>
+    </form>
+  </section>
+  <form method="post" action="/projekte/{{ project.id }}/done"><button style="width:100%">{{ icon('status.ok', size='sm') }} {% if project.done %}Wieder öffnen{% else %}Als erledigt markieren{% endif %}</button></form>
+</aside>
+</div>
+{% endblock %}

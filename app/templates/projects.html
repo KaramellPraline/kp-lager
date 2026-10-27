@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Projekte · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Projekte</h1>
+<p class="meta">Teileliste planen, dann im Lager per Scan einsammeln. Eingesammelte Teile werden entnommen (7 Tage stornierbar).</p>
+<form method="post" action="/projekte" class="add-item card">
+  <input name="name" placeholder="Neues Projekt, z. B. Wetterstation" required>
+  <button class="primary">{{ icon('action.add', size='sm') }} Anlegen</button>
+</form>
+<ul class="list">
+  {% for p in projects %}
+  <li><a href="/projekte/{{ p.id }}"><span>{{ p.name }}{% if p.done %} · erledigt{% endif %}</span>
+    <small>{{ p.done_lines }} von {{ p.total }} eingesammelt</small></a></li>
+  {% else %}<li class="empty">Noch keine Projekte.</li>{% endfor %}
+</ul>
+{% endblock %}

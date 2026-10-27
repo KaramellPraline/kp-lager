@@ -33,7 +33,7 @@ Stand: 2026-10-26
 - [x] **M10 Design Crimson Night Core**: Tokens (Nacht, Karmin, Schein …), Instrument Serif/Geist/Geist Mono, Material Symbols Rounded 300 über Rollen (`nav.home` …), alles lokal gebündelt (offline), keine Emoji. Theme konfigurierbar.
 - [x] **M11 Datenmodell**: Typen als Liste mit Codes TYP-001 (mechanical, electronic, smart-home, TBD …, unterwegs neu anlegbar); Anzeigename + vollständiger Name; Modellnummer + Datenblatt (URL → PDF lokal, Such-Link); Flag „zu prüfen“ für KI-Einträge; Eingang „Zu sortieren“; Entnahmen; Projekte; API-Schlüssel.
 - [x] **M12 Start & Verlauf**: „Zuletzt angesehen“ nur im Verlauf-Tab; Start = eine Eingabe für alles (Teil, Behälter, Typ), Abschnitte konfigurierbar.
-- [ ] **M13 Scan**: Entnehmen (Menge sofort runter, nach 7 Tagen automatisch bestätigt, am Teil stornierbar); Projekte: Teileliste per Scan systematisch einsammeln.
+- [x] **M13 Scan**: Entnehmen (Menge sofort runter, nach 7 Tagen automatisch bestätigt, am Teil stornierbar); Projekte: Teileliste per Scan systematisch einsammeln.
 - [ ] **M14 Etiketten**: Export immer XLSX; A4 als eigene Seite mit Auswahl aus allen etikettierten Teilen.
 - [ ] **M15 Lokale KI** (Gateway Chat): Teil vollständig ausfüllen ohne Haiku; „An lokale KI senden“ neben jedem Prompt-Kopieren; kompakter Prompt für lokale Modelle inkl. dynamischer Typen; alle KI-Ergebnisse mit Flag „zu prüfen“ → Tab „Freigaben“ unter Mehr (freigeben/ändern).
 - [ ] **M16 Sprach-Tab** in der unteren Leiste: langes Diktat + Dauer-Aufnahme Teil für Teil, getrennt durch „weiter“ oder Knopf → Einträge in „Zu sortieren“.

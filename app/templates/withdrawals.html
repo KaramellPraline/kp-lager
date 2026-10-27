@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Entnahmen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Entnahmen</h1>
+<p class="meta">Entnahmen werden nach {{ days }} Tagen automatisch bestätigt. Bis dahin lassen sie sich stornieren – die Menge wird dann zurückgebucht.</p>
+<ul class="list">
+  {% for w in rows %}
+  <li class="item">
+    <span class="name">
+      {% if w.item_id %}<a href="/items/{{ w.item_id }}">{{ w.item_name }}</a>{% else %}{{ w.item_name }}{% endif %}
+      <small>{% if w.qty %}{{ w.qty }} Stück{% else %}komplett{% endif %} · {{ w.created_at[:16] }} ·
+        {% if w.state == 'offen' %}{{ icon('status.pending', size='xs') }} offen, noch {{ w.days_left }} Tage{% elif w.state == 'bestaetigt' %}{{ icon('status.ok', size='xs', tone='ok') }} bestätigt{% else %}storniert{% endif %}</small>
+    </span>
+    {% if w.state == 'offen' %}<form method="post" action="/withdrawals/{{ w.id }}/cancel"><button>{{ icon('action.undo', size='sm') }} Stornieren</button></form>{% endif %}
+  </li>
+  {% else %}<li class="empty">Noch keine Entnahmen.</li>{% endfor %}
+</ul>
+{% endblock %}
