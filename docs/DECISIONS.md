@@ -58,3 +58,4 @@
 | 2026-10-27 | Eigene Behälter-Arten in `container_kind` mit 3-Buchstaben-Präfix; CHECK auf `container.kind` entfällt (Migration 010) | Nutzer will Arten unterwegs ergänzen; Prüfung liegt jetzt in `app/kinds.py`. |
 | 2026-10-27 | Code-Schema nach Nutzerliste (WBA, WAL, DRW, TBX, MCF, MOD, BOX, BIN, CNS, RAW, CBL, CMP, PPE …); Arten-Schlüssel englisch, Anzeige DE/EN wählbar; alte deutsche Schlüssel als Alias beim Import; Typen immer kleingeschrieben | User-Vorgabe; Alias hält alte Haiku-JSONs lauffähig. |
 | 2026-10-27 | FIL/RES sind Teile-Präfixe (wie ART, 3-stellig), Eigenschaften als JSON `item.specs` mit fester Feldliste je Material | Spule/Flasche ist ein Teil mit Menge; JSON hält das Schema flexibel ohne viele Spalten. |
+| 2026-10-27 | CNS/RAW/CBL/CMP/PPE sind Teile-Kategorien (Code-Präfix am Teil), keine Behälter-Arten; TYP heißt TAG (alte TYP-Codes werden umgeleitet) | Nutzer wählt sie beim Teil-Hinzufügen; Verbrauch/Material sind Dinge, keine Orte. |

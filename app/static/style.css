@@ -83,7 +83,7 @@ main { padding: 16px; max-width: 1200px; margin: 0 auto; }
 }
 
 /* Untere Navigation (Handy) */
-.bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr);
+.bottomnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(6, 1fr);
   background: var(--surface); border-top: 1px solid var(--line);
   height: calc(var(--nav-h) + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); }
 .bottomnav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
@@ -280,3 +280,25 @@ dl.specs { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 1
 dl.specs dt { color: var(--sub); }
 dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+
+/* Kopfzeile: Suche als Lupe, beim Antippen über die ganze Breite (Handy) */
+.topbar .search-toggle { border: none; background: transparent; min-height: 40px; padding: 0; color: var(--sub); display: grid; place-items: center; }
+@media (max-width: 899px) {
+  .topbar .search { flex: 0 0 auto; margin-left: auto; border-color: transparent; background: transparent; padding: 0 4px; }
+  .topbar .search input { display: none; }
+  .topbar .search.open { flex: 1; margin-left: 0; border-color: var(--strong); background: var(--surface); padding: 0 12px; }
+  .topbar .search.open input { display: block; }
+  .topbar:has(.search.open) .brand, .topbar:has(.search.open) .icon-btn { display: none; }
+  .topbar .icon-btn { margin-left: 0; }
+}
+.bottomnav a span { white-space: nowrap; }
+/* Start: Teile-Kategorien als Chips nebeneinander */
+.cats { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.cats .pick.cat { flex: 0 0 auto; display: flex; align-items: center; cursor: pointer; }
+.cats .pick.cat input { position: absolute; opacity: 0; pointer-events: none; }
+.cats .pick.cat b { font-family: var(--font-mono); font-weight: 500; }
+.cats .pick.cat:has(input:checked) { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.cats .pick.cat:has(input:focus-visible) { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--glow); }
+.tag-filter { margin: 8px 0 12px; }
+.tag-filter .pick { text-decoration: none; white-space: nowrap; }
+.tag-filter .pick.active { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }

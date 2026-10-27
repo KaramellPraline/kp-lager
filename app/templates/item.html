@@ -123,11 +123,11 @@
     <form method="post" action="/items/{{ item.id }}/edit" class="stack">
       <label>Anzeigename (kurz, fürs Etikett) <input name="name" value="{{ item.name }}" required></label>
       <label>Vollständiger Name <input name="full_name" value="{{ item.full_name }}" placeholder="z. B. Hersteller, Serie, genaue Bezeichnung"></label>
-      <label>Typ
+      <label>Tag
         <select name="type_id" data-new-type>
-          <option value="">– kein Typ –</option>
+          <option value="">– kein Tag –</option>
           {% for t in types %}<option value="{{ t.id }}" {% if t.id == item.type_id %}selected{% endif %}>{{ t.name }} · {{ t.code }}</option>{% endfor %}
-          <option value="neu">Neuer Typ …</option>
+          <option value="neu">Neuer Tag …</option>
         </select></label>
       <input name="new_type" placeholder="Name des neuen Typs" hidden>
       <div class="row">

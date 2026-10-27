@@ -5,17 +5,25 @@
   <div class="seg" role="tablist" aria-label="Was hinzufügen">
     <button type="button" class="active" data-mode="item" data-ph="Teil, z. B. 3 Rollen Lötzinn und 50 M3 Muttern">Teil</button>
     <button type="button" data-mode="container" data-ph="Behälter, z. B. Werkzeugkiste">Behälter</button>
-    <button type="button" data-mode="type" data-ph="Typ, z. B. pneumatic">Typ</button>
-    <button type="button" data-mode="project" data-ph="Projekt, z. B. Wetterstation">Projekt</button>
+    <button type="button" data-mode="all" data-ph="Name, z. B. Werkbank links">{{ icon('action.add', size='sm') }} Alle</button>
   </div>
   <div class="add-item" style="margin:0">
     <input name="text" id="quick-home" placeholder="Teil, z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off" aria-label="Was">
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
     <button class="primary icon-only" aria-label="Hinzufügen">{{ icon('action.add') }}</button>
   </div>
+  <div class="pick-scroll cats" data-for="item" role="radiogroup" aria-label="Kategorie">
+    {% for p, label in ITEM_CATS %}<label class="pick cat"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><span><b>{{ p }}</b> {{ label }}</span></label>{% endfor %}
+  </div>
+  <div data-for="all" hidden>
+    <select name="choice" aria-label="Kategorie">
+      {% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">{% for k in keys if k not in ('compartment', 'level') %}<option value="kind:{{ k }}">{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}</optgroup>{% endfor %}
+      <optgroup label="Teile">{% for p, label in ITEM_CATS %}<option value="item:{{ p }}">{{ label }} · {{ p }}</option>{% endfor %}</optgroup>
+    </select>
+  </div>
   <div data-for="container" hidden class="stack">
   <label>Art
-    <select name="kind" data-reveal="new-kind">{% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">{% for k in keys if k not in ('compartment', 'bin', 'level') %}<option value="{{ k }}" {% if k == 'box' %}selected{% endif %}>{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}</optgroup>{% endfor %}
+    <select name="kind" data-reveal="new-kind">{% for group, keys in KIND_GROUPS if keys[0] in ('toolbox',) or group in ('Eigene Arten', 'Custom kinds') %}{% for k in keys if k not in ('compartment', 'bin') %}<option value="{{ k }}" {% if k == 'box' %}selected{% endif %}>{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}{% endfor %}
       <option value="neu">Neue Art …</option></select>
   </label>
   <div class="row" id="new-kind" hidden>
@@ -23,7 +31,7 @@
     <input name="new_prefix" placeholder="Präfix, z. B. SCH" maxlength="3" aria-label="Präfix" style="text-transform:uppercase">
   </div>
   </div>
-  <div class="where" data-for="item container">
+  <div class="where" data-for="item container all">
     <span class="where-label">Wohin</span>
     {% if fav_targets %}
     <div class="pick-scroll" aria-label="Favoriten">
@@ -42,13 +50,6 @@
   </div>
 </form>
 
-{% if P.home_tiles == '1' %}
-<nav class="tiles" aria-label="Schnellzugriff">
-  <a href="/einkauf">{{ icon('content.shopping') }}Einkauf{% if n_shopping %} <b>{{ n_shopping }}</b>{% endif %}</a>
-  <a href="/platz">{{ icon('content.space') }}Freie Plätze</a>
-  <a href="/verlauf">{{ icon('content.history') }}Verlauf</a>
-</nav>
-{% endif %}
 
 {% if favorites and P.home_favorites == '1' %}
 <h2>Favoriten</h2>

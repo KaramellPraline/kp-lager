@@ -34,6 +34,8 @@
     {{ nav_link('/sprache', 'media.dictate', 'Sprache') }}
     {{ nav_link('/suche', 'nav.search', 'Suche') }}
     {{ nav_link('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
+    {{ nav_link('/einkauf', 'content.shopping', 'Einkauf') }}
+    {{ nav_link('/platz', 'content.space', 'Freie Plätze') }}
     {{ nav_link('/verlauf', 'content.history', 'Verlauf') }}
     {{ nav_link('/mehr', 'nav.more', 'Mehr', NREVIEW) }}
     {{ nav_link('/settings', 'nav.settings', 'Einstellungen') }}
@@ -41,11 +43,11 @@
   <div class="main-col">
     <header class="topbar">
       <a class="brand" href="/">{{ APP_NAME }}</a>
-      <form action="/suche" method="get" class="search" role="search">
-        {{ icon('nav.search', size='sm') }}
-        <input type="search" name="q" placeholder="Suchen: Teil, Box, Code" value="{{ q or '' }}" aria-label="Suchen">
+      <form action="/suche" method="get" class="search" role="search" id="top-search">
+        <button type="button" class="search-toggle" aria-label="Suche öffnen">{{ icon('nav.search', size='sm') }}</button>
+        <input type="search" name="q" placeholder="Teil, Box, Code – auch englisch" value="{{ q or '' }}" aria-label="Suchen" enterkeyhint="search">
       </form>
-      {% if VOICE %}<button type="button" class="icon-btn" id="note-rec" aria-label="Langes Diktat aufnehmen" title="Langes Diktat">{{ icon('media.dictate') }}</button>{% endif %}
+      <a class="icon-btn {% if cur.startswith('/verlauf') %}active{% endif %}" href="/verlauf" aria-label="Verlauf" title="Verlauf">{{ icon('content.history') }}</a>
       <a class="icon-btn mobile-only {% if cur == '/mehr' %}active{% endif %}" href="/mehr" aria-label="Mehr" title="Mehr">{{ icon('nav.more') }}{% if NREVIEW %}<b class="dot-count"></b>{% endif %}</a>
     </header>
     <div class="rec-bar" id="rec-bar" hidden>
@@ -67,7 +69,8 @@
 </div>
 <nav class="bottomnav mobile-only" aria-label="Navigation">
   {{ navtab('/', 'nav.home', 'Start') }}
-  {{ navtab('/suche', 'nav.search', 'Suche') }}
+  {{ navtab('/einkauf', 'content.shopping', 'Einkauf') }}
+  {{ navtab('/platz', 'content.space', 'Plätze') }}
   {{ navtab('/scan', 'action.scan', 'Scannen', extra='scan') }}
   {{ navtab('/sprache', 'media.dictate', 'Sprache') }}
   {{ navtab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}

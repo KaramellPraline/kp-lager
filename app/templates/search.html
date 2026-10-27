@@ -2,8 +2,19 @@
 {% block title %}Suche: {{ q }}{% endblock %}
 {% block content %}
 <h1>Suche{% if q %}: {{ q }}{% endif %}</h1>
+<form method="get" action="/suche" class="add-item" role="search">
+  <input type="search" name="q" value="{{ q }}" placeholder="Teil, Box, Code – auch englisch" aria-label="Suchen">
+  {% if tag %}<input type="hidden" name="tag" value="{{ tag }}">{% endif %}
+  <button class="primary icon-only" aria-label="Suchen">{{ icon('nav.search') }}</button>
+</form>
+{% if tags %}
+<div class="pick-scroll tag-filter" aria-label="Nach Tag filtern">
+  <a class="pick {% if not tag %}active{% endif %}" href="/suche?q={{ q|urlencode }}">Alle</a>
+  {% for t in tags %}<a class="pick {% if tag == t.id %}active{% endif %}" href="/suche?q={{ q|urlencode }}&amp;tag={{ t.id }}">{{ t.name }} <small>{{ t.n }}</small></a>{% endfor %}
+</div>
+{% endif %}
 {% if corrected %}<p class="msg">Keine Treffer für „{{ q }}“ – Ergebnisse für <b>„{{ corrected }}“</b>.</p>{% endif %}
-{% if not q %}
+{% if not q and not tag %}
 <p class="empty">Suchwort eingeben – Teilwörter reichen („schraub“ findet „Holzschrauben“).</p>
 {% elif not items and not containers %}
 <p class="empty">Nichts gefunden.</p>

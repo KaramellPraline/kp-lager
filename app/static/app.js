@@ -81,7 +81,7 @@
       rec.onstop = function () {
         stream.getTracks().forEach(function (t) { t.stop(); });
         btn.recorder = null;
-        btn.classList.remove("recording");
+        if (btn) btn.classList.remove("recording");
         var orig = btn.innerHTML;
         btn.textContent = "…";
         var form = new FormData();
@@ -100,7 +100,7 @@
   // Lange Aufnahme (Diktat) aus der Kopfzeile -> /api/notes -> Mehr › Aufnahmen
   document.addEventListener("DOMContentLoaded", function () {
     var btn = document.getElementById("note-rec");
-    if (!btn) return;
+    if (!btn && !document.querySelector("[data-start-note]")) return;
     var bar = document.getElementById("rec-bar"), time = document.getElementById("rec-time");
     var rec = null, chunks = [], started = 0, timer = null, keep = true;
     function fmt(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
@@ -137,12 +137,12 @@
         started = Date.now();
         bar.hidden = false; time.textContent = "0:00";
         bar.querySelectorAll("button").forEach(function (b) { b.disabled = false; });
-        btn.classList.add("recording");
+        if (btn) btn.classList.add("recording");
         timer = setInterval(function () { time.textContent = fmt(Math.round((Date.now() - started) / 1000)); }, 1000);
         window.addEventListener("beforeunload", guard);
       }).catch(function () { alert("Kein Zugriff aufs Mikrofon"); });
     }
-    btn.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); else start(); });
+    if (btn) btn.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); else start(); });
     document.querySelectorAll("[data-start-note]").forEach(function (b) {
       b.addEventListener("click", function () { if (!(rec && rec.state === "recording")) start(); });
     });
@@ -166,6 +166,23 @@
     var box = document.getElementById(ev.target.dataset.reveal);
     box.hidden = ev.target.value !== "neu";
     if (!box.hidden) box.querySelector("input").focus();
+  });
+
+  // Kopfzeile: Lupe klappt die Suche auf, leer verlassen klappt sie wieder zu
+  document.addEventListener("DOMContentLoaded", function () {
+    var form = document.getElementById("top-search");
+    if (!form) return;
+    var input = form.querySelector("input");
+    form.querySelector(".search-toggle").addEventListener("click", function () {
+      if (form.classList.contains("open") && input.value.trim()) { form.submit(); return; }
+      form.classList.add("open"); input.focus();
+    });
+    input.addEventListener("blur", function () {
+      setTimeout(function () { if (!input.value.trim()) form.classList.remove("open"); }, 150);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") { input.value = ""; input.blur(); }
+    });
   });
 
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten

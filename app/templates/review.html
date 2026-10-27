@@ -29,7 +29,7 @@
   <p class="meta" style="margin:4px 0">{{ i.path }}</p>
   <ul class="history" style="color:var(--fg)">
     {% if i.full_name %}<li>Vollständig: {{ i.full_name }}</li>{% endif %}
-    {% if i.type_name %}<li>Typ: {{ i.type_name }}</li>{% endif %}
+    {% if i.type_name %}<li>Tag: {{ i.type_name }}</li>{% endif %}
     {% if i.model %}<li>Modell: {{ i.model }}</li>{% endif %}
     {% if i.qty is not none %}<li>Menge: {{ i.qty }} {{ i.unit }}</li>{% elif i.qty_hint %}<li>Menge: {{ i.qty_hint }}</li>{% endif %}
     {% if i.tags %}<li>Suchbegriffe: {{ i.tags }}</li>{% endif %}

@@ -10,7 +10,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel
 
-from app import apikeys, codes, importer, itemtypes, prefs, quick, repo, withdrawals
+from app import apikeys, codes, importer, itemtypes, prefs, quick, repo, search, withdrawals
 from app.repo import LagerError, Row
 
 
@@ -83,11 +83,21 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
         return item
 
     @router.get("/search")
-    def search(conn: Conn, q: str, limit: int = 30) -> dict[str, Any]:
+    def search_items(conn: Conn, q: str = "", limit: int = 30, tag: str = "") -> dict[str, Any]:
         synonyms = repo.parse_synonyms(prefs.raw(conn, "synonyms"))
-        items = repo.search_synonyms(conn, q, synonyms, limit=max(1, min(limit, 100)))
-        nodes = repo.search_containers(conn, q)
+        t = (
+            (itemtypes.by_code(conn, codes.normalize(tag) or tag) or itemtypes.by_name(conn, tag))
+            if tag
+            else None
+        )
+        if tag and t is None:
+            raise HTTPException(404, f"Tag {tag} nicht gefunden")
+        items, corrected = search.run(
+            conn, q, synonyms, limit=max(1, min(limit, 100)), tag=t["id"] if t else None
+        )
+        nodes = search.containers(conn, corrected or q, synonyms)
         return {
+            "corrected": corrected,
             "items": [item_json(conn, i) for i in items],
             "containers": [node_json(conn, c) for c in nodes],
         }

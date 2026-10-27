@@ -8,9 +8,9 @@ import re
 import sqlite3
 
 ITEM_PREFIX = "ART"
-# Präfixe für Teile (nicht Behälter): ART allgemein, FIL Filament, RES UV-Harz
-ITEM_PREFIXES = (ITEM_PREFIX, "FIL", "RES")
-TYPE_PREFIX = "TYP"  # Typen/Kategorien von Teilen (item_type)
+# Präfixe für Teile (nicht Behälter): ART allgemein, FIL Filament, RES UV-Harz, Verbrauch & Co.
+ITEM_PREFIXES = (ITEM_PREFIX, "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE")
+TYPE_PREFIX = "TAG"  # Typen/Kategorien von Teilen (item_type)
 # Präfix -> Art (None = Teil/Typ), Präfix -> Name, Art -> Präfix; gefüllt von app.kinds
 PREFIX_KIND: dict[str, str | None] = {}
 PREFIX_LABELS: dict[str, str] = {}
@@ -28,7 +28,7 @@ def format_code(prefix: str, number: int) -> str:
 
 def normalize(raw: str) -> str | None:
     """'eur1', 'EUR001', 'Eur-001' -> 'EUR-001'; None, wenn kein gültiger Code des Schemas."""
-    m = CODE_RE.match(raw.strip().upper())
+    m = CODE_RE.match(raw.strip().upper().replace("TYP", TYPE_PREFIX, 1))  # alt: TYP-001
     if not m or m.group(1) not in PREFIX_KIND or int(m.group(2)) == 0:
         return None
     return format_code(m.group(1), int(m.group(2)))

@@ -78,11 +78,13 @@ def test_empty_upload_rejected(voice: TestClient) -> None:
     assert r.status_code == 400 and r.json()["msg"] == "Aufnahme ist leer"
 
 
-def test_header_has_recorder_and_more_on_mobile(voice: TestClient, client: TestClient) -> None:
+def test_header_icons_and_bottom_bar(voice: TestClient) -> None:
     page = voice.get("/").text
     header = page.split('<header class="topbar">')[1].split("</header>")[0]
-    assert 'id="note-rec"' in header and 'href="/mehr"' in header
+    assert 'href="/mehr"' in header and 'href="/verlauf"' in header and 'id="top-search"' in header
+    assert 'id="note-rec"' not in header  # langes Diktat: Sprache-Tab
     bottom = page.split('class="bottomnav')[1].split("</nav>")[0]
-    assert 'href="/mehr"' not in bottom and bottom.count("<a ") == 5
-    assert 'href="/sprache"' in bottom
-    assert 'id="note-rec"' not in client.get("/").text  # ohne Sprachdienst kein Aufnahmeknopf
+    assert 'href="/mehr"' not in bottom and bottom.count("<a ") == 6
+    for href in ("/einkauf", "/platz", "/scan", "/sprache", "/labels"):
+        assert f'href="{href}"' in bottom
+    assert 'href="/suche"' not in bottom

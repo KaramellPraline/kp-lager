@@ -29,10 +29,10 @@ def item_of(client: TestClient, name: str = "ESP32 Board") -> tuple[str, str]:
 def test_default_types_and_codes(conn: sqlite3.Connection) -> None:
     rows = itemtypes.all_types(conn)
     assert [(t["code"], t["name"]) for t in rows] == [
-        ("TYP-002", "electronic"), ("TYP-001", "mechanical"), ("TYP-003", "smart-home"), ("TYP-004", "tbd")
+        ("TAG-002", "electronic"), ("TAG-001", "mechanical"), ("TAG-003", "smart-home"), ("TAG-004", "tbd")
     ]  # fmt: skip
     new = itemtypes.create(conn, "  pneumatic  ")
-    assert itemtypes.get(conn, new)["code"] == "TYP-005"
+    assert itemtypes.get(conn, new)["code"] == "TAG-005"
     assert itemtypes.create(conn, "Pneumatic") == new  # kein Duplikat
     assert itemtypes.resolve(conn, "neu", "hydraulic") != new
     assert itemtypes.resolve(conn, "", "") is None
@@ -68,10 +68,10 @@ def test_edit_item_with_new_type_names_and_model(client: TestClient) -> None:
     assert "mikrocontroller" in r.text and "ESP32-WROOM-32E" in r.text
     assert "duckduckgo.com" in r.text  # Datenblatt-Suche über Modellnummer
     types_page = client.get("/typen").text
-    assert "mikrocontroller" in types_page and "TYP-005" in types_page
+    assert "mikrocontroller" in types_page and "TAG-005" in types_page
     t_id = re.search(r'href="/typen/(\d+)"><span>mikrocontroller', types_page).group(1)  # type: ignore[union-attr]
     assert "ESP32" in client.get(f"/typen/{t_id}").text
-    assert str(client.get("/C/TYP-005").url.path) == f"/typen/{t_id}"
+    assert str(client.get("/C/TAG-005").url.path) == f"/typen/{t_id}"
 
 
 def test_datasheet_download(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
