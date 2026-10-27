@@ -34,10 +34,8 @@ def test_kind_rules(client: TestClient) -> None:
     assert "DOS" not in codes.PREFIX_KIND and "dose" not in kinds.KIND_LABELS
 
 
-def test_start_tiles_without_bottom_bar_duplicates(client: TestClient) -> None:
-    tiles = client.get("/").text.split('class="tiles"')[1].split("</nav>")[0]
-    assert "/scan" not in tiles and "/sprache" not in tiles and "/labels" not in tiles
-    assert "/einkauf" in tiles
+def test_start_without_tiles(client: TestClient) -> None:
+    assert 'class="tiles"' not in client.get("/").text  # Einkauf/Plätze in der unteren Leiste
 
 
 def test_new_schema_groups_and_language(client: TestClient) -> None:

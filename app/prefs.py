@@ -34,7 +34,6 @@ PREFS = (
     Pref("compact", "Kompakte Listen (mehr Zeilen pro Bildschirm)", "bool", "0", "Allgemein"),
     Pref("home_recent", "Anzahl „Zuletzt angesehen“ im Verlauf", "int", "12", "Allgemein",
          min=0, max=20),
-    Pref("home_tiles", "Startseite: Schnellzugriff-Kacheln", "bool", "1", "Startseite"),
     Pref("home_favorites", "Startseite: Favoriten", "bool", "1", "Startseite"),
     Pref("home_rooms", "Startseite: Räume und Orte", "bool", "1", "Startseite"),
     Pref("auto_item_code", "Neue Teile bekommen automatisch einen ART-Code", "bool", "1",

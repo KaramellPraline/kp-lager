@@ -136,51 +136,6 @@ BUILTIN = (
         "Fach im Sortierkasten, ohne eigenen Code",
         "Compartment of a sorting box, no own code",
     ),
-    Kind(
-        "consumables",
-        "CNS",
-        "mat",
-        "Verbrauchsmaterial",
-        "Consumables",
-        "Schrauben, Dübel, Kleber, Tape",
-        "Screws, anchors, glue, tape",
-    ),
-    Kind(
-        "raw",
-        "RAW",
-        "mat",
-        "Rohmaterial",
-        "Raw Material",
-        "Holzleisten, Metallprofile, Rohre",
-        "Wood strips, metal profiles, pipes",
-    ),
-    Kind(
-        "cables",
-        "CBL",
-        "mat",
-        "Kabel",
-        "Cables",
-        "Kabel, Stecker, Kabelbinder",
-        "Cables, connectors, cable ties",
-    ),
-    Kind(
-        "components",
-        "CMP",
-        "mat",
-        "Elektronikbauteile",
-        "Components",
-        "Elektronikbauteile, Platinen, Sensoren",
-        "Electronic components, boards, sensors",
-    ),
-    Kind(
-        "ppe",
-        "PPE",
-        "ppe",
-        "Schutzausrüstung",
-        "Protective Equipment",
-        "Schutzbrille, Gehörschutz, Handschuhe, Masken",
-        "Safety glasses, hearing protection, gloves, masks",
-    ),
 )
 # Teile-Präfixe: Präfix -> (Gruppe, Name DE, Name EN, Beschreibung DE, Beschreibung EN)
 ITEM_LABELS = {
@@ -190,17 +145,28 @@ ITEM_LABELS = {
     "RES": ("mat", "UV-Harz", "UV Resin",
             "UV-Harz für Resin-Druck, eine Flasche; Eigenschaften im Datenblatt",
             "UV resin for resin printing, one bottle; properties in the datasheet"),
+    "CNS": ("mat", "Verbrauchsmaterial", "Consumables", "Schrauben, Dübel, Kleber, Tape",
+            "Screws, anchors, glue, tape"),
+    "RAW": ("mat", "Rohmaterial", "Raw Material", "Holzleisten, Metallprofile, Rohre",
+            "Wood strips, metal profiles, pipes"),
+    "CBL": ("mat", "Kabel", "Cables", "Kabel, Stecker, Kabelbinder",
+            "Cables, connectors, cable ties"),
+    "CMP": ("mat", "Elektronikbauteile", "Components", "Elektronikbauteile, Platinen, Sensoren",
+            "Electronic components, boards, sensors"),
+    "PPE": ("ppe", "Schutzausrüstung", "Protective Equipment",
+            "Schutzbrille, Gehörschutz, Handschuhe, Masken",
+            "Safety glasses, hearing protection, gloves, masks"),
     codes.ITEM_PREFIX: ("item",
         "Gegenstand", "Item", "Einzelner Gegenstand oder Werkzeug", "Single article or tool"
     ),
     codes.TYPE_PREFIX: ("item",
-        "Typ", "Type", "Kategorie, immer kleingeschrieben, z. B. makita, handwerkzeug",
-        "Category, always lowercase, e.g. makita, hand tool",
+        "Tag", "Tag",
+        "Schlagwort, immer kleingeschrieben, z. B. makita, handwerkzeug; in der Suche filterbar",
+        "Keyword, always lowercase, e.g. makita, hand tool; filterable in search",
     ),
 }  # fmt: skip
 # Behälter, in die man direkt Teile legt (für „Freie Plätze“)
-STORAGE = ("toolbox", "case", "module", "eurobox", "crate", "box", "consumables", "raw", "cables",
-           "components", "ppe", "drawer")  # fmt: skip
+STORAGE = ("toolbox", "case", "module", "eurobox", "crate", "box", "drawer")
 # Alte deutsche Schlüssel und Präfixe (Import älterer JSON-Dateien)
 ALIASES = {"raum": "room", "regal": "shelf", "ebene": "level", "stapel": "toolbox",
            "kiste": "crate", "sortierkasten": "sortingbox", "einsatz": "bin", "fach": "compartment",
@@ -210,6 +176,9 @@ KIND_LABELS: dict[str, str] = {}
 KIND_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Schlüssel) für Auswahllisten
 SCHEMA_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Präfixe) fürs Code-Schema
 PREFIX_DESC: dict[str, str] = {}  # Präfix -> Beschreibung (nur Codes-Seite)
+# Teile-Kategorien für die Auswahl beim Hinzufügen: [(Präfix, Name)], ART zuerst
+ITEM_CATS: list[tuple[str, str]] = []
+CAT_ORDER = ("ART", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE")
 
 
 def set_lang(conn: sqlite3.Connection, value: str) -> None:
@@ -268,6 +237,7 @@ def _apply(rows: list[Row], en: bool) -> None:
         codes.PREFIX_LABELS[p] = en_label if en else de
         PREFIX_DESC[p] = desc_en if en else desc_de
         prefixes.setdefault(group, []).append(p)
+    ITEM_CATS[:] = [(p, codes.PREFIX_LABELS[p]) for p in CAT_ORDER if p in codes.PREFIX_LABELS]
     i = 1 if en else 0
     KIND_GROUPS[:] = [(GROUPS[g][i], groups[g]) for g in GROUPS if g in groups]
     SCHEMA_GROUPS[:] = [(GROUPS[g][i], prefixes[g]) for g in GROUPS if g in prefixes]

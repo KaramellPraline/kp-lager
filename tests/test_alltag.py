@@ -312,7 +312,7 @@ def test_add_anything_container_type_and_item(client: TestClient) -> None:
     )
     assert "Werkstatt" in r.text.split('class="crumbs"')[1].split("</nav>")[0]
     r = client.post("/quickadd", data={"mode": "type", "text": "pneumatic"})
-    assert "Typ TYP-005 „pneumatic“ angelegt" in r.text
+    assert "Tag TAG-005 „pneumatic“ angelegt" in r.text
     r = client.post("/quickadd", data={"mode": "item", "text": "2 Zangen", "target": werk})
     assert "„Zangen“ → Werkstatt" in r.text
     r = client.post(
@@ -324,7 +324,7 @@ def test_add_anything_container_type_and_item(client: TestClient) -> None:
 def test_home_sections_configurable(client: TestClient) -> None:
     box(client, "Werkstatt")
     page = client.get("/").text
-    assert 'class="tiles"' in page and "Räume und Orte" in page
+    assert "Räume und Orte" in page
     form = {
         p: "1"
         for p in (
@@ -335,6 +335,6 @@ def test_home_sections_configurable(client: TestClient) -> None:
             "typo_correction",
         )
     }
-    client.post("/settings", data={**form, "home_tiles": "", "home_rooms": ""})
+    client.post("/settings", data={**form, "home_rooms": ""})
     page = client.get("/").text
-    assert 'class="tiles"' not in page and "Räume und Orte" not in page
+    assert "Räume und Orte" not in page

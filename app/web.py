@@ -35,6 +35,7 @@ from app import (
     repo,
     withdrawals,
 )
+from app import search as finder  # Modul; „search“ ist der Name der Such-Route
 from app.config import Settings
 from app.db import connect
 from app.repo import LagerError
@@ -50,6 +51,7 @@ templates.env.globals["APP_NAME"] = APP_NAME
 templates.env.globals["KIND_PREFIX"] = codes.KIND_PREFIX
 templates.env.globals["KIND_GROUPS"] = kinds.KIND_GROUPS
 templates.env.globals["SCHEMA_GROUPS"] = kinds.SCHEMA_GROUPS
+templates.env.globals["ITEM_CATS"] = kinds.ITEM_CATS
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
@@ -238,16 +240,26 @@ def create_app(settings: Settings) -> FastAPI:
         kind: Annotated[str, Form()] = "box",
         new_kind: Annotated[str, Form()] = "",
         new_prefix: Annotated[str, Form()] = "",
+        cat: Annotated[str, Form()] = "ART",
+        choice: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
-        """„Hinzufügen“ auf der Startseite: Teil (getippt/diktiert), Behälter oder Typ."""
+        """„Hinzufügen“ auf der Startseite: Teil mit Kategorie, Behälter, oder „Alle“ (beides)."""
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
+        if mode == "all":  # choice = "kind:<art>" oder "item:<präfix>"
+            what, _, value = choice.partition(":")
+            if what == "kind":
+                mode, kind = "container", value
+            elif what == "item":
+                mode, cat = "item", value
+            else:
+                raise LagerError("Bitte eine Kategorie wählen")
         if mode == "project":
             pid = projects.create(conn, text)
             return redirect(f"/projekte/{pid}", f"Projekt „{text.strip()}“ angelegt")
         if mode == "type":
             t = itemtypes.get(conn, itemtypes.create(conn, text))
-            return redirect("/", f"Typ {t['code']} „{t['name']}“ angelegt")
+            return redirect("/", f"Tag {t['code']} „{t['name']}“ angelegt")
         if mode == "container":
             if kind == "neu":
                 kind = kinds.create(conn, new_kind, new_prefix)
@@ -256,10 +268,18 @@ def create_app(settings: Settings) -> FastAPI:
         if not target:
             raise LagerError("Erst einen Ort wählen oder anlegen")
         dest = need_node(conn, int(target))
+        cat = cat.strip().upper()
+        if cat not in codes.ITEM_PREFIXES:
+            raise LagerError(f"Unbekannte Kategorie {cat}")
         names = []
         for amount, unit, name in entries(conn, text):
-            repo.add_item(conn, dest["id"], name, qty=amount, unit=unit,
-                          code=codes.new_item_code(conn))  # fmt: skip
+            code = (
+                codes.new_item_code(conn) if cat == codes.ITEM_PREFIX
+                else codes.reserve(conn, cat, 1)[0]
+            )  # fmt: skip
+            new_id = repo.add_item(conn, dest["id"], name, qty=amount, unit=unit, code=code)
+            if material := materials.PREFIX_MATERIAL.get(cat):
+                materials.save_specs(conn, new_id, material, {})
             names.append(name)
         undo = repo.last_event_id(conn)
         b = kasten.bin_of(conn, dest["id"])
@@ -286,7 +306,7 @@ def create_app(settings: Settings) -> FastAPI:
             return redirect(f"/typen/{t['id']}", msg)
         prefix = codes.prefix_of(code)
         if prefix == codes.TYPE_PREFIX:
-            raise HTTPException(404, f"Typ {code} gibt es nicht")
+            raise HTTPException(404, f"Tag {code} gibt es nicht")
         if prefix is None:
             raise HTTPException(404, f"'{code}' passt nicht zum Code-Schema (z. B. EUR-001)")
         template = "new_item_code.html" if prefix in codes.ITEM_PREFIXES else "new_code.html"
@@ -375,18 +395,18 @@ def create_app(settings: Settings) -> FastAPI:
         return render(request, conn, "material.html", rows=rows, names=materials.MATERIALS)
 
     @app.get("/suche", response_model=None)
-    def search(request: Request, conn: Conn, q: str = "") -> Response:
+    def search(request: Request, conn: Conn, q: str = "", tag: str = "") -> Response:
         q = q.strip()
+        tag_id = int(tag) if tag.isdigit() else None
         code = codes.normalize(q) or q
         if q and (node := repo.get_container_by_code(conn, code)):
             return redirect(f"/n/{node['id']}")
         if q and (item := repo.get_item_by_code(conn, code)):
             return redirect(f"/items/{item['id']}")
-        items = repo.search_synonyms(conn, q, synonyms(conn))
-        corrected = None
-        typo = prefs.flag(conn, "typo_correction")
-        if q and not items and typo and (fixed := repo.suggest(conn, q)):
-            items, corrected = repo.search_synonyms(conn, fixed, synonyms(conn)), fixed
+        syn = synonyms(conn)
+        items, corrected = finder.run(
+            conn, q, syn, typo=prefs.flag(conn, "typo_correction"), tag=tag_id
+        )
         return render(
             request,
             conn,
@@ -394,7 +414,9 @@ def create_app(settings: Settings) -> FastAPI:
             q=q,
             corrected=corrected,
             items=items,
-            containers=repo.search_containers(conn, q),
+            containers=[] if tag_id else finder.containers(conn, corrected or q, syn),
+            tags=[t for t in itemtypes.all_types(conn) if t["n"]],
+            tag=tag_id,
         )
 
     # --- Import / Export ------------------------------------------------------
@@ -1471,7 +1493,7 @@ def create_app(settings: Settings) -> FastAPI:
             f"/items/{item_id}", fetch_datasheet(conn, item_id).replace("Gespeichert – ", "")
         )
 
-    # --- Typen (TYP-001 …) --------------------------------------------------------
+    # --- Tags (TAG-001 …) --------------------------------------------------------
 
     @app.get("/typen", response_class=HTMLResponse)
     def types_page(request: Request, conn: Conn) -> HTMLResponse:
@@ -1480,7 +1502,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/typen")
     def create_type(conn: Conn, name: Annotated[str, Form()]) -> RedirectResponse:
         t = itemtypes.get(conn, itemtypes.create(conn, name))
-        return redirect("/typen", f"Typ {t['code']} „{t['name']}“ angelegt")
+        return redirect("/typen", f"Tag {t['code']} „{t['name']}“ angelegt")
 
     @app.get("/typen/{type_id}", response_class=HTMLResponse)
     def type_page(request: Request, type_id: int, conn: Conn) -> HTMLResponse:
@@ -1497,7 +1519,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.post("/typen/{type_id}/delete")
     def delete_type(type_id: int, conn: Conn) -> RedirectResponse:
         itemtypes.delete(conn, type_id)
-        return redirect("/typen", "Typ gelöscht")
+        return redirect("/typen", "Tag gelöscht")
 
     @app.post("/items/{item_id}/delete")
     def delete_item(item_id: int, conn: Conn) -> RedirectResponse:

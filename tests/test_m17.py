@@ -36,7 +36,7 @@ def test_read_is_open(setup: tuple[TestClient, str]) -> None:
     box = c.get("/api/v1/containers/EUR-001").json()
     assert box["items"][0]["name"] == "Lötzinn"
     assert c.get("/api/v1/items/ART-9999").status_code == 404
-    assert {t["code"] for t in c.get("/api/v1/types").json()} >= {"TYP-001"}
+    assert {t["code"] for t in c.get("/api/v1/types").json()} >= {"TAG-001"}
 
 
 def test_write_needs_key(setup: tuple[TestClient, str]) -> None:

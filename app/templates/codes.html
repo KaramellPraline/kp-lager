@@ -9,7 +9,7 @@
   {% for p in pfx %}<li class="code-row">
     <div><b>{{ p }}</b>-{{ '0001' if p == 'ART' else '001' }} · {{ prefixes[p] }}
       {% if desc.get(p) %}<br><small class="meta">{{ desc[p] }}</small>{% endif %}</div>
-    {% if p == 'TYP' %}<a href="/typen">Typen verwalten</a>{% endif %}
+    {% if p == 'TAG' %}<a href="/typen">Tags verwalten</a>{% endif %}
     {% if p in custom_kinds %}<small class="meta">{{ custom_kinds[p].n }} Behälter</small>
       {% if not custom_kinds[p].n %}<form method="post" action="/arten/{{ custom_kinds[p].kind }}/delete"><button class="link" aria-label="Art {{ prefixes[p] }} löschen">{{ icon('action.delete') }}</button></form>{% endif %}
     {% endif %}
