@@ -182,11 +182,18 @@ BUILTIN = (
         "Safety glasses, hearing protection, gloves, masks",
     ),
 )
+# Teile-Präfixe: Präfix -> (Gruppe, Name DE, Name EN, Beschreibung DE, Beschreibung EN)
 ITEM_LABELS = {
-    codes.ITEM_PREFIX: (
+    "FIL": ("mat", "Filament", "Filament",
+            "3D-Druck-Filament, eine Spule; Eigenschaften im Datenblatt",
+            "3D printing filament, one spool; properties in the datasheet"),
+    "RES": ("mat", "UV-Harz", "UV Resin",
+            "UV-Harz für Resin-Druck, eine Flasche; Eigenschaften im Datenblatt",
+            "UV resin for resin printing, one bottle; properties in the datasheet"),
+    codes.ITEM_PREFIX: ("item",
         "Gegenstand", "Item", "Einzelner Gegenstand oder Werkzeug", "Single article or tool"
     ),
-    codes.TYPE_PREFIX: (
+    codes.TYPE_PREFIX: ("item",
         "Typ", "Type", "Kategorie, immer kleingeschrieben, z. B. makita, handwerkzeug",
         "Category, always lowercase, e.g. makita, hand tool",
     ),
@@ -256,11 +263,11 @@ def _apply(rows: list[Row], en: bool) -> None:
         codes.KIND_PREFIX[r["kind"]] = r["prefix"]
         PREFIX_DESC[r["prefix"]] = r["description"]
         prefixes.setdefault("own", []).append(r["prefix"])
-    for p, (de, en_label, desc_de, desc_en) in ITEM_LABELS.items():
+    for p, (group, de, en_label, desc_de, desc_en) in ITEM_LABELS.items():
         codes.PREFIX_KIND[p] = None
         codes.PREFIX_LABELS[p] = en_label if en else de
         PREFIX_DESC[p] = desc_en if en else desc_de
-        prefixes.setdefault("item", []).append(p)
+        prefixes.setdefault(group, []).append(p)
     i = 1 if en else 0
     KIND_GROUPS[:] = [(GROUPS[g][i], groups[g]) for g in GROUPS if g in groups]
     SCHEMA_GROUPS[:] = [(GROUPS[g][i], prefixes[g]) for g in GROUPS if g in prefixes]

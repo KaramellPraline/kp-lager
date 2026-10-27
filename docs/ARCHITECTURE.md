@@ -39,6 +39,7 @@ Keller (raum)
 - `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
 - `app/kasten.py`: Kastenmodelle (NORB16 5×7, Griff C1–E1), Einsätze platzieren/prüfen, Draufsicht-Daten, Schnelleingabe-Ziele
 - `app/prefs.py`: Einstellungsregister (Typ, Standard, Gruppe) → `/settings` generiert, Werte in `meta`
+- `app/materials.py`: Filament/Harz-Eigenschaften (Felder, Datenblatt-Ansicht, €/kg), JSON in `item.specs`; `item.order_url`/`price` für alle Teile
 - `app/kinds.py`: Behälter-Arten (fest + Tabelle `container_kind`), `sync` bei jedem `connect` aktualisiert KINDS/Präfixe
 - `app/api.py`, `app/apikeys.py`: REST `/api/v1`, Schlüssel nur als SHA-256 in `api_key`
 - `tools/lager_client.py` (httpx), `tools/lager_cli.py` (argparse), `tools/lager_mcp.py` (FastMCP stdio, Gruppe `mcp`, `mcp<2`)

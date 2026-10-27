@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Filament & Harz · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Filament &amp; Harz</h1>
+<p class="meta">Spulen (FIL) und Flaschen (RES). Neu: FIL- oder RES-Etikett scannen, oder bei einem Teil unter „Bearbeiten“ das Material wählen.</p>
+{% for key, (de, en, prefix) in names.items() %}
+{% set group = rows|selectattr('item.material', 'equalto', key)|list %}
+<h2>{{ de }} · {{ prefix }}</h2>
+{% if group %}
+<ul class="list">
+  {% for r in group %}{% set s = r.specs %}
+  <li><a href="/items/{{ r.item.id }}">
+    <span class="grow"><b>{{ r.item.name }}</b>{% if r.item.code %} · {{ r.item.code }}{% endif %}<br>
+      <small class="meta">
+        {{ [s.material, s.color]|select|join(' · ') }}
+        {% if key == 'fil' and (s.nozzle_min or s.nozzle_max) %} · {{ s.nozzle_min }}–{{ s.nozzle_max }} °C{% endif %}
+        {% if key == 'fil' and s.flow_max %} · {{ s.flow_max }} mm³/s{% endif %}
+        {% if key == 'res' and s.exposure %} · {{ s.exposure }} s{% endif %}
+        {% if r.item.qty is not none %} · {{ r.item.qty }} {{ r.item.unit or 'Stk' }}{% endif %}
+        {% if r.unit_price %} · {{ r.unit_price }}{% endif %}
+        · {{ r.path }}
+      </small></span>
+  </a></li>
+  {% endfor %}
+</ul>
+{% else %}<p class="empty">Noch keine Einträge.</p>{% endif %}
+{% endfor %}
+{% endblock %}

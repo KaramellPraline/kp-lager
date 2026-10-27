@@ -274,3 +274,9 @@ button.icon-only { width: var(--tap); padding: 0; flex: none; }
 /* Codes-Seite: Präfix, Name, Beschreibung */
 .list li.code-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; }
 .list li.code-row form { margin: 0; }
+
+/* Datenblatt: Eigenschaften (Filament/Harz) */
+dl.specs { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; margin: 0 0 8px; }
+dl.specs dt { color: var(--sub); }
+dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
