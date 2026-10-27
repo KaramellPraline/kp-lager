@@ -1,38 +1,60 @@
 {% extends "base.html" %}
 {% block content %}
-<form method="post" action="/quickadd" id="schnell" class="card stack add-anything" aria-label="Hinzufügen">
+<form method="post" action="/quickadd" id="schnell" class="card stack add-anything" enctype="multipart/form-data" aria-label="Hinzufügen">
   <input type="hidden" name="mode" value="item" id="add-mode">
   <div class="seg" role="tablist" aria-label="Was hinzufügen">
-    <button type="button" class="active" data-mode="item" data-ph="Teil, z. B. 3 Rollen Lötzinn und 50 M3 Muttern">Teil</button>
-    <button type="button" data-mode="container" data-ph="Behälter, z. B. Werkzeugkiste">Behälter</button>
-    <button type="button" data-mode="all" data-ph="Name, z. B. Werkbank links">{{ icon('action.add', size='sm') }} Alle</button>
+    <button type="button" class="active" data-mode="item" data-ph="z. B. 3 Rollen Lötzinn und 50 M3 Muttern"
+      data-hint="Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“" data-submit="Teil hinzufügen"
+      data-empty="Zu sortieren (später einräumen)">Teil</button>
+    <button type="button" data-mode="container" data-ph="z. B. Werkzeugkiste blau"
+      data-hint="Name des Behälters · Code wird automatisch vergeben" data-submit="Behälter anlegen"
+      data-empty="Oberste Ebene (eigener Ort)">Behälter</button>
+    <button type="button" data-mode="all" data-ph="z. B. Werkbank links"
+      data-hint="Alle Kategorien: Orte, Behälter und Teile" data-submit="Hinzufügen"
+      data-empty="Oberste Ebene / Zu sortieren">Alle</button>
   </div>
+
+  <label class="add-label" for="quick-home">Was?</label>
   <div class="add-item" style="margin:0">
-    <input name="text" id="quick-home" placeholder="Teil, z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off" aria-label="Was">
+    <input name="text" id="quick-home" placeholder="z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off">
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
-    <button class="primary icon-only" aria-label="Hinzufügen">{{ icon('action.add') }}</button>
+    <button type="button" class="mic" id="add-photo-btn" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
-  <div class="pick-scroll cats" data-for="item" role="radiogroup" aria-label="Kategorie">
-    {% for p, label in ITEM_CATS %}<label class="pick cat"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><span><b>{{ p }}</b> {{ label }}</span></label>{% endfor %}
+  <input type="file" name="photo" id="add-photo" accept="image/*" capture="environment" hidden>
+  <p class="meta add-hint" id="add-hint">Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“</p>
+  <div class="photo-preview" id="add-photo-preview" hidden>
+    <img alt="Vorschau des Fotos">
+    <span class="meta">Foto wird angehängt</span>
+    <button type="button" class="link" id="add-photo-clear">Entfernen</button>
   </div>
-  <div data-for="all" hidden>
-    <select name="choice" aria-label="Kategorie">
-      {% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">{% for k in keys if k not in ('compartment', 'level') %}<option value="kind:{{ k }}">{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}</optgroup>{% endfor %}
-      <optgroup label="Teile">{% for p, label in ITEM_CATS %}<option value="item:{{ p }}">{{ label }} · {{ p }}</option>{% endfor %}</optgroup>
-    </select>
+
+  <div data-for="item">
+    <span class="add-label">Kategorie</span>
+    <div class="cats-grid" role="radiogroup" aria-label="Kategorie">
+      {% for p, label in ITEM_CATS_SHORT %}<label class="cat-tile"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><b>{{ p }}</b><span>{{ label }}</span></label>{% endfor %}
+    </div>
   </div>
   <div data-for="container" hidden class="stack">
-  <label>Art
-    <select name="kind" data-reveal="new-kind">{% for group, keys in KIND_GROUPS if keys[0] in ('toolbox',) or group in ('Eigene Arten', 'Custom kinds') %}{% for k in keys if k not in ('compartment', 'bin') %}<option value="{{ k }}" {% if k == 'box' %}selected{% endif %}>{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}{% endfor %}
-      <option value="neu">Neue Art …</option></select>
-  </label>
-  <div class="row" id="new-kind" hidden>
-    <input name="new_kind" placeholder="Name der Art, z. B. Schublade" aria-label="Name der neuen Art">
-    <input name="new_prefix" placeholder="Präfix, z. B. SCH" maxlength="3" aria-label="Präfix" style="text-transform:uppercase">
+    <label class="add-label">Art
+      <select name="kind" data-reveal="new-kind">{% for group, keys in KIND_GROUPS if keys[0] in ('toolbox',) or group in ('Eigene Arten', 'Custom kinds') %}{% for k in keys if k not in ('compartment', 'bin') %}<option value="{{ k }}" {% if k == 'box' %}selected{% endif %}>{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}{% endfor %}
+        <option value="neu">Neue Art …</option></select>
+    </label>
+    <div class="row" id="new-kind" hidden>
+      <input name="new_kind" placeholder="Name der Art, z. B. Schublade" aria-label="Name der neuen Art">
+      <input name="new_prefix" placeholder="Präfix, z. B. SCH" maxlength="3" aria-label="Präfix" style="text-transform:uppercase">
+    </div>
   </div>
+  <div data-for="all" hidden>
+    <label class="add-label">Kategorie
+      <select name="choice">
+        {% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">{% for k in keys if k not in ('compartment', 'level') %}<option value="kind:{{ k }}">{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}</optgroup>{% endfor %}
+        <optgroup label="Teile">{% for p, label in ITEM_CATS %}<option value="item:{{ p }}">{{ label }} · {{ p }}</option>{% endfor %}</optgroup>
+      </select>
+    </label>
   </div>
-  <div class="where" data-for="item container all">
-    <span class="where-label">Wohin</span>
+
+  <div class="where">
+    <span class="add-label">Wohin?</span>
     {% if fav_targets %}
     <div class="pick-scroll" aria-label="Favoriten">
       {% for f in fav_targets %}<button type="button" class="pick fav" data-id="{{ f.id }}" title="{{ f.name }}">{{ f.name }}</button>{% endfor %}
@@ -44,10 +66,11 @@
     </div>
     {% endif %}
     <select name="target" id="qa-target" aria-label="Wohin">
-      <option value="" {% if not target %}selected{% endif %}>– oberste Ebene (nur Behälter) –</option>
+      <option value="" id="qa-empty" {% if not target %}selected{% endif %}>Zu sortieren (später einräumen)</option>
       {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
     </select>
   </div>
+  <button class="primary add-submit" id="add-submit">{{ icon('action.add', size='sm') }} <span class="lbl">Teil hinzufügen</span></button>
 </form>
 
 

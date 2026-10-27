@@ -318,7 +318,7 @@ def test_add_anything_container_type_and_item(client: TestClient) -> None:
     r = client.post(
         "/quickadd", data={"mode": "item", "text": "Zange", "target": ""}, headers={"referer": "/"}
     )
-    assert "Erst einen Ort wählen" in r.text
+    assert "„Zange“ → Zu sortieren" in r.text  # ohne Ort: in den Eingang
 
 
 def test_home_sections_configurable(client: TestClient) -> None:

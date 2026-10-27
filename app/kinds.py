@@ -184,6 +184,11 @@ PREFIX_DESC: dict[str, str] = {}  # Präfix -> Beschreibung (nur Codes-Seite)
 # Teile-Kategorien für die Auswahl beim Hinzufügen: [(Präfix, Name)], ART zuerst
 ITEM_CATS: list[tuple[str, str]] = []
 CAT_ORDER = ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE")
+# Kurznamen für die Kategorie-Kacheln auf Start (DE, EN)
+CAT_SHORT = {"ART": ("Gegenstand", "Item"), "CNS": ("Verbrauch", "Consumables"),
+             "CMP": ("Elektronik", "Electronics"), "PPE": ("Schutz", "Safety"),
+             "RES": ("UV-Harz", "Resin"), "RAW": ("Rohmaterial", "Raw")}  # fmt: skip
+ITEM_CATS_SHORT: list[tuple[str, str]] = []
 
 
 def set_lang(conn: sqlite3.Connection, value: str) -> None:
@@ -243,6 +248,9 @@ def _apply(rows: list[Row], en: bool) -> None:
         PREFIX_DESC[p] = desc_en if en else desc_de
         prefixes.setdefault(group, []).append(p)
     ITEM_CATS[:] = [(p, codes.PREFIX_LABELS[p]) for p in CAT_ORDER if p in codes.PREFIX_LABELS]
+    ITEM_CATS_SHORT[:] = [
+        (p, CAT_SHORT[p][1 if en else 0] if p in CAT_SHORT else label) for p, label in ITEM_CATS
+    ]
     i = 1 if en else 0
     KIND_GROUPS[:] = [(GROUPS[g][i], groups[g]) for g in GROUPS if g in groups]
     SCHEMA_GROUPS[:] = [(GROUPS[g][i], prefixes[g]) for g in GROUPS if g in prefixes]

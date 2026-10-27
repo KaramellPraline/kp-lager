@@ -13,16 +13,19 @@ _RE = re.compile(
 
 
 _NUM_WORD = r"(?:ein|eine|einen|eins|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf|fünfzehn|zwanzig|dreißig|vierzig|fünfzig|hundert)\b"  # noqa: E501
-_SPLIT = re.compile(r"\s*(?:,|;|\bund\b|\bsowie\b)\s*(?=\d|" + _NUM_WORD + ")", re.IGNORECASE)
+_SPLIT = re.compile(
+    r"\s*(?:,(?=\s)|;|\bund\b|\bsowie\b)\s*(?=\d|" + _NUM_WORD + ")", re.IGNORECASE
+)  # Komma nur mit Leerzeichen danach: '3x1,5' bleibt ganz
 
 
 def parse_many(text: str) -> list[tuple[int | None, str, str]]:
     """Diktat mit mehreren Teilen: '3 Rollen Lötzinn und 50 M3 Muttern' -> zwei Einträge.
 
-    Getrennt wird nur, wenn nach 'und'/','/';' eine Zahl folgt
-    ('Schrauben und Muttern' bleibt ein Teil).
+    Komma/Semikolon mit Leerzeichen danach trennt immer ('Zange, Hammer'; '3x1,5' bleibt),
+    'und'/'sowie' nur vor einer Zahl ('Schrauben und Muttern' bleibt ein Teil).
     """
-    parts = [p.strip(" .") for p in _SPLIT.split(text) if p.strip(" .")]
+    chunks = re.split(r"\s*[,;]\s+", text)
+    parts = [p.strip(" .") for c in chunks for p in _SPLIT.split(c) if p.strip(" .")]
     return [parse(p) for p in parts] or [parse(text)]
 
 
