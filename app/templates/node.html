@@ -58,6 +58,9 @@
       {% elif KIND_PREFIX.get(node.kind) %}
       <form method="post" action="/n/{{ node.id }}/code"><button>{{ icon('content.tag') }} {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
       {% endif %}
+      {% if node.kind in ('bin', 'compartment') %}
+      <form method="post" action="/labels/content/node/{{ node.id }}"><button>{{ icon('content.tag') }} Inhaltsetikett</button></form>
+      {% endif %}
       {% if items or kids %}
       <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>{{ icon('action.print') }} Teile-Etiketten</button></form>
       {% endif %}

@@ -204,9 +204,61 @@ def dequeue(conn: sqlite3.Connection, codes_: list[str]) -> None:
 def container_label(conn: sqlite3.Connection, node: sqlite3.Row) -> tuple[str, str]:
     """(Text, Zusatz) für ein Behälter-Etikett; Einsatz: Inhalt + Kasten/Position."""
     if node["kind"] == "bin":
-        from app import kasten  # zirkulärer Import vermeiden
-
         parent = repo.get_container(conn, node["parent_id"]) if node["parent_id"] else None
         where = (parent["code"] or parent["name"]) if parent else ""
-        return kasten.bin_label_text(conn, node), f"{where} {node['position']}".strip()
+        # oben auf dem Bin nur der Code-Tag (bleibt gleich); Inhalt kommt aufs Inhaltsetikett
+        return f"{where} {node['position']}".strip() or node["name"], ""
     return node["name"], node["kind"]
+
+
+# --- Inhaltsetiketten (vorne auf Bins und Fächern, nur Text, zum Beschriften) ---------------
+
+
+def content_text(conn: sqlite3.Connection, node: sqlite3.Row) -> str:
+    from app import kasten  # zirkulärer Import vermeiden
+
+    return kasten.bin_label_text(conn, node)
+
+
+def content_title(conn: sqlite3.Connection, node: sqlite3.Row) -> str:
+    """Kennung auf dem Inhaltsetikett: Bin-Code, sonst Kasten-Code + Fach."""
+    if node["code"]:
+        return str(node["code"])
+    parent = repo.get_container(conn, node["parent_id"]) if node["parent_id"] else None
+    where = (parent["code"] or parent["name"]) if parent else ""
+    return f"{where} {node['position'] or node['name']}".strip()
+
+
+def enqueue_content(conn: sqlite3.Connection, node: sqlite3.Row) -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO content_queue (node_id, text) VALUES (?, ?)"
+            " ON CONFLICT(node_id) DO UPDATE SET text = excluded.text, added_at = datetime('now')",
+            (node["id"], content_text(conn, node)),
+        )
+
+
+def content_queue(conn: sqlite3.Connection) -> list[dict[str, object]]:
+    rows = conn.execute(
+        "SELECT q.node_id, q.text, c.* FROM content_queue q JOIN container c ON c.id = q.node_id"
+        " ORDER BY q.added_at, q.node_id"
+    ).fetchall()
+    return [{"id": r["node_id"], "title": content_title(conn, r), "text": r["text"]} for r in rows]
+
+
+def clear_content(conn: sqlite3.Connection) -> None:
+    with conn:
+        conn.execute("DELETE FROM content_queue")
+
+
+def content_xlsx(rows: list[dict[str, object]], text_max: int = TEXT_MAX * 2) -> bytes:
+    """Inhaltsetiketten für den D30: A Code, B Text (kein QR – Platz zum Beschriften)."""
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.append(["Code", "Text"])
+    for r in rows:
+        ws.append([str(r["title"]), short(str(r["text"]), text_max)])
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()

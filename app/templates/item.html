@@ -58,6 +58,19 @@
   </div>
   {% endif %}
 
+  {% if item.material in ('fil', 'res') %}
+  <div class="card" id="rest">
+    <h2 style="margin-top:0">Restmenge</h2>
+    {% if rest %}<p><b>{{ rest.text }}</b>{% if rest.share is not none %} · {{ (rest.share * 100)|round|int }} %{% endif %}
+      {% if rest.low %}<span class="chip review">fast leer</span>{% endif %}<br><small class="meta">gewogen am {{ rest.date }}</small></p>{% endif %}
+    <form method="post" action="/items/{{ item.id }}/weigh" class="add-item">
+      <input name="gross" inputmode="decimal" placeholder="{{ 'Spule' if item.material == 'fil' else 'Flasche' }} wiegen: Gramm brutto" aria-label="Bruttogewicht in Gramm" required>
+      <button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
+    </form>
+    <p class="meta">Rest = Brutto − Leer{{ 'spule' if item.material == 'fil' else 'flasche' }} (im Datenblatt, sonst Standardwert). Unter 15 % kommt es auf die Einkaufsliste.</p>
+  </div>
+  {% endif %}
+
   {% if item.model or item.datasheet or item.material %}
   <div class="card" id="datenblatt">
     <h2 style="margin-top:0">Datenblatt</h2>
@@ -65,6 +78,7 @@
     <h3>{{ group }}</h3>
     <dl class="specs">{% for label, value in rows %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
     {% endfor %}
+    {% if AI %}<form method="post" action="/items/{{ item.id }}/ai" data-busy="KI füllt aus …"><button>{{ icon('action.ai', size='sm') }} Mit KI ausfüllen</button></form>{% endif %}
     {% if item.material %}
     <details {% if not spec_sheet %}open{% endif %}>
       <summary>{{ icon('action.edit', size='sm') }} Eigenschaften bearbeiten</summary>
@@ -138,11 +152,12 @@
         <label>Bestell-Link <input name="order_url" value="{{ item.order_url }}" inputmode="url" placeholder="https://…"></label>
         <label>Preis (€) <input name="price" value="{{ '%.2f'|format(item.price) if item.price is not none else '' }}" inputmode="decimal" placeholder="z. B. 19,99"></label>
       </div>
-      <label>Material (3D-Druck)
+      <label>Eigenschafts-Profil
         <select name="material">
           <option value="" {% if not item.material %}selected{% endif %}>– kein –</option>
           <option value="fil" {% if item.material == 'fil' %}selected{% endif %}>Filament (FIL)</option>
           <option value="res" {% if item.material == 'res' %}selected{% endif %}>UV-Harz (RES)</option>
+          <option value="cmp" {% if item.material == 'cmp' %}selected{% endif %}>Elektronikbauteil (CMP)</option>
         </select></label>
       <div class="row">
         <label>Anzahl <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="leer = ungezählt" inputmode="numeric"></label>

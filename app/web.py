@@ -1,5 +1,6 @@
 """HTTP-Oberfläche: Seiten für Behälter (/n/{id}), QR-Einstieg (/c/{code}), Items und Umlagern."""
 
+import json
 import sqlite3
 from collections.abc import Iterator
 from pathlib import Path
@@ -282,9 +283,8 @@ def create_app(settings: Settings) -> FastAPI:
                 materials.save_specs(conn, new_id, material, {})
             names.append(name)
         undo = repo.last_event_id(conn)
-        b = kasten.bin_of(conn, dest["id"])
-        if b is not None and b["code"] and prefs.flag(conn, "queue_on_quickadd"):
-            labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
+        if (holder := content_holder(conn, dest)) and prefs.flag(conn, "queue_on_quickadd"):
+            labels.enqueue_content(conn, holder)
         msg = f"{', '.join(f'„{n}“' for n in names)} → {repo.path_label(conn, dest['id'])}"
         resp = redirect("/", msg, undo)
         ids = [dest["id"]] + [i for i in recent_targets(request) if i != dest["id"]]
@@ -376,7 +376,12 @@ def create_app(settings: Settings) -> FastAPI:
             specs=materials.specs(item),
             spec_fields=materials.FIELDS.get(item["material"] or "", ()),
             spec_groups=materials.GROUPS,
+            rest=materials.remaining(item),
         )
+
+    @app.post("/items/{item_id}/weigh")
+    def item_weigh(item_id: int, conn: Conn, gross: Annotated[str, Form()]) -> RedirectResponse:
+        return redirect(f"/items/{item_id}#rest", materials.weigh(conn, item_id, gross))
 
     @app.post("/items/{item_id}/specs")
     async def item_specs(request: Request, item_id: int, conn: Conn) -> RedirectResponse:
@@ -389,10 +394,12 @@ def create_app(settings: Settings) -> FastAPI:
     def material_page(request: Request, conn: Conn) -> HTMLResponse:
         rows = [
             {"item": i, "specs": materials.specs(i), "unit_price": materials.unit_price(i),
+             "rest": materials.remaining(i),
              "path": repo.path_label(conn, i["container_id"])}
             for i in materials.all_materials(conn)
         ]  # fmt: skip
-        return render(request, conn, "material.html", rows=rows, names=materials.MATERIALS)
+        names = {k: v for k, v in materials.MATERIALS.items() if k in materials.PRINTING}
+        return render(request, conn, "material.html", rows=rows, names=names)
 
     @app.get("/suche", response_model=None)
     def search(request: Request, conn: Conn, q: str = "", tag: str = "") -> Response:
@@ -458,6 +465,7 @@ def create_app(settings: Settings) -> FastAPI:
             },
             pending=labels.pending(conn, settings.base_url),
             queue=labels.queue(conn, settings.base_url),
+            content=labels.content_queue(conn),
         )
 
     @app.get("/codes", response_class=HTMLResponse)
@@ -1079,6 +1087,10 @@ def create_app(settings: Settings) -> FastAPI:
     def ai_args(conn: sqlite3.Connection) -> tuple[str, str, str]:
         return ai_url, settings.whisper_token, prefs.raw(conn, "ai_model")
 
+    def enrich_args(conn: sqlite3.Connection) -> tuple[str, str, str]:
+        """Tags & Eigenschaften: eigenes (schnelles) Modell."""
+        return ai_url, settings.whisper_token, prefs.raw(conn, "ai_model_enrich")
+
     def report_msg(report: importer.Report) -> str:
         if report.errors:
             return "KI: " + "; ".join(report.errors)[:200]
@@ -1087,8 +1099,49 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.post("/items/{item_id}/ai")
     def ai_enrich(item_id: int, conn: Conn) -> RedirectResponse:
-        msg = ai.enrich_item(conn, *ai_args(conn), item_id, sheet_dir)
+        msg = ai.enrich_item(conn, *enrich_args(conn), item_id, sheet_dir)
         return redirect(f"/items/{item_id}", msg)
+
+    @app.post("/api/ai/item/{item_id}")
+    def api_ai_item(item_id: int, conn: Conn) -> JSONResponse:
+        """KI-Support: ein Teil vervollständigen (vom Browser nacheinander aufgerufen)."""
+        try:
+            msg = ai.enrich_item(conn, *enrich_args(conn), item_id, sheet_dir)
+        except LagerError as exc:
+            return JSONResponse({"ok": False, "msg": str(exc)})
+        return JSONResponse({"ok": True, "msg": msg})
+
+    @app.get("/ki", response_class=HTMLResponse)
+    def ki_page(request: Request, conn: Conn, skip: int = 0) -> HTMLResponse:
+        item = ai.next_unchecked(conn, skip)
+        extra: dict[str, object] = {}
+        if item is not None:
+            extra = {
+                "path": repo.path_label(conn, item["container_id"]),
+                "item_type": itemtypes.get(conn, item["type_id"]) if item["type_id"] else None,
+                "spec_sheet": materials.sheet(item, kinds.lang(conn) == "en"),
+                "backup": json.loads(item["ai_backup"]) if item["ai_backup"] else None,
+            }
+        return render(
+            request, conn, "ki.html", boxes=ai.boxes_todo(conn), n_todo=ai.queue_count(conn),
+            item=item, skip=skip, model=prefs.raw(conn, "ai_model_enrich"), **extra,
+        )  # fmt: skip
+
+    @app.post("/ki/item/{item_id}/{action}")
+    def ki_item(item_id: int, action: str, conn: Conn, skip: int = 0) -> RedirectResponse:
+        if action == "ai":
+            msg = ai.enrich_item(conn, *enrich_args(conn), item_id, sheet_dir)
+        elif action == "ok":
+            ai.mark_checked(conn, item_id)
+            msg = "Als geprüft markiert"
+        elif action == "approve":
+            ai.approve_item(conn, item_id)
+            msg = "Freigegeben"
+        elif action == "reject":
+            msg = ai.reject_item(conn, item_id)
+        else:
+            raise LagerError("Unbekannte Aktion")
+        return redirect(f"/ki?skip={skip}#queue", msg)
 
     @app.post("/ai/node/{node_id}")
     def ai_node(node_id: int, conn: Conn, text: Annotated[str, Form()]) -> RedirectResponse:
@@ -1273,9 +1326,9 @@ def create_app(settings: Settings) -> FastAPI:
             names.append(name)
         undo = repo.last_event_id(conn)
         msg = f"{', '.join(f'„{n}“' for n in names)} → {dest['name']}"
-        if queue and (b := kasten.bin_of(conn, dest["id"])) is not None and b["code"]:
-            labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
-            msg += f" · Etikett {b['code']} in Warteschlange"
+        if queue and (holder := content_holder(conn, dest)) is not None:
+            labels.enqueue_content(conn, holder)
+            msg += f" · Inhaltsetikett {labels.content_title(conn, holder)} vorgemerkt"
         return redirect(f"/n/{node_id}#schnell", msg, undo)
 
     # --- Etiketten-Warteschlange ------------------------------------------------------
@@ -1295,8 +1348,47 @@ def create_app(settings: Settings) -> FastAPI:
         n = 0
         for b in kasten.bins(conn, node_id):
             labels.enqueue(conn, b["code"], *labels.container_label(conn, b))
+            labels.enqueue_content(conn, b)
             n += 1
-        return redirect(f"/n/{node_id}", f"{n} Einsatz-Etiketten in Warteschlange")
+        return redirect(f"/n/{node_id}", f"{n} Bin-Tags + Inhaltsetiketten vorgemerkt")
+
+    def content_holder(conn: sqlite3.Connection, dest: sqlite3.Row) -> sqlite3.Row | None:
+        """Wohin das Inhaltsetikett gehört: der Bin, sonst das Fach im Sortierkasten."""
+        if (b := kasten.bin_of(conn, dest["id"])) is not None:
+            return b
+        return dest if dest["kind"] == "compartment" else None
+
+    @app.post("/labels/content/node/{node_id}")
+    def content_node(request: Request, node_id: int, conn: Conn) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        labels.enqueue_content(conn, node)
+        back = request.headers.get("referer", f"/n/{node_id}").split("?")[0]
+        return redirect(back, f"Inhaltsetikett {labels.content_title(conn, node)} vorgemerkt")
+
+    @app.get("/labels/content.xlsx", response_model=None)
+    def content_export(conn: Conn) -> Response:
+        rows = labels.content_queue(conn)
+        if not rows:
+            raise LagerError("Keine Inhaltsetiketten vorgemerkt")
+        data = labels.content_xlsx(rows, prefs.number(conn, "label_text_max") * 2)
+        labels.clear_content(conn)
+        return Response(
+            data,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": 'attachment; filename="inhaltsetiketten.xlsx"'},
+        )
+
+    @app.get("/labels/content/a4", response_class=HTMLResponse)
+    def content_a4(request: Request, conn: Conn) -> HTMLResponse:
+        rows = labels.content_queue(conn)
+        pages = [rows[i : i + labels.A4_COLS * labels.A4_ROWS]
+                 for i in range(0, len(rows), labels.A4_COLS * labels.A4_ROWS)]  # fmt: skip
+        return render(request, conn, "labels_content_a4.html", rows=rows, pages=pages)
+
+    @app.post("/labels/content/clear")
+    def content_clear(conn: Conn) -> RedirectResponse:
+        labels.clear_content(conn)
+        return redirect("/labels", "Inhaltsetiketten geleert")
 
     @app.post("/labels/queue/item/{item_id}")
     def queue_item(request: Request, item_id: int, conn: Conn) -> RedirectResponse:

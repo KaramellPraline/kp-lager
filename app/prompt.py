@@ -88,9 +88,29 @@ def local_for_text(text: str, code: str | None = None, name: str = "", kind: str
     return f"{head}Notiz:\n{text.strip()}\nGib das JSON-Array aus."
 
 
-def local_enrich(item: dict[str, object], types: list[str]) -> list[dict[str, str]]:
-    """Messages, um ein einzelnes Teil zu vervollständigen."""
+# Richtwerte als Anker für kleine Modelle (übliche Herstellerangaben)
+SPEC_HINTS = (
+    " Richtwerte Filament: PLA Düse 190-220, Bett 50-60, Dichte 1.24; PETG Düse 230-250, Bett 70-85, "
+    "Dichte 1.27; ABS/ASA Düse 240-260, Bett 90-110, Dichte 1.05; TPU Düse 210-230, Bett 40-60. "
+    "Volumenfluss üblich 8-25 mm³/s (High-Flow bis 40). Spule netto meist 1000 g, Leerspule 150-260 g."
+)
+
+
+def local_enrich(
+    item: dict[str, object], types: list[str], spec_fields: dict[str, str] | None = None
+) -> list[dict[str, str]]:
+    """Messages, um ein einzelnes Teil zu vervollständigen (optional mit Eigenschaften)."""
     known = {k: item.get(k) or "" for k in ("name", "full_name", "model", "tags", "notes", "unit")}
+    specs_rule = ""
+    if spec_fields:
+        known["specs"] = item.get("specs") or "{}"
+        specs_rule = (
+            ' Zusätzlich "specs": ein Objekt mit diesen Schlüsseln (Zahl ohne Einheit in der genannten '
+            "Einheit, sonst kurzer Text): "
+            + "; ".join(f"{k} = {label}" for k, label in spec_fields.items())
+            + ". Nur Werte eintragen, die du für genau dieses Produkt oder den Werkstoff sicher "
+            "kennst; sonst leer lassen. Lieber leer als geraten." + SPEC_HINTS
+        )
     return [
         {"role": "system", "content": (
             "Du ergänzt Lagerdaten zu einem Teil. Antworte nur mit einem JSON-Objekt mit den Feldern "
@@ -98,6 +118,7 @@ def local_enrich(item: dict[str, object], types: list[str]) -> list[dict[str, st
             "name max. 24 Zeichen (Anzeigename). full_name vollständig mit Hersteller/Serie, falls bekannt. "
             f"{_types_line(types)} model = Teile-/Modellnummer, auch wenn sie im Namen steckt. "
             "tags = ein String mit 3-6 Suchwörtern, durch Leerzeichen getrennt. "
-            "datasheet_url nur, wenn du die direkte Hersteller-PDF sicher kennst, sonst leer. Erfinde nichts.")},
+            "datasheet_url nur, wenn du die direkte Hersteller-PDF sicher kennst, sonst leer. Erfinde nichts."
+            + specs_rule)},
         {"role": "user", "content": f"Bekannte Daten: {known}"},
     ]  # fmt: skip

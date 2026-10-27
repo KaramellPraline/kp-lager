@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}KI-Support · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>KI-Support</h1>
+<p class="meta">Die lokale KI (Modell <b>{{ model }}</b>, änderbar in den Einstellungen) ergänzt Namen, Tags, Modellnummer
+und Eigenschaften. Alles bleibt „zu prüfen“, bis du es freigibst. Noch ungeprüft: <b>{{ n_todo }}</b> Teile.</p>
+{% if not AI %}<p class="msg">Keine lokale KI eingerichtet (LAGER_AI_URL).</p>{% endif %}
+
+<section id="inventur">
+  <h2>Inventur Kiste für Kiste</h2>
+  {% if boxes %}
+  <div class="row">
+    <button type="button" class="primary" id="inv-start" {% if not AI %}disabled{% endif %}>{{ icon('action.ai', size='sm') }} Alle Kisten nacheinander ergänzen</button>
+    <button type="button" id="inv-stop" hidden>Anhalten</button>
+  </div>
+  <p class="meta" id="inv-status"></p>
+  <ul class="list" id="inv-boxes">
+    {% for b in boxes %}
+    <li class="item" data-ids="{{ b.todo|join(',') }}">
+      <span class="name"><a href="/n/{{ b.id }}">{{ b.path }}</a></span>
+      <small class="state">{{ b.todo|length }} offen{% if b.waiting %} · {{ b.waiting }} warten auf Prüfung{% endif %}</small>
+      {% if b.todo %}<button type="button" class="box-run" {% if not AI %}disabled{% endif %}>{{ icon('action.ai', size='sm') }} Diese Kiste</button>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="empty">Alle Teile sind geprüft.</p>{% endif %}
+</section>
+
+<section id="queue">
+  <h2>Warteschlange: Teil für Teil</h2>
+  {% if item %}
+  <div class="card stack">
+    <div class="title-row"><h3 style="margin:0"><a href="/items/{{ item.id }}">{{ item.name }}</a></h3>
+      {% if item.review %}<span class="chip review">{{ icon('status.attention', size='xs') }} KI-Vorschlag prüfen</span>{% endif %}</div>
+    <p class="meta" style="margin:0">{{ path }}{% if item.code %} · {{ item.code }}{% endif %}{% if item_type %} · Tag {{ item_type.name }}{% endif %}</p>
+    <dl class="specs">
+      {% if item.full_name %}<dt>Vollständiger Name</dt><dd>{{ item.full_name }}</dd>{% endif %}
+      {% if item.model %}<dt>Modell</dt><dd>{{ item.model }}</dd>{% endif %}
+      {% if item.tags %}<dt>Suchbegriffe</dt><dd>{{ item.tags }}</dd>{% endif %}
+      {% if item.datasheet_url %}<dt>Datenblatt</dt><dd><a href="{{ item.datasheet_url }}" target="_blank" rel="noopener">Link</a></dd>{% endif %}
+    </dl>
+    {% for group, rows in spec_sheet %}<h3>{{ group }}</h3><dl class="specs">{% for label, value in rows %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>{% endfor %}
+    {% if backup %}<details><summary>Vorher</summary><dl class="specs">{% for k, v in backup.items() if v %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endfor %}</dl></details>{% endif %}
+    <div class="row">
+      {% if item.review %}
+      <form method="post" action="/ki/item/{{ item.id }}/approve?skip={{ skip }}"><button class="primary">{{ icon('action.approve', size='sm') }} Freigeben</button></form>
+      <form method="post" action="/ki/item/{{ item.id }}/reject?skip={{ skip }}"><button>Ablehnen</button></form>
+      {% else %}
+      <form method="post" action="/ki/item/{{ item.id }}/ai?skip={{ skip }}" data-busy="KI arbeitet …"><button class="primary" {% if not AI %}disabled{% endif %}>{{ icon('action.ai', size='sm') }} KI ergänzen</button></form>
+      <form method="post" action="/ki/item/{{ item.id }}/ok?skip={{ skip }}"><button>{{ icon('action.approve', size='sm') }} Passt so</button></form>
+      {% endif %}
+      <a class="button" href="/items/{{ item.id }}">{{ icon('action.edit', size='sm') }} Bearbeiten</a>
+      <a class="button" href="/ki?skip={{ skip + 1 }}#queue">Überspringen</a>
+    </div>
+  </div>
+  {% elif skip %}<p class="empty">Keine weiteren Teile. <a href="/ki#queue">Von vorn</a></p>
+  {% else %}<p class="empty">Nichts mehr zu prüfen.</p>{% endif %}
+</section>
+
+<script>
+(function () {
+  "use strict";
+  var stop = false, status = document.getElementById("inv-status");
+  function run(rows) {
+    stop = false;
+    var jobs = [];
+    rows.forEach(function (li) {
+      (li.dataset.ids || "").split(",").filter(Boolean).forEach(function (id) { jobs.push([li, id]); });
+    });
+    var done = 0, total = jobs.length;
+    document.getElementById("inv-stop").hidden = false;
+    document.querySelectorAll("#inv-start, .box-run").forEach(function (b) { b.disabled = true; });
+    function next() {
+      if (stop || !jobs.length) {
+        status.textContent = (stop ? "Angehalten" : "Fertig") + ": " + done + " von " + total +
+          " Teilen ergänzt. Jetzt unten oder unter Freigaben prüfen.";
+        document.getElementById("inv-stop").hidden = true;
+        setTimeout(function () { location.reload(); }, stop ? 0 : 1500);
+        return;
+      }
+      var job = jobs.shift(), li = job[0];
+      status.textContent = "Teil " + (done + 1) + " von " + total + " · " + li.querySelector(".name").textContent.trim();
+      fetch("/api/ai/item/" + job[1], { method: "POST" }).then(function (r) { return r.json(); })
+        .then(function (d) {
+          done++;
+          var left = li.dataset.ids.split(",").filter(function (x) { return x && x !== job[1]; });
+          li.dataset.ids = left.join(",");
+          li.querySelector(".state").textContent = left.length + " offen · zuletzt: " + d.msg;
+        })
+        .catch(function () { done++; })
+        .then(next);
+    }
+    next();
+  }
+  var start = document.getElementById("inv-start");
+  if (start) start.onclick = function () { run(Array.prototype.slice.call(document.querySelectorAll("#inv-boxes li"))); };
+  document.querySelectorAll(".box-run").forEach(function (b) { b.onclick = function () { run([b.closest("li")]); }; });
+  var s = document.getElementById("inv-stop");
+  if (s) s.onclick = function () { stop = true; s.disabled = true; };
+})();
+</script>
+{% endblock %}

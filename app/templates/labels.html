@@ -15,6 +15,19 @@ D30-Vorlage einmal anlegen: QR-Feld aus Spalte <b>QR</b>, Text aus <b>Code</b> u
 </section>
 
 <section>
+  <h2>Inhaltsetiketten ({{ content|length }})</h2>
+  <p class="meta">Vorne auf Bins und Fächern: Kennung + Inhalt, ohne QR. Oben auf dem Bin klebt nur der 40×12-Tag mit QR.</p>
+  {% if content %}
+  <ul class="list">{% for c in content[:10] %}<li class="item"><span class="name">{{ c.title }} · {{ c.text }}</span></li>{% endfor %}</ul>
+  <div class="row">
+    <a class="button primary" href="/labels/content.xlsx">{{ icon('action.download', size='sm') }} XLSX (D30)</a>
+    <a class="button" href="/labels/content/a4">{{ icon('action.print', size='sm') }} A4 drucken</a>
+    <form method="post" action="/labels/content/clear"><button>Leeren</button></form>
+  </div>
+  {% else %}<p class="empty">Leer. Kommt automatisch beim Einräumen in Bins/Fächer, oder per „Inhaltsetikett“ am Bin.</p>{% endif %}
+</section>
+
+<section>
   <h2>Neue Codes auf Vorrat</h2>
   <p class="meta">Für Boxen, Kisten, Regale: Etikett aufkleben, scannen → Behälter wird angelegt.</p>
   <form method="post" action="/labels/preview" class="stack">
