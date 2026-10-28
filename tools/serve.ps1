@@ -1,4 +1,4 @@
-# KP Lager auf diesem Windows-PC starten – läuft unabhängig im Hintergrund weiter.
+﻿# KP Lager auf diesem Windows-PC starten – läuft unabhängig im Hintergrund weiter.
 #   powershell -File tools\serve.ps1          starten (bzw. neu starten)
 #   powershell -File tools\serve.ps1 -Stop    beenden
 # Port 443: App mit HTTPS (https://lager.home.lan); Port 80: /ca.crt fürs Handy, sonst Umleitung.
