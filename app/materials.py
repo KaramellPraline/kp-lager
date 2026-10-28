@@ -110,7 +110,15 @@ FIELDS: dict[str, tuple[Field, ...]] = {
     "psu": (  # Name: „Netzteil 12V 2A DC 5,5x2,1“ (app/psus.py)
         Field("volt", "base", "Spannung", "Voltage", "V", "12"),
         Field("amp", "base", "Strom", "Current", "A", "2"),
-        Field("plug", "base", "Stecker", "Plug", "", "DC 5,5x2,1, USB-C"),
+        Field("plug", "base", "Stecker (Ausgang)", "Plug (output)", "", "DC 5,5x2,1, USB-C"),
+        Field(
+            "input",
+            "base",
+            "Eingang (Netzseite)",
+            "Input (mains side)",
+            "",
+            "Kaltgerät C14, Euro, direkt",
+        ),
         Field("watt", "base", "Leistung", "Power", "W", "aus V × A"),
         Field("polarity", "base", "Polarität", "Polarity", "", "Mitte +"),
     ),
@@ -220,6 +228,8 @@ def save_specs(conn: sqlite3.Connection, item_id: int, material: str, form: dict
     if material == "psu":  # Stecker vereinheitlichen, Leistung aus V × A
         if "plug" in values:
             values["plug"] = psus.plug(values["plug"])
+        if "input" in values:
+            values["input"] = psus.normalize_input(values["input"])
         for key in ("volt", "amp", "watt"):
             if key in values:
                 values[key] = values[key].replace(",", ".").rstrip("VvAaWw ").strip()
@@ -243,13 +253,21 @@ def _auto_name(conn: sqlite3.Connection, row: Row, material: str, values: dict[s
     """Kabel/Netzteil: Name aus den Feldern; geänderter Name -> Etikett wieder offen."""
     naming = cables if material == "cbl" else psus
     new = naming.name(values)
-    if not new or new == row["name"]:
+    if not new:
         return
-    full = row["full_name"] or naming.full_name(values)
+    old_full = row["full_name"] or ""
+    # selbst eingetragene Vollnamen bleiben; automatisch gebildete folgen den Feldern
+    full = (
+        naming.full_name(values)
+        if not old_full or old_full.startswith(("Kabel ", "Netzteil "))
+        else old_full
+    )
+    if new == row["name"] and full == old_full:
+        return
     with conn:
         conn.execute(
-            "UPDATE item SET name = ?, full_name = ?, label_printed = 0 WHERE id = ?",
-            (new, full, row["id"]),
+            "UPDATE item SET name = ?, full_name = ?, label_printed = ? WHERE id = ?",
+            (new, full, 0 if new != row["name"] else row["label_printed"], row["id"]),
         )
 
 

@@ -8,7 +8,7 @@ Antwort ist immer JSON im Import-Format (`/import`, app/importer.py).
 import sqlite3
 from dataclasses import dataclass, field
 
-from app import codes, itemtypes, kinds, materials, repo
+from app import codes, itemtypes, kinds, materials, psus, repo
 
 SCHEMA = """{"code":"EUR-001","name":"Elektro","kind":"eurobox","parent":"REG-001","grid":null,
  "items":[{"name":"Holzschrauben 4x40","full_name":"Spanplattenschraube 4x40 Torx verzinkt",
@@ -20,7 +20,7 @@ SPEC_KEYS = {
     "res": "material color volume exposure bottom_exposure",
     "cmp": "manufacturer function package value interface voltage",
     "cbl": "plug_a plug_b length standard",
-    "psu": "volt amp plug watt",
+    "psu": "volt amp plug input watt",
 }
 MAX_CONTAINERS = 400  # Behälterliste im Prompt begrenzen (Tokens)
 
@@ -73,6 +73,7 @@ def base_prompt(ctx: Context) -> str:
     cats_line = " | ".join(f"{p} {label}" for p, label in ctx.cats)
     specs_line = "; ".join(f"{materials.MATERIALS[m][2]}: {keys}" for m, keys in SPEC_KEYS.items())
     tags_line = ", ".join(ctx.tags) or "noch keine"
+    inputs_line = " | ".join(psus.INPUT_LABELS[:10])  # die häufigsten; Rest steht im Datenblatt
     boxes = "\n".join(ctx.containers) or "(noch keine)"
     inbox = (
         f"in den Behälter {ctx.inbox} (Zu sortieren)" if ctx.inbox
@@ -90,6 +91,7 @@ model = Teile-/Modellnummer (wichtig bei Elektronik), sonst "". qty nur bei gena
 (Zahlwörter als Ziffern), sonst null + qty_hint ("ca. 20", "viele"). slot = Fach im Sortierkasten (B3).
 tags = 2-5 Suchwörter (Oberbegriff, Zweck). specs nur bei FIL/RES/CMP/CBL/PSU mit genannten oder sicher
 bekannten Werten (Zahl ohne Einheit), Schlüssel: {specs_line}; sonst {{}}.
+PSU plug = Ausgangsstecker (z. B. "DC 5,5x2,1", "USB-C"), input = Netzseite: {inputs_line}.
 Gleiches zusammenfassen, nichts erfinden, Unsicheres mit "?" im Namen. Teile ohne erkennbaren
 Behälter {inbox}. Schon vorhandene Teile nicht doppelt anlegen.
 

@@ -37,16 +37,20 @@
     <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
     <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
-  <div class="spec-fields psu" data-cat="PSU" data-hint="Name entsteht daraus, z. B. „Netzteil 12V 2A DC 5,5x2,1“ · Leistung wird berechnet" hidden>
+  <div class="spec-fields psu" data-cat="PSU" data-hint="Name entsteht aus Volt, Ampere und Stecker, z. B. „Netzteil 12V 2A DC 5,5x2,1“ · der Eingang steht im Datenblatt" hidden>
     <label>Volt<input name="volt" inputmode="decimal" placeholder="12" autocomplete="off"></label>
     <label>Ampere<input name="amp" inputmode="decimal" placeholder="2" autocomplete="off"></label>
-    <label>Stecker<select name="psu_plug" data-reveal="psu-plug-new">
+    <label>Stecker (Ausgang)<select name="psu_plug" data-reveal="psu-plug-new">
       <option value="">– wählen –</option>{% for p in PSU_PLUGS %}<option>{{ p }}</option>{% endfor %}
       <option value="neu">Anderer …</option></select></label>
     <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+    <label class="wide">Eingang (Netzseite)<select name="psu_input" data-reveal="psu-input-new">
+      <option value="">– wählen –</option>{% for p in PSU_INPUTS %}<option>{{ p }}</option>{% endfor %}
+      <option value="neu">Anderer …</option></select></label>
   </div>
   <div class="row other-plug" id="plug-a-new" hidden><input name="plug_a_new" placeholder="Stecker A, z. B. Würth-Stecker" aria-label="Anderer Stecker A"></div>
   <div class="row other-plug" id="plug-b-new" hidden><input name="plug_b_new" placeholder="Stecker B" aria-label="Anderer Stecker B"></div>
+  <div class="row other-plug" id="psu-input-new" hidden><input name="psu_input_new" placeholder="Eingang, z. B. Kaltgerät C20" aria-label="Anderer Eingang"></div>
   <div class="row other-plug" id="psu-plug-new" hidden><input name="psu_plug_new" placeholder="Stecker, z. B. DC 4,0x1,7" aria-label="Anderer Stecker"></div>
   <input type="file" name="photo" id="add-photo" accept="image/*" capture="environment" hidden>
   <p class="meta add-hint" id="add-hint">Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“</p>
