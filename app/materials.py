@@ -9,6 +9,7 @@ import sqlite3
 from datetime import date
 from typing import NamedTuple
 
+from app import cables
 from app.repo import LagerError, Row
 
 
@@ -26,6 +27,7 @@ MATERIALS = {
     "fil": ("Filament", "Filament", "FIL"),
     "res": ("UV-Harz", "UV Resin", "RES"),
     "cmp": ("Elektronikbauteil", "Electronic component", "CMP"),
+    "cbl": ("Kabel", "Cable", "CBL"),
 }
 PRINTING = ("fil", "res")  # 3D-Druck-Material (Übersicht, Restmenge)
 PREFIX_MATERIAL = {prefix: key for key, (_, _, prefix) in MATERIALS.items()}
@@ -98,6 +100,12 @@ FIELDS: dict[str, tuple[Field, ...]] = {
         Field("frequency", "elec", "Frequenz", "Frequency", "MHz"),
         Field("temp_range", "elec", "Temperaturbereich", "Temperature range", "°C", "-40–85"),
     ),
+    "cbl": (  # Name wird daraus gebildet: „USB-A – USB-C 2m“ (app/cables.py)
+        Field("plug_a", "base", "Stecker Seite A", "Plug side A", "", "USB-A, HDMI, RJ45, DP"),
+        Field("plug_b", "base", "Stecker Seite B", "Plug side B", "", "USB-C, Micro-USB, DVI"),
+        Field("length", "base", "Länge", "Length", "m", "2"),
+        Field("standard", "base", "Standard", "Standard", "", "USB 2.0, DP 1.4, Cat6"),
+    ),
 }
 # Plausible Bereiche für Zahlenwerte der KI; außerhalb -> verworfen (lieber leer als falsch)
 PLAUSIBLE: dict[str, tuple[float, float]] = {
@@ -109,7 +117,7 @@ PLAUSIBLE: dict[str, tuple[float, float]] = {
     "impact": (0.5, 200), "hdt": (30, 300), "volume": (50, 10000), "bottle_weight": (20, 1000),
     "viscosity": (10, 10000), "wavelength": (350, 420), "layer": (0.01, 0.3), "exposure": (0.5, 60),
     "bottom_exposure": (5, 300), "bottom_layers": (1, 20), "temp_min": (10, 60),
-    "temp_max": (15, 80), "cure": (1, 120),
+    "temp_max": (15, 80), "cure": (1, 120), "length": (0.05, 100),
 }  # fmt: skip
 # Werte in kg statt g (z. B. "1.2" bei Spulengewicht) werden umgerechnet
 GRAM_FIELDS = ("weight", "spool_weight", "bottle_weight")
@@ -187,16 +195,51 @@ def save_specs(conn: sqlite3.Connection, item_id: int, material: str, form: dict
     """Material setzen und Eigenschaften aus dem Formular (Felder spec_<key>) speichern."""
     if material and material not in MATERIALS:
         raise LagerError(f"Unbekanntes Material '{material}'")
+    row = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,)).fetchone()
+    keys = {f.key for f in FIELDS.get(material, ())}
+    # Werte außerhalb des Formulars (z. B. Restmenge aus der Wägung) bleiben erhalten
+    kept = {
+        k: v
+        for k, v in (specs(row) if row else {}).items()
+        if k not in keys and k.startswith("rest")
+    }
     values = {
         f.key: form[f"spec_{f.key}"].strip()
         for f in FIELDS.get(material, ())
         if form.get(f"spec_{f.key}", "").strip()
     }
+    if material == "cbl":  # einheitliche Steckernamen: 'DisplayPort' -> 'DP', 'usb c' -> 'USB-C'
+        for side in ("plug_a", "plug_b"):
+            if side in values:
+                values[side] = cables.plug(values[side])
+        if "length" in values:
+            values["length"] = values["length"].replace(",", ".").removesuffix("m").strip()
     with conn:
         conn.execute(
             "UPDATE item SET material = ?, specs = ?, updated_at = datetime('now') WHERE id = ?",
-            (material or None, json.dumps(values, ensure_ascii=False), item_id),
+            (material or None, json.dumps({**kept, **values}, ensure_ascii=False), item_id),
         )
+    if material == "cbl" and row is not None:
+        _name_cable(conn, row, values)
+
+
+def _name_cable(conn: sqlite3.Connection, row: Row, values: dict[str, str]) -> None:
+    """Kabel: Name aus Stecker A/B + Länge; geänderter Name -> Etikett wieder offen."""
+    new = cables.name(values)
+    if not new or new == row["name"]:
+        return
+    full = row["full_name"] or cables.full_name(values)
+    with conn:
+        conn.execute(
+            "UPDATE item SET name = ?, full_name = ?, label_printed = 0 WHERE id = ?",
+            (new, full, row["id"]),
+        )
+
+
+def cable_specs(text: str, given: dict[str, str] | None = None) -> dict[str, str]:
+    """Formularwerte (spec_*) für ein Kabel: angegebene Werte, Rest aus dem Text erkannt."""
+    found = {**cables.parse(text), **{k: v for k, v in (given or {}).items() if v}}
+    return {f"spec_{k}": v for k, v in found.items()}
 
 
 def all_materials(conn: sqlite3.Connection) -> list[Row]:

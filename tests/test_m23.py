@@ -24,7 +24,8 @@ def test_item_categories_on_start(client: TestClient) -> None:
         "/quickadd", data={"mode": "item", "text": "PLA weiß", "target": shelf, "cat": "fil"}
     )
     items = {i["code"]: i for i in client.get(f"/api/v1/containers/{shelf}").json()["items"]}
-    assert items["CBL-001"]["qty"] == 5 and items["CBL-001"]["unit"] == "m"
+    # Kabel: Zahl vorne ist die Länge (Name + Eigenschaft), nicht die Menge
+    assert items["CBL-001"]["qty"] is None and items["CBL-001"]["name"] == "NYM-J Kabel 5m"
     assert "Max. Volumenfluss" in client.get(f"/items/{items['FIL-001']['id']}").text
     assert codes.normalize("cbl1") == "CBL-001"
 
