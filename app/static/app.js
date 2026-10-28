@@ -58,13 +58,13 @@
     ev.preventDefault();
     var form = document.getElementById("schnell");
     form.scrollIntoView({ behavior: "smooth", block: "center" });
-    var mic = form.querySelector("button.mic");
+    var mic = form.querySelector("button.mic[data-target]");
     if (mic) mic.click(); else document.getElementById(tile.dataset.target).focus();
   });
 
   // Mikrofon-Knopf: aufnehmen, an /api/transcribe schicken, Text ins Feld schreiben
   document.addEventListener("click", function (ev) {
-    var btn = ev.target.closest("button.mic");
+    var btn = ev.target.closest("button.mic[data-target]");
     if (!btn) return;
     var input = document.getElementById(btn.dataset.target);
     if (btn.recorder) { btn.recorder.stop(); return; }
@@ -165,6 +165,8 @@
     if (!ev.target.matches("select[data-reveal]")) return;
     var box = document.getElementById(ev.target.dataset.reveal);
     box.hidden = ev.target.value !== "neu";
+    var other = box.querySelector("input");
+    if (other && box.classList.contains("other-plug")) other.required = !box.hidden;
     if (!box.hidden) box.querySelector("input").focus();
   });
 
@@ -216,6 +218,11 @@
       if (on) active = box;
     });
     free.hidden = !!active;
+    form.querySelectorAll(".other-plug").forEach(function (o) {
+      var sel = form.querySelector('[data-reveal="' + o.id + '"]');
+      o.hidden = !(sel && sel.closest(".spec-fields") === active && sel.value === "neu");
+      o.querySelector("input").required = !o.hidden;
+    });
     form.querySelector("#quick-home").required = !active;
     var hint = form.querySelector("#add-hint"), seg = form.querySelector(".seg button.active");
     if (hint) hint.textContent = active ? active.dataset.hint : (seg ? seg.dataset.hint : hint.textContent);

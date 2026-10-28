@@ -25,22 +25,29 @@
   <div class="add-item" id="free-row" style="margin:0">
     <input name="text" id="quick-home" placeholder="z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off">
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
-    <button type="button" class="mic photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
   <div class="spec-fields cable" data-cat="CBL" data-hint="Name entsteht daraus, z. B. „USB-A – USB-C 2m“ · nur Stecker A = beidseitig gleich" hidden>
-    <label>Stecker A<input name="plug_a" list="plugs" placeholder="USB-A" autocomplete="off"></label>
-    <label>Stecker B<input name="plug_b" list="plugs" placeholder="USB-C" autocomplete="off"></label>
+    <label>Stecker A<select name="plug_a" data-reveal="plug-a-new">
+      <option value="">– wählen –</option>{% for p in PLUG_NAMES %}<option>{{ p }}</option>{% endfor %}
+      <option value="neu">Anderer …</option></select></label>
+    <label>Stecker B<select name="plug_b" data-reveal="plug-b-new">
+      <option value="">wie A</option>{% for p in PLUG_NAMES %}<option>{{ p }}</option>{% endfor %}
+      <option value="neu">Anderer …</option></select></label>
     <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
-    <button type="button" class="mic photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
   <div class="spec-fields psu" data-cat="PSU" data-hint="Name entsteht daraus, z. B. „Netzteil 12V 2A DC 5,5x2,1“ · Leistung wird berechnet" hidden>
     <label>Volt<input name="volt" inputmode="decimal" placeholder="12" autocomplete="off"></label>
     <label>Ampere<input name="amp" inputmode="decimal" placeholder="2" autocomplete="off"></label>
-    <label>Stecker<input name="psu_plug" list="psu-plugs" placeholder="DC 5,5x2,1" autocomplete="off"></label>
-    <button type="button" class="mic photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+    <label>Stecker<select name="psu_plug" data-reveal="psu-plug-new">
+      <option value="">– wählen –</option>{% for p in PSU_PLUGS %}<option>{{ p }}</option>{% endfor %}
+      <option value="neu">Anderer …</option></select></label>
+    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
-  <datalist id="plugs">{% for p in PLUG_NAMES %}<option value="{{ p }}">{% endfor %}</datalist>
-  <datalist id="psu-plugs">{% for p in PSU_PLUGS %}<option value="{{ p }}">{% endfor %}</datalist>
+  <div class="row other-plug" id="plug-a-new" hidden><input name="plug_a_new" placeholder="Stecker A, z. B. Würth-Stecker" aria-label="Anderer Stecker A"></div>
+  <div class="row other-plug" id="plug-b-new" hidden><input name="plug_b_new" placeholder="Stecker B" aria-label="Anderer Stecker B"></div>
+  <div class="row other-plug" id="psu-plug-new" hidden><input name="psu_plug_new" placeholder="Stecker, z. B. DC 4,0x1,7" aria-label="Anderer Stecker"></div>
   <input type="file" name="photo" id="add-photo" accept="image/*" capture="environment" hidden>
   <p class="meta add-hint" id="add-hint">Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“</p>
   <div class="photo-preview" id="add-photo-preview" hidden>
