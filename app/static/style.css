@@ -321,3 +321,10 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 .mic.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .photo-preview { display: flex; align-items: center; gap: 10px; }
 .photo-preview img { width: 56px; height: 56px; object-fit: cover; border-radius: var(--r-sm); }
+
+/* Start: Kabel-Felder (Stecker A, Stecker B, Länge) */
+.cable-fields { display: grid; grid-template-columns: 1fr 1fr 5.5em; gap: 8px; margin-top: 10px; }
+.cable-fields[hidden] { display: none; }
+.cable-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--sub); min-width: 0; }
+.cable-fields input { min-width: 0; }
+.cable-fields .meta { grid-column: 1 / -1; margin: 0; font-size: 13px; }

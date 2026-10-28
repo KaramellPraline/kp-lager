@@ -202,6 +202,22 @@
     });
   });
 
+  // Startseite: Kategorie CBL blendet Stecker A / Stecker B / Länge ein, Freitext wird optional
+  function syncCable(form) {
+    var box = form.querySelector("#cable-fields");
+    if (!box) return;
+    var cat = form.querySelector("input[name=cat]:checked");
+    var on = form.querySelector("#add-mode").value === "item" && cat && cat.value === "CBL";
+    box.hidden = !on;
+    var text = form.querySelector("#quick-home");
+    text.required = !on;
+    text.placeholder = on ? "optional, frei: z. B. USB A-C 2m" : (text.dataset.ph || text.placeholder);
+    if (on) box.querySelector("input").focus();
+  }
+  document.addEventListener("change", function (ev) {
+    if (ev.target.matches(".add-anything input[name=cat]")) syncCable(ev.target.form);
+  });
+
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
   document.addEventListener("click", function (ev) {
     var b = ev.target.closest(".add-anything .seg button");
@@ -210,6 +226,8 @@
     form.querySelectorAll(".seg button").forEach(function (x) { x.classList.toggle("active", x === b); });
     form.querySelector("#add-mode").value = b.dataset.mode;
     form.querySelector("#quick-home").placeholder = b.dataset.ph;
+    form.querySelector("#quick-home").dataset.ph = b.dataset.ph;
+    syncCable(form);
     var hint = form.querySelector("#add-hint"), submit = form.querySelector("#add-submit .lbl");
     var empty = form.querySelector("#qa-empty");
     if (hint && b.dataset.hint) hint.textContent = b.dataset.hint;
