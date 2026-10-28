@@ -61,8 +61,9 @@ templates.env.globals["PLUG_NAMES"] = cables.COMMON
 templates.env.globals["ASSET_V"] = str(
     max(int((APP_DIR / "static" / f).stat().st_mtime) for f in ("style.css", "app.js"))
 )
+templates.env.globals["PSU_INPUTS"] = psus.INPUT_LABELS
 templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35", "USB-C", "USB-A",
-                                      "Micro-USB", "Kaltgeräte C8", "Kaltgeräte C14"]  # fmt: skip
+                                      "Micro-USB", "Schraubklemmen", "Molex", "XLR"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
@@ -261,6 +262,8 @@ def create_app(settings: Settings) -> FastAPI:
         plug_a_new: Annotated[str, Form()] = "",
         plug_b_new: Annotated[str, Form()] = "",
         psu_plug_new: Annotated[str, Form()] = "",
+        psu_input: Annotated[str, Form()] = "",
+        psu_input_new: Annotated[str, Form()] = "",
         choice: Annotated[str, Form()] = "",
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
@@ -271,6 +274,7 @@ def create_app(settings: Settings) -> FastAPI:
         plug_a = plug_a_new if plug_a == "neu" else plug_a  # Auswahl „Anderer …“
         plug_b = plug_b_new if plug_b == "neu" else plug_b
         psu_plug = psu_plug_new if psu_plug == "neu" else psu_plug
+        psu_input = psu_input_new if psu_input == "neu" else psu_input
         given: dict[str, str] = {}  # Werte aus den Kategorie-Feldern (Kabel/Netzteil)
         if mode == "item" and cat.upper() == "CBL" and plug_a.strip():
             # Kabel aus den drei Feldern: Name „USB-A – USB-C 2m“ (Freitext wird dann ignoriert)
@@ -286,6 +290,7 @@ def create_app(settings: Settings) -> FastAPI:
                 "volt": volt.replace(",", ".").rstrip("Vv ").strip(),
                 "amp": amp.replace(",", ".").rstrip("Aa ").strip(),
                 "plug": psus.plug(psu_plug) if psu_plug.strip() else "",
+                "input": psus.normalize_input(psu_input) if psu_input.strip() else "",
             }
             text = psus.name(psu)
             if not text:

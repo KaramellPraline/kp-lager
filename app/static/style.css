@@ -331,3 +331,4 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 .spec-fields input { min-width: 0; }
 .other-plug[hidden] { display: none; }
 .spec-fields select { min-width: 0; padding-left: 8px; padding-right: 4px; }
+.spec-fields label.wide { grid-column: 1 / -1; }

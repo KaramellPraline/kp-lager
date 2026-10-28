@@ -38,6 +38,7 @@ Stand: 2026-10-26
 - [x] **M14 Etiketten**: Export immer XLSX; A4 als eigene Seite mit Auswahl aus allen etikettierten Teilen.
 - [x] **M15 Lokale KI** (Gateway Chat): Teil vollständig ausfüllen ohne Haiku; „An lokale KI senden“ neben jedem Prompt-Kopieren; kompakter Prompt für lokale Modelle inkl. dynamischer Typen; alle KI-Ergebnisse mit Flag „zu prüfen“ → Tab „Freigaben“ unter Mehr (freigeben/ändern).
 - [x] **M16 Sprach-Tab** in der unteren Leiste: langes Diktat + Dauer-Aufnahme Teil für Teil, getrennt durch „weiter“ oder Knopf → Einträge in „Zu sortieren“.
+- [x] **M31 Netzteil-Eingang**: Feld „Eingang (Netzseite)“ (Kaltgerät C14/C8/C6, Euro-Stecker ohne Erdung, Schuko, direkt in Steckdose, Wechselaufsatz, festes Kabel, Schraubklemmen, Hutschiene, 12 V KFZ, DC, USB, PoE); Auswahl auf Start, Erkennung im Freitext/Haiku; 230 V zählt nie als Ausgangsspannung; Vollname folgt den Feldern.
 - [x] **Fix Start-Kabel/Netzteil**: Kamera-Knopf startete das Mikrofon (Klasse mic), Stecker jetzt als Auswahlliste mit „Anderer …“ statt datalist (iPhone/Android), CSS/JS mit Versionsnummer gegen alten Browser-Cache.
 - [x] **M30 Netzteil PSU + Eingabe je Kategorie**: Start zeigt Kategorie zuerst; bei CBL ersetzen Stecker A/B + Länge, bei PSU Volt/Ampere/Stecker das freie Feld; Netzteil-Name „Netzteil 12V 2A USB-C“, Leistung berechnet (app/psus.py).
 - [x] **M29 Kabel-Felder auf Start**: bei Kategorie CBL drei Felder Stecker A, Stecker B, Länge (mit Steckervorschlägen), Freitext dann optional.

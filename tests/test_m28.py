@@ -151,3 +151,54 @@ def test_unknown_plug_kept_as_typed(client: TestClient) -> None:
     r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "target": box, "plug_a": "USB-A",
                                        "plug_b": "neu", "plug_b_new": "Hohlstecker", "length": "1,5"})  # fmt: skip
     assert "USB-A – Hohlstecker 1,5m" in r.text
+
+
+@pytest.mark.parametrize(
+    ("text", "inp"),
+    [
+        ("12V 2A 5,5x2,1 Kaltgerätestecker", "Kaltgerät C14"),
+        ("5V 3A USB-C Steckernetzteil 230V", "Direkt in Steckdose"),
+        ("19V 3,42A Euro Stecker ohne Erdung", "Euro-Stecker (ohne Erdung)"),
+        ("12V 1A Schuko 100-240V", "Schuko (geerdet)"),
+        ("9V 1A C8", "Kaltgerät C8"),
+        ("19V 4,7A Mickey Mouse", "Kaltgerät C6"),
+        ("12V 2A Wechselaufsatz", "Direkt, Wechselaufsatz"),
+        ("24V 5A Hutschiene", "Hutschiene"),
+        ("12V 5A Schraubklemmen", "Schraubklemmen 230 V"),
+    ],
+)
+def test_psu_input_recognised(text: str, inp: str) -> None:
+    from app import psus
+
+    found = psus.parse(text)
+    assert found["input"] == inp
+    assert found["volt"] in {"5", "9", "12", "19", "24"}  # 230 V ist nie die Ausgangsspannung
+
+
+def test_start_psu_input_select_and_datasheet(client: TestClient) -> None:
+    page = client.get("/").text
+    sel = page.split('name="psu_input"')[1].split("</select>")[0]
+    for label in ("Kaltgerät C14", "Euro-Stecker (ohne Erdung)", "Schuko (geerdet)", "Direkt in Steckdose",
+                  "Hutschiene", "Festes Netzkabel", "Anderer …"):  # fmt: skip
+        assert label in sel
+    assert (
+        'name="psu_input_new"' in page
+        and "Kaltgeräte C14" not in page.split('name="psu_plug"')[1][:900]
+    )
+    box = _shelf(client)
+    client.post("/quickadd", data={"mode": "item", "cat": "PSU", "target": box, "volt": "12", "amp": "2",
+                                   "psu_plug": "DC 5,5x2,1", "psu_input": "Kaltgerät C14"})  # fmt: skip
+    client.post("/quickadd", data={"mode": "item", "cat": "PSU", "target": box, "volt": "5", "amp": "1",
+                                   "psu_input": "neu", "psu_input_new": "ohne erdung"})  # fmt: skip
+    client.post(
+        "/quickadd",
+        data={"mode": "item", "cat": "PSU", "target": box, "text": "9V 1A Steckernetzteil"},
+    )
+    items = {i["code"]: i for i in client.get(f"/api/v1/containers/{box}").json()["items"]}
+    p1 = client.get(f"/items/{items['PSU-001']['id']}").text
+    assert "Eingang (Netzseite)" in p1 and "<dd>Kaltgerät C14</dd>" in p1
+    assert "Eingang Kaltgerät C14" in p1  # vollständiger Name
+    assert (
+        "<dd>Euro-Stecker (ohne Erdung)</dd>" in client.get(f"/items/{items['PSU-002']['id']}").text
+    )
+    assert "<dd>Direkt in Steckdose</dd>" in client.get(f"/items/{items['PSU-003']['id']}").text
