@@ -26,6 +26,37 @@ PLUGS = {
     "kaltgerät": "C13", "kaltgeräte": "C13", "c13": "C13", "c7": "C7", "c5": "C5",
     "schuko": "Schuko", "sata": "SATA", "molex": "Molex", "xlr": "XLR", "cinch": "Cinch",
     "toslink": "Toslink", "optisch": "Toslink",
+    # Netz (230 V) und Drehstrom
+    "euro": "Euro-Stecker", "eurostecker": "Euro-Stecker", "euro-stecker": "Euro-Stecker",
+    "euro stecker": "Euro-Stecker",
+    "cee 7/16": "Euro-Stecker", "typ c stecker": "Euro-Stecker",
+    "euro-8": "C7", "euro8": "C7", "c14": "C14", "c15": "C15", "c19": "C19", "c20": "C20",
+    "c13 winkel": "C13 90°", "c13 90": "C13 90°", "c13 90°": "C13 90°",
+    "schuko winkel": "Schuko 90°", "schuko 90": "Schuko 90°", "schuko 90°": "Schuko 90°",
+    "typ f": "Schuko", "cee 7/7": "Schuko",
+    "drehstrom": "CEE 16A 5p", "cee": "CEE 16A 5p", "cee 16": "CEE 16A 5p",
+    "cee 16a": "CEE 16A 5p", "cee16": "CEE 16A 5p", "cee 16a 5p": "CEE 16A 5p",
+    "cee 16a 3p": "CEE 16A 3p", "cee blau": "CEE 16A 3p", "campingstecker": "CEE 16A 3p",
+    "cee 32": "CEE 32A 5p", "cee 32a": "CEE 32A 5p", "cee32": "CEE 32A 5p",
+    "cee 32a 5p": "CEE 32A 5p", "cee 32a 3p": "CEE 32A 3p", "cee 63a": "CEE 63A",
+    "cee 63": "CEE 63A", "perilex": "Perilex", "wieland": "Wieland", "powercon": "powerCON",
+    "kfz": "KFZ", "zigarettenanzünder": "KFZ", "bordsteckdose": "KFZ",
+    # Gleichstrom / Power Delivery
+    "usb pd": "USB-C PD", "usb-c pd": "USB-C PD", "pd": "USB-C PD", "power delivery": "USB-C PD",
+    "usb-c 100w": "USB-C PD", "usb-c 240w": "USB-C PD", "thunderbolt": "Thunderbolt",
+    "magsafe": "MagSafe", "magsafe 3": "MagSafe 3", "dc": "DC",
+    "dc 5,5x2,1": "DC 5,5x2,1", "dc 5.5x2.1": "DC 5,5x2,1", "5,5x2,1": "DC 5,5x2,1",
+    "dc 5,5x2,5": "DC 5,5x2,5", "5,5x2,5": "DC 5,5x2,5", "dc 3,5x1,35": "DC 3,5x1,35",
+    "dc 4,0x1,7": "DC 4,0x1,7", "dc 2,5x0,7": "DC 2,5x0,7", "dc 7,4x5,0": "DC 7,4x5,0",
+    "xt60": "XT60", "xt30": "XT30", "xt90": "XT90", "ec5": "EC5", "tamiya": "Tamiya",
+    "anderson": "Anderson", "jst": "JST", "dupont": "Dupont", "bananenstecker": "Banane",
+    "banane": "Banane", "krokodilklemme": "Krokodil", "krokodil": "Krokodil",
+    "kabelschuh": "Kabelschuh", "aderendhülse": "Aderendhülse", "offen": "offen",
+    # Sonstiges
+    "rj11": "RJ11", "rj12": "RJ12", "bnc": "BNC", "sma": "SMA", "f-stecker": "F-Stecker",
+    "d-sub": "D-Sub", "dsub": "D-Sub", "serial": "D-Sub 9", "rs232": "D-Sub 9", "db9": "D-Sub 9",
+    "speakon": "Speakon", "midi": "MIDI", "klinke 6,35": "Klinke 6,35", "6,35mm": "Klinke 6,35",
+    "firewire": "FireWire", "scart": "SCART", "peitschenkabel": "offen",
 }  # fmt: skip
 # Familie + Kurzform: 'USB A-C' -> 'a', 'c' werden als USB-Stecker gelesen
 _USB_SHORT = {"a": "USB-A", "b": "USB-B", "c": "USB-C", "c90": "USB-C 90°", "micro": "Micro-USB",
@@ -77,7 +108,7 @@ def parse(text: str) -> dict[str, str]:
     extension = bool(_EXTENSION.search(s))
     s = _EXTENSION.sub("", s).strip(" -")
     # Bindestrich in Steckernamen ist kein Trenner: 'USB-C', 'Micro-USB', 'Mini-DP'
-    s = re.sub(r"\b(usb|micro|mini)-(?=\w)", r"\1 ", s, flags=re.IGNORECASE)
+    s = re.sub(r"\b(usb|micro|mini|euro)-(?=\w)", r"\1 ", s, flags=re.IGNORECASE)
     words = s.split()
     family = words[0].casefold() if words else ""
     if usb_family and family != "usb":  # 'USB 2.0 Verlängerung': Familie stand vor dem Standard
@@ -98,6 +129,8 @@ def parse(text: str) -> dict[str, str]:
     b = sides[1] if len(sides) > 1 else a  # 'HDMI 2m', 'USB C 1m' -> gleicher Stecker beidseitig
     if len(sides) == 1 and a == "C13":  # Kaltgerätekabel
         a, b = "Schuko", "C13"
+    if len(sides) == 1 and a in ("C7", "C5", "C15"):  # Geräte-Netzkabel
+        a, b = ("Euro-Stecker" if a == "C7" else "Schuko"), a
     if len(sides) == 1 and a in ("Micro-USB", "Mini-USB", "Lightning"):  # Lade-/Datenkabel
         a, b = "USB-A", a
     if extension:
@@ -133,5 +166,19 @@ def full_name(specs: dict[str, str]) -> str:
 COMMON = [
     "USB-A", "USB-C", "Micro-USB", "USB-B", "USB-C 90°", "Mini-USB", "Lightning",
     "HDMI", "Mini-HDMI", "Micro-HDMI", "DP", "Mini-DP", "DVI", "VGA", "RJ45",
-    "Klinke", "Cinch", "XLR", "Toslink", "SATA", "Molex", "Schuko", "C13", "C7", "C5",
+    "Klinke", "Cinch", "XLR", "Toslink", "SATA", "Molex",
+    # Netz 230 V
+    "Schuko", "Euro-Stecker", "C13", "C14", "C7", "C5", "C15", "C19", "C20",
+    "Schuko 90°", "C13 90°",
+    # Drehstrom / Industrie
+    "CEE 16A 5p", "CEE 32A 5p", "CEE 16A 3p", "CEE 32A 3p", "CEE 63A", "Perilex", "Wieland",
+    "powerCON",
+    # Power Delivery und Gleichstrom
+    "USB-C PD", "Thunderbolt", "MagSafe", "MagSafe 3", "DC 5,5x2,1", "DC 5,5x2,5",
+    "DC 3,5x1,35", "DC 4,0x1,7", "DC 2,5x0,7", "DC 7,4x5,0", "KFZ", "XT60", "XT30", "XT90",
+    "EC5", "Anderson", "Tamiya", "JST", "Dupont", "Banane", "Krokodil", "Kabelschuh",
+    "Aderendhülse", "offen",
+    # Sonstiges
+    "RJ11", "RJ12", "BNC", "SMA", "F-Stecker", "D-Sub", "D-Sub 9", "Speakon", "MIDI",
+    "Klinke 6,35", "FireWire", "SCART",
 ]  # fmt: skip
