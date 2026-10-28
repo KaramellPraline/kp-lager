@@ -72,7 +72,10 @@ def test_import_cable_from_specs_or_name(client: TestClient, tmp_path) -> None: 
 
 def test_start_cable_fields(client: TestClient) -> None:
     page = client.get("/").text
-    assert 'id="cable-fields"' in page and 'name="plug_a"' in page and 'list="plugs"' in page
+    assert 'data-cat="CBL"' in page and 'name="plug_a"' in page and 'list="plugs"' in page
+    assert page.index('class="cats-grid"') < page.index(
+        'id="free-row"'
+    )  # Kategorie vor der Eingabe
     assert '<option value="USB-C 90°">' in page
     box = _shelf(client)
     r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "text": "", "target": box,
@@ -92,3 +95,38 @@ def test_start_cable_fields(client: TestClient) -> None:
     # ohne Felder und ohne Text: Fehlermeldung
     r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "target": box, "text": ""})
     assert "Was soll eingetragen werden?" in r.text
+
+
+@pytest.mark.parametrize(
+    ("text", "name"),
+    [
+        ("Netzteil 12V 2A 5,5x2,1", "NT 12V 2A DC 5,5x2,1"),
+        ("5V 3000mA USB-C", "Netzteil 5V 3A USB-C"),
+        ("Steckernetzteil 9 V 1 A Hohlstecker", "Netzteil 9V 1A DC"),
+        ("USB-C 20V 3,25A", "Netzteil 20V 3,25A USB-C"),
+    ],
+)
+def test_psu_parse_and_name(text: str, name: str) -> None:
+    from app import psus
+
+    assert psus.name(psus.complete(psus.parse(text))) == name
+    assert len(name) <= 24
+
+
+def test_start_psu_fields_and_free_text(client: TestClient) -> None:
+    page = client.get("/").text
+    assert 'data-cat="PSU"' in page and 'name="volt"' in page and 'name="psu_plug"' in page
+    assert '<option value="DC 5,5x2,1">' in page
+    box = _shelf(client)
+    r = client.post("/quickadd", data={"mode": "item", "cat": "PSU", "target": box,
+                                       "volt": "12", "amp": "2,5", "psu_plug": "5.5x2.1"})  # fmt: skip
+    assert "Netzteil 12V 2,5A DC 5,5x2,1" in r.text or "NT 12V 2,5A DC 5,5x2,1" in r.text
+    client.post(
+        "/quickadd", data={"mode": "item", "cat": "PSU", "target": box, "text": "5V 2A USB-C"}
+    )
+    items = {i["code"]: i for i in client.get(f"/api/v1/containers/{box}").json()["items"]}
+    assert items["PSU-002"]["name"] == "Netzteil 5V 2A USB-C" and items["PSU-002"]["qty"] is None
+    page = client.get(f"/items/{items['PSU-001']['id']}").text
+    assert "<dd>12 V</dd>" in page and "<dd>2.5 A</dd>" in page and "<dd>30 W</dd>" in page
+    assert "Bitte die Spannung" in client.post("/quickadd", data={
+        "mode": "item", "cat": "PSU", "target": box, "amp": "2"}).text  # fmt: skip

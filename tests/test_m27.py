@@ -14,9 +14,9 @@ def test_start_form_matrix_and_labels(client: TestClient) -> None:
     page = client.get("/").text
     form = page.split('id="schnell"')[1].split("</form>")[0]
     assert 'class="cats-grid"' in form and "pick-scroll cats" not in form
-    assert form.count('class="cat-tile"') == 9  # ART, TOL, FIL, RES, CNS, RAW, CBL, CMP, PPE
+    assert form.count('class="cat-tile"') == 10  # ART, TOL, FIL, RES, CNS, RAW, CBL, PSU, CMP, PPE
     assert 'enctype="multipart/form-data"' in page and 'name="photo"' in form
-    assert 'capture="environment"' in form and 'id="add-photo-btn"' in form
+    assert 'capture="environment"' in form and "photo-trigger" in form
     for text in (
         "Was?",
         "Kategorie",

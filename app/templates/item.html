@@ -159,6 +159,7 @@
           <option value="res" {% if item.material == 'res' %}selected{% endif %}>UV-Harz (RES)</option>
           <option value="cmp" {% if item.material == 'cmp' %}selected{% endif %}>Elektronikbauteil (CMP)</option>
           <option value="cbl" {% if item.material == 'cbl' %}selected{% endif %}>Kabel (CBL)</option>
+          <option value="psu" {% if item.material == 'psu' %}selected{% endif %}>Netzteil (PSU)</option>
         </select></label>
       <div class="row">
         <label>Anzahl <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="leer = ungezählt" inputmode="numeric"></label>

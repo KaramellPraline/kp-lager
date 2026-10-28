@@ -14,32 +14,39 @@
       data-empty="Oberste Ebene / Zu sortieren">Alle</button>
   </div>
 
+  <div data-for="item">
+    <span class="add-label">Kategorie</span>
+    <div class="cats-grid" role="radiogroup" aria-label="Kategorie">
+      {% for p, label in ITEM_CATS_SHORT %}<label class="cat-tile"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><b>{{ p }}</b><span>{{ label }}</span></label>{% endfor %}
+    </div>
+  </div>
+
   <label class="add-label" for="quick-home">Was?</label>
-  <div class="add-item" style="margin:0">
+  <div class="add-item" id="free-row" style="margin:0">
     <input name="text" id="quick-home" placeholder="z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off">
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
-    <button type="button" class="mic" id="add-photo-btn" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+    <button type="button" class="mic photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
+  <div class="spec-fields cable" data-cat="CBL" data-hint="Name entsteht daraus, z. B. „USB-A – USB-C 2m“ · nur Stecker A = beidseitig gleich" hidden>
+    <label>Stecker A<input name="plug_a" list="plugs" placeholder="USB-A" autocomplete="off"></label>
+    <label>Stecker B<input name="plug_b" list="plugs" placeholder="USB-C" autocomplete="off"></label>
+    <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
+    <button type="button" class="mic photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+  </div>
+  <div class="spec-fields psu" data-cat="PSU" data-hint="Name entsteht daraus, z. B. „Netzteil 12V 2A DC 5,5x2,1“ · Leistung wird berechnet" hidden>
+    <label>Volt<input name="volt" inputmode="decimal" placeholder="12" autocomplete="off"></label>
+    <label>Ampere<input name="amp" inputmode="decimal" placeholder="2" autocomplete="off"></label>
+    <label>Stecker<input name="psu_plug" list="psu-plugs" placeholder="DC 5,5x2,1" autocomplete="off"></label>
+    <button type="button" class="mic photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
+  </div>
+  <datalist id="plugs">{% for p in PLUG_NAMES %}<option value="{{ p }}">{% endfor %}</datalist>
+  <datalist id="psu-plugs">{% for p in PSU_PLUGS %}<option value="{{ p }}">{% endfor %}</datalist>
   <input type="file" name="photo" id="add-photo" accept="image/*" capture="environment" hidden>
   <p class="meta add-hint" id="add-hint">Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“</p>
   <div class="photo-preview" id="add-photo-preview" hidden>
     <img alt="Vorschau des Fotos">
     <span class="meta">Foto wird angehängt</span>
     <button type="button" class="link" id="add-photo-clear">Entfernen</button>
-  </div>
-
-  <div data-for="item">
-    <span class="add-label">Kategorie</span>
-    <div class="cats-grid" role="radiogroup" aria-label="Kategorie">
-      {% for p, label in ITEM_CATS_SHORT %}<label class="cat-tile"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><b>{{ p }}</b><span>{{ label }}</span></label>{% endfor %}
-    </div>
-    <div class="cable-fields" id="cable-fields" hidden>
-      <label>Stecker A<input name="plug_a" list="plugs" placeholder="USB-A" autocomplete="off"></label>
-      <label>Stecker B<input name="plug_b" list="plugs" placeholder="USB-C" autocomplete="off"></label>
-      <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
-      <datalist id="plugs">{% for p in PLUG_NAMES %}<option value="{{ p }}">{% endfor %}</datalist>
-      <p class="meta">Name wird daraus gebildet, z. B. „USB-A – USB-C 2m“. Leer lassen und oben frei schreiben geht auch.</p>
-    </div>
   </div>
   <div data-for="container" hidden class="stack">
     <label class="add-label">Art

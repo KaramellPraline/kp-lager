@@ -20,6 +20,7 @@ SPEC_KEYS = {
     "res": "material color volume exposure bottom_exposure",
     "cmp": "manufacturer function package value interface voltage",
     "cbl": "plug_a plug_b length standard",
+    "psu": "volt amp plug watt",
 }
 MAX_CONTAINERS = 400  # Behälterliste im Prompt begrenzen (Tokens)
 
@@ -87,7 +88,7 @@ Teile: name max. 24 Zeichen (Etikett), deutsch und suchbar; full_name mit Herste
 cat = {cats_line}. tag = einer von: {tags_line}; passt keiner: neuer kurzer Tag, klein.
 model = Teile-/Modellnummer (wichtig bei Elektronik), sonst "". qty nur bei genannter Zahl
 (Zahlwörter als Ziffern), sonst null + qty_hint ("ca. 20", "viele"). slot = Fach im Sortierkasten (B3).
-tags = 2-5 Suchwörter (Oberbegriff, Zweck). specs nur bei FIL/RES/CMP/CBL mit genannten oder sicher
+tags = 2-5 Suchwörter (Oberbegriff, Zweck). specs nur bei FIL/RES/CMP/CBL/PSU mit genannten oder sicher
 bekannten Werten (Zahl ohne Einheit), Schlüssel: {specs_line}; sonst {{}}.
 Gleiches zusammenfassen, nichts erfinden, Unsicheres mit "?" im Namen. Teile ohne erkennbaren
 Behälter {inbox}. Schon vorhandene Teile nicht doppelt anlegen.

@@ -151,6 +151,8 @@ ITEM_LABELS = {
             "Wood strips, metal profiles, pipes"),
     "CBL": ("mat", "Kabel", "Cables", "Kabel, Stecker, Kabelbinder",
             "Cables, connectors, cable ties"),
+    "PSU": ("mat", "Netzteil", "Power Supply", "Netzteil mit Spannung, Strom und Stecker",
+            "Power supply with voltage, current and plug"),
     "CMP": ("mat", "Elektronikbauteile", "Components", "Elektronikbauteile, Platinen, Sensoren",
             "Electronic components, boards, sensors"),
     "PPE": ("ppe", "Schutzausrüstung", "Protective Equipment",
@@ -183,7 +185,7 @@ SCHEMA_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Präfixe) fürs
 PREFIX_DESC: dict[str, str] = {}  # Präfix -> Beschreibung (nur Codes-Seite)
 # Teile-Kategorien für die Auswahl beim Hinzufügen: [(Präfix, Name)], ART zuerst
 ITEM_CATS: list[tuple[str, str]] = []
-CAT_ORDER = ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE")
+CAT_ORDER = ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")
 # Kurznamen für die Kategorie-Kacheln auf Start (DE, EN)
 CAT_SHORT = {"ART": ("Gegenstand", "Item"), "CNS": ("Verbrauch", "Consumables"),
              "CMP": ("Elektronik", "Electronics"), "PPE": ("Schutz", "Safety"),

@@ -33,6 +33,7 @@ from app import (
     prefs,
     projects,
     prompt,
+    psus,
     quick,
     repo,
     withdrawals,
@@ -56,6 +57,8 @@ templates.env.globals["SCHEMA_GROUPS"] = kinds.SCHEMA_GROUPS
 templates.env.globals["ITEM_CATS"] = kinds.ITEM_CATS
 templates.env.globals["ITEM_CATS_SHORT"] = kinds.ITEM_CATS_SHORT
 templates.env.globals["PLUG_NAMES"] = sorted(set(cables.PLUGS.values()), key=str.casefold)
+templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35", "USB-C", "USB-A",
+                                      "Micro-USB", "Kaltgeräte C8", "Kaltgeräte C14"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
@@ -248,6 +251,9 @@ def create_app(settings: Settings) -> FastAPI:
         plug_a: Annotated[str, Form()] = "",
         plug_b: Annotated[str, Form()] = "",
         length: Annotated[str, Form()] = "",
+        volt: Annotated[str, Form()] = "",
+        amp: Annotated[str, Form()] = "",
+        psu_plug: Annotated[str, Form()] = "",
         choice: Annotated[str, Form()] = "",
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
@@ -262,6 +268,16 @@ def create_app(settings: Settings) -> FastAPI:
             text = cables.name(
                 {k: cables.plug(v) if k != "length" else v for k, v in fields.items()}
             )
+        if mode == "item" and cat.upper() == "PSU" and (volt.strip() or amp.strip()):
+            # Netzteil aus den Feldern: „Netzteil 12V 2A DC 5,5x2,1“
+            psu = {
+                "volt": volt.replace(",", ".").rstrip("Vv ").strip(),
+                "amp": amp.replace(",", ".").rstrip("Aa ").strip(),
+                "plug": psus.plug(psu_plug) if psu_plug.strip() else "",
+            }
+            text = psus.name(psu)
+            if not text:
+                raise LagerError("Bitte die Spannung angeben")
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
         image = photo.file.read() if photo is not None and photo.filename else b""
@@ -301,6 +317,10 @@ def create_app(settings: Settings) -> FastAPI:
                 if amount is not None and unit.casefold() in ("m", "cm", "meter"):
                     name, amount, unit = f"{name} {amount}{unit}", None, ""
                 form = materials.cable_specs(name)
+            if cat == "PSU":  # „12V 2A“: Zahl vorne ist die Spannung, nicht die Menge
+                if amount is not None and unit.casefold() in ("v", "volt"):
+                    name, amount, unit = f"{amount}V {name}", None, ""
+                form = materials.auto_specs("psu", name)
             new_id = repo.add_item(conn, dest["id"], name, qty=amount, unit=unit, code=code)
             if material := materials.PREFIX_MATERIAL.get(cat):
                 materials.save_specs(conn, new_id, material, form)
