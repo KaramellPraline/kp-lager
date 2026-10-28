@@ -63,7 +63,9 @@ templates.env.globals["ASSET_V"] = str(
 )
 templates.env.globals["PSU_INPUTS"] = psus.INPUT_LABELS
 templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35", "USB-C", "USB-A",
-                                      "Micro-USB", "Schraubklemmen", "Molex", "XLR"]  # fmt: skip
+                                      "USB-C PD", "Micro-USB", "DC 4,0x1,7", "DC 2,5x0,7",
+                                      "DC 7,4x5,0", "MagSafe", "XT60", "KFZ", "Schraubklemmen",
+                                      "Molex", "XLR"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
