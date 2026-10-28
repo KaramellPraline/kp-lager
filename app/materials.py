@@ -9,7 +9,7 @@ import sqlite3
 from datetime import date
 from typing import NamedTuple
 
-from app import cables
+from app import cables, psus
 from app.repo import LagerError, Row
 
 
@@ -28,6 +28,7 @@ MATERIALS = {
     "res": ("UV-Harz", "UV Resin", "RES"),
     "cmp": ("Elektronikbauteil", "Electronic component", "CMP"),
     "cbl": ("Kabel", "Cable", "CBL"),
+    "psu": ("Netzteil", "Power supply", "PSU"),
 }
 PRINTING = ("fil", "res")  # 3D-Druck-Material (Übersicht, Restmenge)
 PREFIX_MATERIAL = {prefix: key for key, (_, _, prefix) in MATERIALS.items()}
@@ -106,6 +107,13 @@ FIELDS: dict[str, tuple[Field, ...]] = {
         Field("length", "base", "Länge", "Length", "m", "2"),
         Field("standard", "base", "Standard", "Standard", "", "USB 2.0, DP 1.4, Cat6"),
     ),
+    "psu": (  # Name: „Netzteil 12V 2A DC 5,5x2,1“ (app/psus.py)
+        Field("volt", "base", "Spannung", "Voltage", "V", "12"),
+        Field("amp", "base", "Strom", "Current", "A", "2"),
+        Field("plug", "base", "Stecker", "Plug", "", "DC 5,5x2,1, USB-C"),
+        Field("watt", "base", "Leistung", "Power", "W", "aus V × A"),
+        Field("polarity", "base", "Polarität", "Polarity", "", "Mitte +"),
+    ),
 }
 # Plausible Bereiche für Zahlenwerte der KI; außerhalb -> verworfen (lieber leer als falsch)
 PLAUSIBLE: dict[str, tuple[float, float]] = {
@@ -117,7 +125,8 @@ PLAUSIBLE: dict[str, tuple[float, float]] = {
     "impact": (0.5, 200), "hdt": (30, 300), "volume": (50, 10000), "bottle_weight": (20, 1000),
     "viscosity": (10, 10000), "wavelength": (350, 420), "layer": (0.01, 0.3), "exposure": (0.5, 60),
     "bottom_exposure": (5, 300), "bottom_layers": (1, 20), "temp_min": (10, 60),
-    "temp_max": (15, 80), "cure": (1, 120), "length": (0.05, 100),
+    "temp_max": (15, 80), "cure": (1, 120), "length": (0.05, 100), "volt": (1, 400),
+    "amp": (0.01, 100), "watt": (0.1, 5000),
 }  # fmt: skip
 # Werte in kg statt g (z. B. "1.2" bei Spulengewicht) werden umgerechnet
 GRAM_FIELDS = ("weight", "spool_weight", "bottle_weight")
@@ -208,6 +217,13 @@ def save_specs(conn: sqlite3.Connection, item_id: int, material: str, form: dict
         for f in FIELDS.get(material, ())
         if form.get(f"spec_{f.key}", "").strip()
     }
+    if material == "psu":  # Stecker vereinheitlichen, Leistung aus V × A
+        if "plug" in values:
+            values["plug"] = psus.plug(values["plug"])
+        for key in ("volt", "amp", "watt"):
+            if key in values:
+                values[key] = values[key].replace(",", ".").rstrip("VvAaWw ").strip()
+        values = psus.complete(values)
     if material == "cbl":  # einheitliche Steckernamen: 'DisplayPort' -> 'DP', 'usb c' -> 'USB-C'
         for side in ("plug_a", "plug_b"):
             if side in values:
@@ -219,16 +235,17 @@ def save_specs(conn: sqlite3.Connection, item_id: int, material: str, form: dict
             "UPDATE item SET material = ?, specs = ?, updated_at = datetime('now') WHERE id = ?",
             (material or None, json.dumps({**kept, **values}, ensure_ascii=False), item_id),
         )
-    if material == "cbl" and row is not None:
-        _name_cable(conn, row, values)
+    if material in ("cbl", "psu") and row is not None:
+        _auto_name(conn, row, material, values)
 
 
-def _name_cable(conn: sqlite3.Connection, row: Row, values: dict[str, str]) -> None:
-    """Kabel: Name aus Stecker A/B + Länge; geänderter Name -> Etikett wieder offen."""
-    new = cables.name(values)
+def _auto_name(conn: sqlite3.Connection, row: Row, material: str, values: dict[str, str]) -> None:
+    """Kabel/Netzteil: Name aus den Feldern; geänderter Name -> Etikett wieder offen."""
+    naming = cables if material == "cbl" else psus
+    new = naming.name(values)
     if not new or new == row["name"]:
         return
-    full = row["full_name"] or cables.full_name(values)
+    full = row["full_name"] or naming.full_name(values)
     with conn:
         conn.execute(
             "UPDATE item SET name = ?, full_name = ?, label_printed = 0 WHERE id = ?",
@@ -239,6 +256,14 @@ def _name_cable(conn: sqlite3.Connection, row: Row, values: dict[str, str]) -> N
 def cable_specs(text: str, given: dict[str, str] | None = None) -> dict[str, str]:
     """Formularwerte (spec_*) für ein Kabel: angegebene Werte, Rest aus dem Text erkannt."""
     found = {**cables.parse(text), **{k: v for k, v in (given or {}).items() if v}}
+    return {f"spec_{k}": v for k, v in found.items()}
+
+
+def auto_specs(profile: str, text: str, given: dict[str, str] | None = None) -> dict[str, str]:
+    """Kabel/Netzteil: Formularwerte aus angegebenen Feldern, Rest aus dem Text erkannt."""
+    if profile == "cbl":
+        return cable_specs(text, given)
+    found = {**psus.parse(text), **{k: v for k, v in (given or {}).items() if v}}
     return {f"spec_{k}": v for k, v in found.items()}
 
 

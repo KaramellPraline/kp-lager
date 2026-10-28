@@ -176,9 +176,9 @@ def _apply_container(
                 f"spec_{k}": ok for k, v in raw.items()
                 if k in keys and (ok := materials.plausible(k, _str(v))) and _str(v)
             }  # fmt: skip
-            if profile == "cbl":  # Stecker/Länge aus specs, sonst aus dem Namen erkennen
+            if profile in ("cbl", "psu"):  # Felder aus specs, sonst aus dem Namen erkennen
                 given = {k.removeprefix("spec_"): v for k, v in form.items()}
-                form = materials.cable_specs(iname, given)
+                form = materials.auto_specs(profile, iname, given)
             materials.save_specs(conn, item_id, profile, form)
         extra: dict[str, str | int | None] = {}
         if full := _str(item.get("full_name")):

@@ -83,8 +83,8 @@ def enrich_item(
         type_id = itemtypes.create(conn, type_name)
         if type_id != item["type_id"]:
             changes["type_id"] = type_id
-    if item["material"] == "cbl":
-        changes.pop("name", None)  # Kabelname entsteht aus Stecker A/B + Länge
+    if item["material"] in ("cbl", "psu"):
+        changes.pop("name", None)  # Name entsteht aus den Feldern (Stecker/Länge bzw. V/A/Stecker)
     raw_specs = sugg.get("specs")
     if fields and isinstance(raw_specs, dict):
         current = materials.specs(item)

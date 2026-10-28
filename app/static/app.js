@@ -187,35 +187,44 @@
 
   // Startseite: Foto zum Hinzufügen (Kamera oder Galerie) mit Vorschau
   document.addEventListener("DOMContentLoaded", function () {
-    var btn = document.getElementById("add-photo-btn"), input = document.getElementById("add-photo");
-    if (!btn || !input) return;
+    var input = document.getElementById("add-photo"), btns = document.querySelectorAll(".photo-trigger");
+    if (!btns.length || !input) return;
     var box = document.getElementById("add-photo-preview"), img = box.querySelector("img");
-    btn.addEventListener("click", function () { input.click(); });
+    function mark(on) { btns.forEach(function (b) { b.classList.toggle("on", on); }); }
+    btns.forEach(function (b) { b.addEventListener("click", function () { input.click(); }); });
     input.addEventListener("change", function () {
       var f = input.files && input.files[0];
       box.hidden = !f;
-      btn.classList.toggle("on", !!f);
+      mark(!!f);
       if (f) img.src = URL.createObjectURL(f);
     });
     document.getElementById("add-photo-clear").addEventListener("click", function () {
-      input.value = ""; box.hidden = true; btn.classList.remove("on");
+      input.value = ""; box.hidden = true; mark(false);
     });
   });
 
-  // Startseite: Kategorie CBL blendet Stecker A / Stecker B / Länge ein, Freitext wird optional
+  // Startseite: Kategorie mit eigenen Feldern (CBL, PSU) ersetzt das freie Eingabefeld
   function syncCable(form) {
-    var box = form.querySelector("#cable-fields");
-    if (!box) return;
+    var free = form.querySelector("#free-row");
+    if (!free) return;
     var cat = form.querySelector("input[name=cat]:checked");
-    var on = form.querySelector("#add-mode").value === "item" && cat && cat.value === "CBL";
-    box.hidden = !on;
-    var text = form.querySelector("#quick-home");
-    text.required = !on;
-    text.placeholder = on ? "optional, frei: z. B. USB A-C 2m" : (text.dataset.ph || text.placeholder);
-    if (on) box.querySelector("input").focus();
+    var item = form.querySelector("#add-mode").value === "item";
+    var active = null;
+    form.querySelectorAll(".spec-fields").forEach(function (box) {
+      var on = item && cat && box.dataset.cat === cat.value;
+      box.hidden = !on;
+      if (on) active = box;
+    });
+    free.hidden = !!active;
+    form.querySelector("#quick-home").required = !active;
+    var hint = form.querySelector("#add-hint"), seg = form.querySelector(".seg button.active");
+    if (hint) hint.textContent = active ? active.dataset.hint : (seg ? seg.dataset.hint : hint.textContent);
+    return active;
   }
   document.addEventListener("change", function (ev) {
-    if (ev.target.matches(".add-anything input[name=cat]")) syncCable(ev.target.form);
+    if (!ev.target.matches(".add-anything input[name=cat]")) return;
+    var active = syncCable(ev.target.form);
+    if (active) active.querySelector("input").focus();
   });
 
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
@@ -230,7 +239,7 @@
     syncCable(form);
     var hint = form.querySelector("#add-hint"), submit = form.querySelector("#add-submit .lbl");
     var empty = form.querySelector("#qa-empty");
-    if (hint && b.dataset.hint) hint.textContent = b.dataset.hint;
+    if (hint && b.dataset.hint && !syncCable(form)) hint.textContent = b.dataset.hint;
     if (submit && b.dataset.submit) submit.textContent = b.dataset.submit;
     if (empty && b.dataset.empty) empty.textContent = b.dataset.empty;
     form.querySelectorAll("[data-for]").forEach(function (el) {
