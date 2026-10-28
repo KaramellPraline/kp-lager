@@ -284,9 +284,15 @@ def create_app(settings: Settings) -> FastAPI:
                 codes.new_item_code(conn) if cat == codes.ITEM_PREFIX
                 else codes.reserve(conn, cat, 1)[0]
             )  # fmt: skip
+            form: dict[str, str] = {}
+            if cat == "CBL":  # „2 m HDMI“: Zahl vorne ist die Länge, nicht die Menge
+                if amount is not None and unit.casefold() in ("m", "cm", "meter"):
+                    name, amount, unit = f"{name} {amount}{unit}", None, ""
+                form = materials.cable_specs(name)
             new_id = repo.add_item(conn, dest["id"], name, qty=amount, unit=unit, code=code)
             if material := materials.PREFIX_MATERIAL.get(cat):
-                materials.save_specs(conn, new_id, material, {})
+                materials.save_specs(conn, new_id, material, form)
+                name = repo.get_item(conn, new_id)["name"]
             if image:
                 repo.update_item(conn, new_id, photo=photos.save(image, photo_dir))
             names.append(name)
