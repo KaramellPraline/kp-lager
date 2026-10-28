@@ -68,3 +68,27 @@ def test_import_cable_from_specs_or_name(client: TestClient, tmp_path) -> None: 
     box = repo.get_container_by_code(conn, report.containers_created[0].split()[0])
     names = sorted(i["name"] for i in repo.items_in(conn, box["id"]))  # type: ignore[index]
     assert names == ["DP – HDMI 2m", "RJ45 – RJ45 5m"]
+
+
+def test_start_cable_fields(client: TestClient) -> None:
+    page = client.get("/").text
+    assert 'id="cable-fields"' in page and 'name="plug_a"' in page and 'list="plugs"' in page
+    assert '<option value="USB-C 90°">' in page
+    box = _shelf(client)
+    r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "text": "", "target": box,
+                                       "plug_a": "usb c", "plug_b": "DisplayPort", "length": "1,5"})  # fmt: skip
+    assert "USB-C – DP 1,5m" in r.text
+    item = client.get(f"/api/v1/containers/{box}").json()["items"][0]
+    assert item["code"] == "CBL-001" and item["qty"] is None
+    page = client.get(f"/items/{item['id']}").text
+    assert "<dd>USB-C</dd>" in page and "<dd>DP</dd>" in page and "<dd>1.5 m</dd>" in page
+    # nur Stecker A: gleicher Stecker beidseitig
+    client.post(
+        "/quickadd",
+        data={"mode": "item", "cat": "CBL", "target": box, "plug_a": "HDMI", "length": "2"},
+    )
+    names = sorted(i["name"] for i in client.get(f"/api/v1/containers/{box}").json()["items"])
+    assert names == ["HDMI – HDMI 2m", "USB-C – DP 1,5m"]
+    # ohne Felder und ohne Text: Fehlermeldung
+    r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "target": box, "text": ""})
+    assert "Was soll eingetragen werden?" in r.text

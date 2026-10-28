@@ -33,6 +33,13 @@
     <div class="cats-grid" role="radiogroup" aria-label="Kategorie">
       {% for p, label in ITEM_CATS_SHORT %}<label class="cat-tile"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><b>{{ p }}</b><span>{{ label }}</span></label>{% endfor %}
     </div>
+    <div class="cable-fields" id="cable-fields" hidden>
+      <label>Stecker A<input name="plug_a" list="plugs" placeholder="USB-A" autocomplete="off"></label>
+      <label>Stecker B<input name="plug_b" list="plugs" placeholder="USB-C" autocomplete="off"></label>
+      <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
+      <datalist id="plugs">{% for p in PLUG_NAMES %}<option value="{{ p }}">{% endfor %}</datalist>
+      <p class="meta">Name wird daraus gebildet, z. B. „USB-A – USB-C 2m“. Leer lassen und oben frei schreiben geht auch.</p>
+    </div>
   </div>
   <div data-for="container" hidden class="stack">
     <label class="add-label">Art

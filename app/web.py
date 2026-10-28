@@ -18,6 +18,7 @@ from app import (
     api,
     apikeys,
     backup,
+    cables,
     codes,
     datasheets,
     icons,
@@ -54,6 +55,7 @@ templates.env.globals["KIND_GROUPS"] = kinds.KIND_GROUPS
 templates.env.globals["SCHEMA_GROUPS"] = kinds.SCHEMA_GROUPS
 templates.env.globals["ITEM_CATS"] = kinds.ITEM_CATS
 templates.env.globals["ITEM_CATS_SHORT"] = kinds.ITEM_CATS_SHORT
+templates.env.globals["PLUG_NAMES"] = sorted(set(cables.PLUGS.values()), key=str.casefold)
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
 
@@ -236,13 +238,16 @@ def create_app(settings: Settings) -> FastAPI:
     def home_quick_add(
         request: Request,
         conn: Conn,
-        text: Annotated[str, Form()],
+        text: Annotated[str, Form()] = "",
         target: Annotated[str, Form()] = "",
         mode: Annotated[str, Form()] = "item",
         kind: Annotated[str, Form()] = "box",
         new_kind: Annotated[str, Form()] = "",
         new_prefix: Annotated[str, Form()] = "",
         cat: Annotated[str, Form()] = "ART",
+        plug_a: Annotated[str, Form()] = "",
+        plug_b: Annotated[str, Form()] = "",
+        length: Annotated[str, Form()] = "",
         choice: Annotated[str, Form()] = "",
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
@@ -250,6 +255,13 @@ def create_app(settings: Settings) -> FastAPI:
 
         Mit Foto: wird jedem neuen Teil bzw. dem neuen Behälter angehängt.
         """
+        if mode == "item" and cat.upper() == "CBL" and plug_a.strip():
+            # Kabel aus den drei Feldern: Name „USB-A – USB-C 2m“ (Freitext wird dann ignoriert)
+            fields = {"plug_a": plug_a, "plug_b": plug_b or plug_a,
+                      "length": length.replace(",", ".").removesuffix("m").strip()}  # fmt: skip
+            text = cables.name(
+                {k: cables.plug(v) if k != "length" else v for k, v in fields.items()}
+            )
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
         image = photo.file.read() if photo is not None and photo.filename else b""

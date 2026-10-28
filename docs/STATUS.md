@@ -38,6 +38,7 @@ Stand: 2026-10-26
 - [x] **M14 Etiketten**: Export immer XLSX; A4 als eigene Seite mit Auswahl aus allen etikettierten Teilen.
 - [x] **M15 Lokale KI** (Gateway Chat): Teil vollständig ausfüllen ohne Haiku; „An lokale KI senden“ neben jedem Prompt-Kopieren; kompakter Prompt für lokale Modelle inkl. dynamischer Typen; alle KI-Ergebnisse mit Flag „zu prüfen“ → Tab „Freigaben“ unter Mehr (freigeben/ändern).
 - [x] **M16 Sprach-Tab** in der unteren Leiste: langes Diktat + Dauer-Aufnahme Teil für Teil, getrennt durch „weiter“ oder Knopf → Einträge in „Zu sortieren“.
+- [x] **M29 Kabel-Felder auf Start**: bei Kategorie CBL drei Felder Stecker A, Stecker B, Länge (mit Steckervorschlägen), Freitext dann optional.
 - [x] **M28 Kabel-Schema**: Profil Kabel (Stecker A, Stecker B, Länge, Standard), Name automatisch „USB-A – USB-C 2m“ (app/cables.py erkennt Kurzformen), gilt für Start, Datenblatt, Import/Haiku; Umstellung vorhandener Kabel: tools/kabel_umstellen.py.
 - [x] **M27 Start-Hinzufügen**: Reihenfolge Was? → Kategorie (3×3-Matrix, Kurznamen) / Art → Wohin? → großer Knopf mit Text je Modus; Foto per Kamera-Knopf (wird jedem neuen Teil bzw. Behälter angehängt); Teil ohne Ort → Zu sortieren; Komma trennt immer ("3x1,5" bleibt ganz).
 - [x] **M26 Werkzeug-Kategorie** TOL (Teile-Code TOL-001, Start-Chip, Code-Schema, Haiku-Prompt); ART nur noch für Sonstiges.
