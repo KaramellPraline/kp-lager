@@ -72,11 +72,11 @@ def test_import_cable_from_specs_or_name(client: TestClient, tmp_path) -> None: 
 
 def test_start_cable_fields(client: TestClient) -> None:
     page = client.get("/").text
-    assert 'data-cat="CBL"' in page and 'name="plug_a"' in page and 'list="plugs"' in page
+    assert 'data-cat="CBL"' in page and '<select name="plug_a" data-reveal="plug-a-new">' in page
     assert page.index('class="cats-grid"') < page.index(
         'id="free-row"'
     )  # Kategorie vor der Eingabe
-    assert '<option value="USB-C 90°">' in page
+    assert "<option>USB-C 90°</option>" in page and '<option value="">wie A</option>' in page
     box = _shelf(client)
     r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "text": "", "target": box,
                                        "plug_a": "usb c", "plug_b": "DisplayPort", "length": "1,5"})  # fmt: skip
@@ -116,7 +116,7 @@ def test_psu_parse_and_name(text: str, name: str) -> None:
 def test_start_psu_fields_and_free_text(client: TestClient) -> None:
     page = client.get("/").text
     assert 'data-cat="PSU"' in page and 'name="volt"' in page and 'name="psu_plug"' in page
-    assert '<option value="DC 5,5x2,1">' in page
+    assert "<option>DC 5,5x2,1</option>" in page
     box = _shelf(client)
     r = client.post("/quickadd", data={"mode": "item", "cat": "PSU", "target": box,
                                        "volt": "12", "amp": "2,5", "psu_plug": "5.5x2.1"})  # fmt: skip
@@ -130,3 +130,24 @@ def test_start_psu_fields_and_free_text(client: TestClient) -> None:
     assert "<dd>12 V</dd>" in page and "<dd>2.5 A</dd>" in page and "<dd>30 W</dd>" in page
     assert "Bitte die Spannung" in client.post("/quickadd", data={
         "mode": "item", "cat": "PSU", "target": box, "amp": "2"}).text  # fmt: skip
+
+
+def test_other_plug_camera_and_asset_version(client: TestClient) -> None:
+    page = client.get("/").text
+    assert 'class="mic photo-trigger"' not in page and 'class="photo-trigger"' in page
+    assert "/static/app.js?v=" in page and "/static/style.css?v=" in page
+    box = _shelf(client)
+    r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "target": box, "plug_a": "neu",
+                                       "plug_a_new": "usb c", "plug_b": "", "length": "0,5"})  # fmt: skip
+    assert "USB-C – USB-C 0,5m" in r.text
+    r = client.post("/quickadd", data={"mode": "item", "cat": "PSU", "target": box, "volt": "19",
+                                       "amp": "3.42", "psu_plug": "neu", "psu_plug_new": "4.0x1.7"})  # fmt: skip
+    assert "19V 3,42A DC 4,0x1,7" in r.text
+
+
+def test_unknown_plug_kept_as_typed(client: TestClient) -> None:
+    assert cables.name(cables.parse("USB-A – Hohlstecker 1,5m")) == "USB-A – Hohlstecker 1,5m"
+    box = _shelf(client)
+    r = client.post("/quickadd", data={"mode": "item", "cat": "CBL", "target": box, "plug_a": "USB-A",
+                                       "plug_b": "neu", "plug_b_new": "Hohlstecker", "length": "1,5"})  # fmt: skip
+    assert "USB-A – Hohlstecker 1,5m" in r.text

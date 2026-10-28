@@ -50,7 +50,10 @@ def _usb_side(raw: str) -> str:
     if (short := raw.casefold().replace(" ", "")) in _USB_SHORT:
         return _USB_SHORT[short]
     key = " ".join(raw.casefold().split())
-    return PLUGS[key] if key in PLUGS and len(key) > 1 else plug("usb " + raw)
+    if key in PLUGS and len(key) > 1:
+        return PLUGS[key]
+    usb = plug("usb " + raw)
+    return usb if usb in _KNOWN else raw.strip()  # unbekannt: so lassen, wie eingegeben
 
 
 def parse(text: str) -> dict[str, str]:
@@ -124,3 +127,11 @@ def full_name(specs: dict[str, str]) -> str:
     if std := specs.get("standard", ""):
         text += f" ({std})"
     return text
+
+
+# Reihenfolge für die Auswahlliste auf Start: häufige Stecker zuerst
+COMMON = [
+    "USB-A", "USB-C", "Micro-USB", "USB-B", "USB-C 90°", "Mini-USB", "Lightning",
+    "HDMI", "Mini-HDMI", "Micro-HDMI", "DP", "Mini-DP", "DVI", "VGA", "RJ45",
+    "Klinke", "Cinch", "XLR", "Toslink", "SATA", "Molex", "Schuko", "C13", "C7", "C5",
+]  # fmt: skip

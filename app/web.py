@@ -56,7 +56,11 @@ templates.env.globals["KIND_GROUPS"] = kinds.KIND_GROUPS
 templates.env.globals["SCHEMA_GROUPS"] = kinds.SCHEMA_GROUPS
 templates.env.globals["ITEM_CATS"] = kinds.ITEM_CATS
 templates.env.globals["ITEM_CATS_SHORT"] = kinds.ITEM_CATS_SHORT
-templates.env.globals["PLUG_NAMES"] = sorted(set(cables.PLUGS.values()), key=str.casefold)
+templates.env.globals["PLUG_NAMES"] = cables.COMMON
+# Versionsnummer für CSS/JS: neue Datei = neue URL, Browser laden sie sicher neu
+templates.env.globals["ASSET_V"] = str(
+    max(int((APP_DIR / "static" / f).stat().st_mtime) for f in ("style.css", "app.js"))
+)
 templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35", "USB-C", "USB-A",
                                       "Micro-USB", "Kaltgeräte C8", "Kaltgeräte C14"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
@@ -254,6 +258,9 @@ def create_app(settings: Settings) -> FastAPI:
         volt: Annotated[str, Form()] = "",
         amp: Annotated[str, Form()] = "",
         psu_plug: Annotated[str, Form()] = "",
+        plug_a_new: Annotated[str, Form()] = "",
+        plug_b_new: Annotated[str, Form()] = "",
+        psu_plug_new: Annotated[str, Form()] = "",
         choice: Annotated[str, Form()] = "",
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
@@ -261,13 +268,18 @@ def create_app(settings: Settings) -> FastAPI:
 
         Mit Foto: wird jedem neuen Teil bzw. dem neuen Behälter angehängt.
         """
+        plug_a = plug_a_new if plug_a == "neu" else plug_a  # Auswahl „Anderer …“
+        plug_b = plug_b_new if plug_b == "neu" else plug_b
+        psu_plug = psu_plug_new if psu_plug == "neu" else psu_plug
+        given: dict[str, str] = {}  # Werte aus den Kategorie-Feldern (Kabel/Netzteil)
         if mode == "item" and cat.upper() == "CBL" and plug_a.strip():
             # Kabel aus den drei Feldern: Name „USB-A – USB-C 2m“ (Freitext wird dann ignoriert)
-            fields = {"plug_a": plug_a, "plug_b": plug_b or plug_a,
-                      "length": length.replace(",", ".").removesuffix("m").strip()}  # fmt: skip
-            text = cables.name(
-                {k: cables.plug(v) if k != "length" else v for k, v in fields.items()}
-            )
+            given = {
+                "plug_a": cables.plug(plug_a),
+                "plug_b": cables.plug(plug_b or plug_a),
+                "length": length.replace(",", ".").removesuffix("m").strip(),
+            }
+            text = cables.name(given)
         if mode == "item" and cat.upper() == "PSU" and (volt.strip() or amp.strip()):
             # Netzteil aus den Feldern: „Netzteil 12V 2A DC 5,5x2,1“
             psu = {
@@ -278,6 +290,7 @@ def create_app(settings: Settings) -> FastAPI:
             text = psus.name(psu)
             if not text:
                 raise LagerError("Bitte die Spannung angeben")
+            given = {k: v for k, v in psu.items() if v}
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
         image = photo.file.read() if photo is not None and photo.filename else b""
@@ -307,7 +320,9 @@ def create_app(settings: Settings) -> FastAPI:
         if cat not in codes.ITEM_PREFIXES:
             raise LagerError(f"Unbekannte Kategorie {cat}")
         names = []
-        for amount, unit, name in entries(conn, text):
+        # Aus den Kategorie-Feldern: genau ein Teil, Felder direkt übernehmen (nicht neu erkennen)
+        parts = [(None, "", text.strip())] if given else entries(conn, text)
+        for amount, unit, name in parts:
             code = (
                 codes.new_item_code(conn) if cat == codes.ITEM_PREFIX
                 else codes.reserve(conn, cat, 1)[0]
@@ -316,11 +331,13 @@ def create_app(settings: Settings) -> FastAPI:
             if cat == "CBL":  # „2 m HDMI“: Zahl vorne ist die Länge, nicht die Menge
                 if amount is not None and unit.casefold() in ("m", "cm", "meter"):
                     name, amount, unit = f"{name} {amount}{unit}", None, ""
-                form = materials.cable_specs(name)
+                form = {f"spec_{k}": v for k, v in given.items()} or materials.cable_specs(name)
             if cat == "PSU":  # „12V 2A“: Zahl vorne ist die Spannung, nicht die Menge
                 if amount is not None and unit.casefold() in ("v", "volt"):
                     name, amount, unit = f"{amount}V {name}", None, ""
-                form = materials.auto_specs("psu", name)
+                form = {f"spec_{k}": v for k, v in given.items()} or materials.auto_specs(
+                    "psu", name
+                )
             new_id = repo.add_item(conn, dest["id"], name, qty=amount, unit=unit, code=code)
             if material := materials.PREFIX_MATERIAL.get(cat):
                 materials.save_specs(conn, new_id, material, form)
