@@ -2,6 +2,7 @@
 {% block title %}Filament & Harz · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Filament &amp; Harz</h1>
+<p><a href="/trockner">Trockner</a> · <a href="/slicer">Slicer-Import</a></p>
 <p class="meta">Spulen (FIL) und Flaschen (RES). Neu: FIL- oder RES-Etikett scannen, oder bei einem Teil unter „Bearbeiten“ das Material wählen.</p>
 {% for key, (de, en, prefix) in names.items() %}
 {% set group = rows|selectattr('item.material', 'equalto', key)|list %}

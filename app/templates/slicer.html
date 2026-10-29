@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Slicer · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Slicer · Creality Print</h1>
+<p class="meta">In Creality Print „G-Code exportieren“ (oder Projekt als 3MF speichern) und hier einlesen. Der Verbrauch je Farbe wird von der Restmenge der gewählten Spule abgezogen.</p>
+<div class="layout-2">
+<div>
+  <section class="card">
+    <form method="post" action="/slicer/upload" enctype="multipart/form-data" class="stack">
+      <label>G-Code oder 3MF wählen <input type="file" name="files" accept=".gcode,.gco,.3mf" multiple required></label>
+      <button class="primary">{{ icon('action.upload', size='sm') }} Einlesen</button>
+    </form>
+    {% if folder %}
+    <form method="post" action="/slicer/ordner"><button>Ordner einlesen · <small class="meta">{{ folder }}</small></button></form>
+    {% else %}
+    <p class="meta">Tipp: Exportordner unter <a href="/settings">Einstellungen › Betrieb</a> eintragen, dann genügt ein Klick.</p>
+    {% endif %}
+  </section>
+
+  {% for j in jobs %}
+  <section class="card">
+    <div class="title-row"><h3 style="margin:0">{{ j.name }}</h3>
+      <span class="meta">{{ j.created_at[:16] }}{% if j.time %} · {{ j.time }}{% endif %} · {{ j.total_g|round(1) }} g</span></div>
+    {% if j.booked_at %}
+    <p class="meta">Gebucht am {{ j.booked_at[:16] }}:
+      {% for f in j.filaments %}{{ f.grams|round(1) }} g {{ f.type }}{% if f.item_id %} → <a href="/items/{{ f.item_id }}">Spule</a>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+    <form method="post" action="/slicer/{{ j.id }}/loeschen"><button class="link">Eintrag entfernen</button></form>
+    {% else %}
+    <form method="post" action="/slicer/{{ j.id }}/buchen" class="stack">
+      {% for f in j.filaments %}{% set fi = loop.index0 %}
+      <label>{{ f.grams|round(1) }} g {{ f.type }}{% if f.color %} <span style="display:inline-block;width:1em;height:1em;border-radius:50%;background:{{ f.color }};vertical-align:-2px;border:1px solid #888"></span>{% endif %} von Spule
+        <select name="spool_{{ fi }}">
+          <option value="">– nicht abziehen –</option>
+          {% for s in spools %}<option value="{{ s.id }}" {% if s.id == j.suggest[fi] %}selected{% endif %}>{{ s.name }}{% if s.code %} · {{ s.code }}{% endif %}{% if s.rest %} · Rest {{ s.rest }}{% endif %}</option>{% endfor %}
+        </select></label>
+      {% endfor %}
+      <button class="primary">Verbrauch buchen</button>
+    </form>
+    <form method="post" action="/slicer/{{ j.id }}/loeschen"><button class="link">Auftrag entfernen</button></form>
+    {% endif %}
+  </section>
+  {% else %}<p class="empty">Noch keine Drucke eingelesen.</p>{% endfor %}
+</div>
+<aside><section class="card"><h2 style="margin-top:0">So geht es</h2>
+  <ol class="history" style="color:var(--fg)">
+    <li>Modell in Creality Print slicen.</li><li>Exportieren: G-Code (oder Projekt als 3MF).</li>
+    <li>Hier hochladen oder den Exportordner einlesen.</li><li>Spule wählen, „Verbrauch buchen“.</li>
+  </ol>
+  <p class="meta">Liest Filamentverbrauch (g), Typ, Farbe und Druckzeit. Unter 15 % Rest kommt die Spule auf die Einkaufsliste.</p></section></aside>
+</div>
+{% endblock %}

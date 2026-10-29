@@ -18,7 +18,7 @@ from app.repo import LagerError
 ENRICH_FIELDS = ("name", "full_name", "model", "tags", "type_id", "datasheet_url", "specs")
 
 
-def chat(url: str, token: str, model: str, messages: list[dict[str, str]]) -> str:
+def chat(url: str, token: str, model: str, messages: list[dict[str, Any]]) -> str:
     """Eine Chat-Antwort holen (Dienste starten bei Bedarf -> großzügiges Timeout)."""
     if not url:
         raise LagerError("Keine lokale KI eingerichtet (LAGER_AI_URL)")

@@ -332,3 +332,8 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 .other-plug[hidden] { display: none; }
 .spec-fields select { min-width: 0; padding-left: 8px; padding-right: 4px; }
 .spec-fields label.wide { grid-column: 1 / -1; }
+.shop-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.shop-actions form { margin: 0; }
+li.item.ordered { opacity: .7; }
+.bulk-bar { position: sticky; bottom: 70px; z-index: 5; }
+dd.bad, .bad { color: var(--danger, #e5484d); }

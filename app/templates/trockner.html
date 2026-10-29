@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Trockner · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Filament-Trockner</h1>
+<div class="layout-2">
+<div>
+  <section class="card">
+    <h2 style="margin-top:0">Läuft gerade</h2>
+    <ul class="list">
+      {% for r in running %}<li class="item">
+        <a class="name" href="/items/{{ r.item_id }}">{{ r.item_name }}<small>{{ r.program }} · {{ r.temp_c|round|int }} °C · {{ r.hours }} h · fertig {{ r.ends_at }}{% if r.left %} · {{ r.left }}{% endif %}</small></a>
+        <form method="post" action="/trockner/{{ r.id }}/fertig"><button class="{% if r.ready %}primary{% endif %}">{% if r.ready %}Fertig – entnehmen{% else %}Abbrechen / entnommen{% endif %}</button></form>
+      </li>{% else %}<li class="empty">Nichts im Trockner.</li>{% endfor %}
+    </ul>
+    <form method="post" action="/trockner/start" class="stack">
+      <h3>Neue Trocknung</h3>
+      <label>Spule <select name="item_id" required>{% for s in spools %}<option value="{{ s.id }}">{{ s.name }}{% if s.code %} · {{ s.code }}{% endif %}</option>{% endfor %}</select></label>
+      <label>Programm <select name="program_id" required>{% for p in programs %}<option value="{{ p.id }}">{{ p.name }} · {{ p.temp_c|round|int }} °C · {{ p.hours }} h</option>{% endfor %}</select></label>
+      <label>Notiz <input name="note" placeholder="optional"></label>
+      <button class="primary">{{ icon('action.add', size='sm') }} Trocknung starten</button>
+    </form>
+  </section>
+
+  <h2>Verlauf</h2>
+  <ul class="list">
+    {% for h in history %}<li class="item"><a class="name" href="/items/{{ h.item_id }}">{{ h.item_name }}<small>{{ h.started_at[:16] }} · {{ h.program }} {{ h.temp_c|round|int }} °C / {{ h.hours }} h{% if h.done_at %} · fertig {{ h.done_at[:16] }}{% else %} · läuft{% endif %}{% if h.note %} · {{ h.note }}{% endif %}</small></a></li>
+    {% else %}<li class="empty">Noch keine Trocknung vermerkt.</li>{% endfor %}
+  </ul>
+</div>
+<aside>
+  <section class="card">
+    <h2 style="margin-top:0">Programme</h2>
+    <ul class="list">
+      {% for p in programs %}<li class="item"><span class="name">{{ p.name }}<small>{{ p.temp_c|round|int }} °C · {{ p.hours }} h{% if p.note %} · {{ p.note }}{% endif %}</small></span>
+        <form method="post" action="/trockner/programme/{{ p.id }}/loeschen" onsubmit="return confirm('Programm löschen?')"><button aria-label="Löschen">×</button></form></li>{% endfor %}
+    </ul>
+    <form method="post" action="/trockner/programme" class="stack">
+      <h3>Programm anlegen / ändern</h3>
+      <label>Name <input name="name" required placeholder="z. B. PETG-CF"></label>
+      <div class="row"><label>°C <input name="temp_c" inputmode="decimal" required placeholder="65"></label>
+        <label>Stunden <input name="hours" inputmode="decimal" required placeholder="6"></label></div>
+      <label>Notiz <input name="note" placeholder="optional"></label>
+      <button class="primary">Speichern</button>
+    </form>
+    <p class="meta">Gleicher Name überschreibt das Programm. Richtwerte: PLA 45 °C, PETG 65 °C, ABS/ASA 80 °C, Nylon 80 °C.</p>
+  </section>
+</aside>
+</div>
+{% endblock %}

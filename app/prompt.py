@@ -92,6 +92,7 @@ model = Teile-/Modellnummer (wichtig bei Elektronik), sonst "". qty nur bei gena
 tags = 2-5 Suchwörter (Oberbegriff, Zweck). specs nur bei FIL/RES/CMP/CBL/PSU mit genannten oder sicher
 bekannten Werten (Zahl ohne Einheit), Schlüssel: {specs_line}; sonst {{}}.
 PSU plug = Ausgangsstecker (z. B. "DC 5,5x2,1", "USB-C"), input = Netzseite: {inputs_line}.
+CBL/PSU sind Einzelstücke: ein Eintrag je Stück, ohne qty (jedes bekommt ein eigenes Etikett).
 Gleiches zusammenfassen, nichts erfinden, Unsicheres mit "?" im Namen. Teile ohne erkennbaren
 Behälter {inbox}. Schon vorhandene Teile nicht doppelt anlegen.
 

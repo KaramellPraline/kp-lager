@@ -2,19 +2,28 @@
 {% block title %}{{ title }} · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>{{ title }}</h1>
+{% if kind == 'shopping' %}
+<p class="meta">{{ rows|length }} Positionen{% if total %} · geschätzt <b>{{ euro(total) }}</b>{% endif %} ·
+  <a href="/auswahl?src=einkauf">mehrere bearbeiten</a></p>
+{% endif %}
 <ul class="list">
   {% for i in rows %}
-  <li class="item">
+  <li class="item {% if kind == 'shopping' and i.ordered_at %}ordered{% endif %}">
     <a href="/items/{{ i.id }}" class="name">{{ i.name }}
-      <small>{% if kind == 'lent' %}bei {{ i.lent_to }} seit {{ i.lent_since }} · gehört nach {{ i.path }}{% else %}{% if i.qty is not none %}{{ i.qty }}{% if i.min_qty is not none %} / min. {{ i.min_qty }}{% endif %} {{ i.unit }} · {% endif %}{{ i.path }}{% endif %}</small>
+      <small>{% if kind == 'lent' %}bei {{ i.lent_to }} seit {{ i.lent_since }} · gehört nach {{ i.path }}{% elif kind == 'shopping' %}{% if i.qty is not none %}{{ i.qty }}{% if i.min_qty is not none %} / min. {{ i.min_qty }}{% endif %} {{ i.unit }} · {% endif %}<b>{{ i.need }}×</b>{% if i.cost is not none %} = {{ euro(i.cost) }}{% endif %}{% if i.ordered_at %} · bestellt {{ i.ordered_at }}{% endif %} · {{ i.path }}{% else %}{{ i.path }}{% endif %}</small>
     </a>
     {% if kind == 'lent' %}
     <form method="post" action="/items/{{ i.id }}/return"><button>Zurück</button></form>
-    {% elif i.on_list %}
-    <form method="post" action="/items/{{ i.id }}/list"><button>Erledigt</button></form>
+    {% elif kind == 'shopping' %}
+    <div class="shop-actions">
+      {% if i.order_url %}<a class="button" href="{{ i.order_url }}" target="_blank" rel="noopener" aria-label="Bestellen">{{ icon('content.shopping', size='sm') }}</a>{% endif %}
+      <form method="post" action="/items/{{ i.id }}/bestellt"><button>{% if i.ordered_at %}Doch nicht{% else %}Bestellt{% endif %}</button></form>
+      {% if i.ordered_at %}<form method="post" action="/items/{{ i.id }}/eingetroffen"><button class="primary">Eingetroffen</button></form>{% endif %}
+      {% if i.on_list %}<form method="post" action="/items/{{ i.id }}/list"><button aria-label="Von der Liste nehmen">Erledigt</button></form>{% endif %}
+    </div>
     {% endif %}
   </li>
   {% else %}<li class="empty">Nichts auf der Liste.</li>{% endfor %}
 </ul>
-{% if kind == 'shopping' %}<p class="meta">Teile mit Mindestbestand verschwinden von selbst, sobald genug eingelagert ist.</p>{% endif %}
+{% if kind == 'shopping' %}<p class="meta">Teile mit Mindestbestand verschwinden von selbst, sobald genug eingelagert ist. Bedarf = Wunschmenge, sonst bis zum Mindestbestand aufgefüllt (Mindestbestand und Wunschmenge unter „Bearbeiten“ am Teil). „Eingetroffen“ lagert die Menge ein.</p>{% endif %}
 {% endblock %}

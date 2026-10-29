@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Status · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Status</h1>
+<div class="layout-2">
+<div>
+  <section class="card">
+    <h2 style="margin-top:0">Backup</h2>
+    <p>{% if s.backup_last %}Letztes automatisches Backup: <b>{{ s.backup_last }}</b>{% elif s.backups %}Letzte Datei: <b>{{ s.backups[0].when }}</b>{% else %}<b>Noch kein Backup</b>{% endif %}
+      · täglich, {{ s.backup_days }} Tage aufbewahrt</p>
+    {% if s.backup_error %}<p class="msg">Fehler beim letzten Backup: {{ s.backup_error }}</p>{% endif %}
+    <ul class="list">
+      {% for b in s.backups %}<li class="item"><span class="name">{{ b.name }}<small>{{ b.when }} · {{ b.size }}</small></span></li>
+      {% else %}<li class="empty">Keine Sicherungen in data/backups.</li>{% endfor %}
+    </ul>
+    <form method="post" action="/status/backup"><button class="primary">{{ icon('action.save', size='sm') }} Jetzt sichern</button></form>
+  </section>
+
+  {% if s.expiring %}
+  <section class="card">
+    <h2 style="margin-top:0">Haltbarkeit</h2>
+    <ul class="list">
+      {% for e in s.expiring %}<li class="item"><a class="name" href="/items/{{ e.id }}">{{ e.name }}<small>{{ e.path }}</small></a>
+        <span class="badge {% if e.days < 0 %}warn{% endif %}">{% if e.days < 0 %}abgelaufen seit {{ -e.days }} Tg.{% else %}noch {{ e.days }} Tg. ({{ e.expires }}){% endif %}</span></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+
+<aside>
+  <section class="card">
+    <h2 style="margin-top:0">Betrieb</h2>
+    <dl class="specs">
+      <dt>Datenbank</dt><dd>Version {{ s.db_version }} · {{ s.db_size }}</dd>
+      <dt>Fotos</dt><dd>{{ s.photos }}</dd>
+      <dt>Speicher frei</dt><dd>{{ s.disk_free }} von {{ s.disk_total }}{% if s.disk_low %} – wenig!{% endif %}</dd>
+      <dt>KI-Gateway</dt><dd>{% if s.gateway_ok %}<b>ok</b>{% else %}<b class="bad">Fehler</b>{% endif %} · {{ s.gateway }}{% if s.gateway_url %}<br><small class="meta">{{ s.gateway_url }}</small>{% endif %}</dd>
+      <dt>Läuft seit</dt><dd>{{ s.uptime }}</dd>
+      <dt>Server</dt><dd>{{ s.now }} · Python {{ s.python }}</dd>
+    </dl>
+  </section>
+  <section class="card">
+    <h2 style="margin-top:0">Bestand</h2>
+    <dl class="specs">
+      <dt>Teile</dt><dd>{{ s.n_items }} (davon {{ s.n_cables }} Kabel, {{ s.n_psus }} Netzteile)</dd>
+      <dt>Behälter</dt><dd>{{ s.n_containers }}</dd>
+      <dt>Lagerwert</dt><dd>{{ s.worth }}{% if s.unpriced %}<br><small class="meta">{{ s.unpriced }} Teile ohne Preis</small>{% endif %}</dd>
+      <dt>Nachkaufen</dt><dd><a href="/einkauf">{{ s.n_low }}</a></dd>
+      <dt>Zu prüfen</dt><dd><a href="/freigaben">{{ s.n_review }}</a></dd>
+      <dt>Etiketten wartend</dt><dd><a href="/labels">{{ s.n_queue }}</a></dd>
+    </dl>
+  </section>
+</aside>
+</div>
+{% endblock %}

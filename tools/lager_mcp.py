@@ -17,6 +17,23 @@ mcp = FastMCP("kp-lager")
 _client: LagerClient | None = None
 
 
+def categories_help() -> str:
+    """Kategorien live vom Server, damit neue Kategorien/Felder sofort in den Tools stehen."""
+    try:
+        cats = client().schema()["categories"]
+    except Exception:  # Server gerade nicht erreichbar: Tools trotzdem registrieren
+        return "Kategorien: siehe get_schema."
+    parts = []
+    for c in cats:
+        keys = ",".join(f["key"] for f in c["fields"])
+        parts.append(
+            f"{c['prefix']}={c['name']}"
+            + (f" (specs: {keys})" if keys else "")
+            + (" [Einzelstück]" if c["single_piece"] else "")
+        )
+    return "Kategorien: " + "; ".join(parts)
+
+
 def client() -> LagerClient:
     global _client
     if _client is None:
@@ -50,8 +67,73 @@ def list_rooms() -> list[dict[str, Any]]:
 
 @mcp.tool()
 def list_types() -> list[dict[str, Any]]:
-    """Alle Teile-Typen (TYP-Codes) mit Anzahl."""
+    """Alle Tags (TAG-Codes) mit Anzahl."""
     return client().types()
+
+
+@mcp.tool()
+def get_schema() -> dict[str, Any]:
+    """Aktuelle Kategorien (Präfix, Felder), Behälterarten, Tags, Aktionen, Trockner-Programme."""
+    return client().schema(fresh=True)
+
+
+@mcp.resource("lager://schema")
+def schema_resource() -> dict[str, Any]:
+    """Das Lager-Schema als Ressource (Kategorien, Arten, Felder)."""
+    return client().schema(fresh=True)
+
+
+@mcp.tool(
+    description="Teil mit Kategorie und Eigenschaften anlegen (Schlüssel nötig). "
+    "Kabel/Netzteile sind Einzelstücke: count = Anzahl, jedes bekommt ein eigenes Etikett. "
+    + categories_help()
+)
+def add_item(
+    container: str, name: str = "", cat: str = "ART", qty: int | None = None, unit: str = "",
+    count: int = 1, specs: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:  # fmt: skip
+    valid = {c["prefix"] for c in client().schema()["categories"]}
+    if cat.upper() not in valid:
+        raise ValueError(f"Unbekannte Kategorie {cat}. Gültig: {', '.join(sorted(valid))}")
+    return client().add_typed(container, name, cat, qty, unit, count, specs)
+
+
+@mcp.tool()
+def bulk_edit(refs: list[str], action: str, value: str = "", container: str = "") -> str:
+    """Viele Teile ('i12') / Behälter ('c5') auf einmal ändern (Schlüssel nötig).
+    action: move (container = Ziel), tag, cat, min, unit, price, list_on, list_off, label,
+    archive, delete – die aktuelle Liste steht in get_schema."""
+    return client().bulk(refs, action, value, container)
+
+
+@mcp.tool()
+def shopping_list() -> dict[str, Any]:
+    """Einkaufsliste: unter Mindestbestand oder markiert, mit Bedarf, Preis und Summe."""
+    return client().shopping()
+
+
+@mcp.tool()
+def stock_value(container: str = "") -> dict[str, Any]:
+    """Lagerwert (Menge × Preis) gesamt oder für einen Behälter inkl. Unterbehälter."""
+    return client().value(container)
+
+
+@mcp.tool()
+def dryer_status() -> dict[str, Any]:
+    """Filament-Trockner: laufende Trocknungen, Verlauf und Programme."""
+    return client().dryer()
+
+
+@mcp.tool()
+def start_drying(item: str, program: str) -> dict[str, Any]:
+    """Trocknung einer Filamentspule starten (Schlüssel nötig); program = Name oder ID."""
+    return client().start_drying(item, program)
+
+
+@mcp.tool()
+def print_jobs() -> list[dict[str, Any]]:
+    """Aus dem Slicer (Creality Print) eingelesene Drucke mit Filamentverbrauch."""
+    return client().print_jobs()
 
 
 @mcp.tool()

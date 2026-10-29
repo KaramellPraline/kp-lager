@@ -5,6 +5,7 @@ LAGER_CA (Pfad zur eigenen CA, Standard data/certs/ca.crt im Repo, falls vorhand
 """
 
 import os
+import time
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,7 @@ class LagerClient:
             ca = os.environ.get("LAGER_CA") or (str(REPO_CA) if REPO_CA.exists() else None)
             http = httpx.Client(timeout=60, verify=ca if ca else True)
         self.http = http
+        self._schema: tuple[float, dict[str, Any]] | None = None
 
     def _call(self, method: str, path: str, **kw: Any) -> Any:
         headers = {"X-API-Key": self.api_key} if self.api_key else {}
@@ -61,7 +63,40 @@ class LagerClient:
     def types(self) -> list[dict[str, Any]]:
         return list(self._call("GET", "/types"))
 
+    def schema(self, fresh: bool = False) -> dict[str, Any]:
+        """Kategorien, Behälterarten, Felder, Aktionen – 60 s zwischengespeichert, vom Server."""
+        if fresh or self._schema is None or time.monotonic() - self._schema[0] > 60:
+            self._schema = (time.monotonic(), dict(self._call("GET", "/schema")))
+        return self._schema[1]
+
+    def shopping(self) -> dict[str, Any]:
+        return dict(self._call("GET", "/shopping"))
+
+    def value(self, container: str = "") -> dict[str, Any]:
+        return dict(self._call("GET", "/value", params={"container": container}))
+
+    def dryer(self) -> dict[str, Any]:
+        return dict(self._call("GET", "/dryer"))
+
+    def print_jobs(self) -> list[dict[str, Any]]:
+        return list(self._call("GET", "/print-jobs"))
+
     # Schreiben (mit Schlüssel)
+    def add_typed(
+        self, container: str, name: str, cat: str = "ART", qty: int | None = None,
+        unit: str = "", count: int = 1, specs: dict[str, str] | None = None,
+    ) -> list[dict[str, Any]]:  # fmt: skip
+        body = {"container": container, "name": name, "cat": cat.upper(), "qty": qty, "unit": unit,
+                "count": count, "specs": specs or {}}  # fmt: skip
+        return list(self._call("POST", "/items/new", json=body))
+
+    def bulk(self, refs: list[str], action: str, value: str = "", container: str = "") -> str:
+        body = {"refs": refs, "action": action, "value": value, "container": container}
+        return str(self._call("POST", "/bulk", json=body)["result"])
+
+    def start_drying(self, item: str, program: str) -> dict[str, Any]:
+        return dict(self._call("POST", "/dryer/start", json={"item": item, "program": program}))
+
     def add(self, container: str, text: str) -> list[dict[str, Any]]:
         return list(self._call("POST", "/items", json={"container": container, "text": text}))
 

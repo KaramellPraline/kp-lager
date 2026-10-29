@@ -18,6 +18,8 @@
         <span class="chip">{{ KIND_LABELS[node.kind] }}</span>
         {% if node.code %}<span class="chip code">{{ node.code }}</span>{% endif %}
         {% if node.size %}<span class="chip">{{ node.size }}</span>{% endif %}
+        {% if node.dims %}<span class="chip">{{ node.dims|replace('x', ' × ') }} mm</span>{% endif %}
+        {% if VAL.get(node.id) %}<span class="chip" title="Menge × Preis aller Teile darin{% if UNPRICED.get(node.id) %} · {{ UNPRICED[node.id] }} Teile ohne Preis{% endif %}">{{ euro(VAL[node.id]) }}</span>{% endif %}
         {% if node.grid %}<span class="chip">Fächer {{ node.grid }}</span>{% endif %}
         {% if items %}<span class="chip">{{ items|length }} Teile</span>{% endif %}
       </div>
@@ -64,6 +66,9 @@
       {% if items or kids %}
       <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>{{ icon('action.print') }} Teile-Etiketten</button></form>
       {% endif %}
+      {% if items or kids %}
+      <a class="button" href="/auswahl?node={{ node.id }}">{{ icon('action.edit') }} Mehrere bearbeiten</a>
+      {% endif %}
       {% if node.kind != 'compartment' %}
       <form method="post" action="/carry/node/{{ node.id }}"><button>{{ icon('action.move') }} Umlagern</button></form>
       {% endif %}
@@ -97,6 +102,7 @@
       <input type="hidden" name="parent_id" value="{{ node.id }}">
       <input name="name" placeholder="Name" required>
       {% include "_kind_select.html" %}
+      {% include "_dims.html" %}
       <input name="code" placeholder="Code, z. B. EUR-001 (optional)" autocapitalize="characters">
       <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
       {% include "_model_select.html" %}

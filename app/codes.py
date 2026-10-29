@@ -7,6 +7,8 @@ Zähler je Präfix in `meta` (`next:EUR`): gedruckte, unbenutzte Codes werden ni
 import re
 import sqlite3
 
+from app.repo import INDIVIDUAL  # noqa: F401  (Einzelstücke: CBL, PSU)
+
 ITEM_PREFIX = "ART"
 # Präfixe für Teile (nicht Behälter): ART allgemein, FIL Filament, RES UV-Harz, Verbrauch & Co.
 ITEM_PREFIXES = (ITEM_PREFIX, "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")

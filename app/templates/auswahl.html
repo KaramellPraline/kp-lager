@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Auswählen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Mehrere bearbeiten</h1>
+<p class="meta">{{ title }} · Häkchen setzen, unten die Aktion wählen.</p>
+<form method="post" action="/bulk" id="bulk-form">
+  <input type="hidden" name="back" value="{{ back }}">
+  <label class="check"><input type="checkbox" id="all-box"> Alle auswählen ({{ rows|length + nodes|length }})</label>
+  <ul class="list">
+    {% for c in nodes %}
+    <li class="item"><label class="check"><input type="checkbox" name="ref" value="c{{ c.id }}">
+      <span class="name">{{ c.name }}<small>{{ KIND_LABELS[c.kind] }}{% if c.code %} · {{ c.code }}{% endif %}</small></span></label></li>
+    {% endfor %}
+    {% for r in rows %}
+    <li class="item"><label class="check"><input type="checkbox" name="ref" value="i{{ r.item.id }}">
+      <span class="name">{{ r.item.name }}<small>{% if r.item.code %}{{ r.item.code }} · {% endif %}{{ r.path }}</small></span></label></li>
+    {% else %}{% if not nodes %}<li class="empty">Nichts zum Auswählen.</li>{% endif %}{% endfor %}
+  </ul>
+
+  <div class="card stack bulk-bar">
+    <label>Aktion
+      <select name="action" id="bulk-action" required>
+        <option value="">– wählen –</option>
+        {% for key, (label, kind) in actions.items() %}<option value="{{ key }}" data-input="{{ kind }}">{{ label }}</option>{% endfor %}
+      </select></label>
+    <label data-in="target" hidden>Ziel
+      <select name="target"><option value="">– wählen –</option>{% for p in targets %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}</select></label>
+    <label data-in="tag" hidden>Tag (leer = entfernen)
+      <input name="value" list="bulk-tags" placeholder="z. B. mechanic" disabled>
+      <datalist id="bulk-tags">{% for t in tags %}<option value="{{ t.name }}">{% endfor %}</datalist></label>
+    <label data-in="cat" hidden>Kategorie
+      <select name="value" disabled>{% for p, label in cats %}<option value="{{ p }}">{{ p }} · {{ label }}</option>{% endfor %}</select></label>
+    <label data-in="number" hidden>Mindestbestand (leer = keiner) <input name="value" inputmode="numeric" disabled></label>
+    <label data-in="text" hidden>Wert <input name="value" disabled></label>
+    <button class="primary" id="bulk-go">Auf <span id="bulk-n">0</span> anwenden</button>
+  </div>
+</form>
+<script>
+(function () {
+  var f = document.getElementById("bulk-form"), act = document.getElementById("bulk-action");
+  function count() {
+    var n = f.querySelectorAll("input[name=ref]:checked").length;
+    document.getElementById("bulk-n").textContent = n;
+    document.getElementById("bulk-go").disabled = !n;
+  }
+  function sync() {
+    var kind = act.options[act.selectedIndex].dataset.input || "";
+    f.querySelectorAll("[data-in]").forEach(function (l) {
+      var on = l.dataset.in === kind;
+      l.hidden = !on;
+      l.querySelectorAll("input,select").forEach(function (i) { if (i.name === "value") i.disabled = !on; });
+    });
+  }
+  f.addEventListener("change", function (e) {
+    if (e.target.id === "all-box") f.querySelectorAll("input[name=ref]").forEach(function (c) { c.checked = e.target.checked; });
+    if (e.target === act) sync();
+    count();
+  });
+  f.addEventListener("submit", function (e) {
+    var a = act.value;
+    if (a === "delete" && !confirm("Wirklich löschen? Das lässt sich hier nicht rückgängig machen.")) e.preventDefault();
+  });
+  sync(); count();
+})();
+</script>
+{% endblock %}

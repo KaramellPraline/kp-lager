@@ -6,6 +6,7 @@ bekannte Wort korrigiert (Tippfehler). Treffer müssen alle Wörter (bzw. eine V
 import difflib
 import re
 import sqlite3
+from typing import Any
 
 from app.repo import SEARCH_TEXT, path_label
 
@@ -204,7 +205,7 @@ def run(
     typo: bool = True,
     limit: int = 50,
     tag: int | None = None,
-) -> tuple[list[dict[str, object]], str | None]:
+) -> tuple[list[dict[str, Any]], str | None]:
     """Teile suchen (optional nur mit Tag); gibt (Treffer mit Pfad, korrigierte Suche) zurück."""
     terms = tokens(q, synonyms)
     if not terms:
@@ -230,7 +231,7 @@ def run(
 
 def containers(
     conn: sqlite3.Connection, q: str, synonyms: dict[str, list[str]], limit: int = 20
-) -> list[dict[str, object]]:
+) -> list[dict[str, Any]]:
     """Behälter nach Name/Notizen (mit Varianten je Wort) oder exaktem Code."""
     terms = [t.casefold() for t in q.split() if t]
     if not terms:

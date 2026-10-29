@@ -3,6 +3,7 @@
 import json
 import sqlite3
 from collections.abc import Iterator
+from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
@@ -21,6 +22,7 @@ from app import (
     cables,
     codes,
     datasheets,
+    dryer,
     icons,
     importer,
     itemtypes,
@@ -36,6 +38,9 @@ from app import (
     psus,
     quick,
     repo,
+    scheduler,
+    value,
+    web_ops,
     withdrawals,
 )
 from app import search as finder  # Modul; „search“ ist der Name der Such-Route
@@ -68,6 +73,8 @@ templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35",
                                       "Molex", "XLR"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
 templates.env.globals["icon"] = icons.icon
+templates.env.globals["euro"] = value.euro
+templates.env.globals["EURO_DIMS"] = kinds.EURO_DIMS
 
 
 def opt_int(value: str | None) -> int | None:
@@ -78,6 +85,25 @@ def opt_int(value: str | None) -> int | None:
         return int(value)
     except ValueError:
         raise LagerError(f"'{value}' ist keine ganze Zahl") from None
+
+
+def iso_date(value: str | None) -> str | None:
+    """'2026-12-31' oder '31.12.2026' -> ISO-Datum; leer -> None."""
+    value = (value or "").strip()
+    if not value:
+        return None
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d.%m.%y"):
+        try:
+            return datetime.strptime(value, fmt).date().isoformat()
+        except ValueError:
+            continue
+    raise LagerError(f"'{value}' ist kein Datum (z. B. 31.12.2026)")
+
+
+def pick_dims(dims: str, custom: str, other: str) -> str:
+    """Eurobox-Auswahl, eigene Maße oder freies Maßfeld -> 'LxBxH' (mm)."""
+    chosen = dims if dims not in ("", "neu") else (custom or other)
+    return chosen.strip().lower().replace("×", "x").replace(" ", "")
 
 
 def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectResponse:
@@ -144,6 +170,8 @@ def create_app(settings: Settings) -> FastAPI:
 
     Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
     app.include_router(api.build_router(get_conn))
+    if settings.auto_backup:
+        scheduler.start(settings.data_dir)
 
     @app.exception_handler(LagerError)
     def lager_error(request: Request, exc: LagerError) -> RedirectResponse:
@@ -182,6 +210,8 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["VOICE"] = bool(settings.whisper_url)
         ctx["AI"] = bool(ai_url)
         ctx["NREVIEW"] = ai.count(conn)
+        if name in ("node.html", "index.html"):
+            ctx["VAL"], ctx["UNPRICED"] = value.totals(conn)
         return templates.TemplateResponse(request, name, ctx)
 
     def entries(conn: sqlite3.Connection, text: str) -> list[tuple[int | None, str, str]]:
@@ -201,6 +231,9 @@ def create_app(settings: Settings) -> FastAPI:
         return node
 
     # --- Seiten --------------------------------------------------------------
+
+    ai_endpoint = settings.ai_url or settings.whisper_url
+    web_ops.register(app, Conn, render, redirect, settings, ai_endpoint)
 
     @app.middleware("http")
     async def force_https(request: Request, call_next: Any) -> Response:
@@ -267,6 +300,10 @@ def create_app(settings: Settings) -> FastAPI:
         psu_input: Annotated[str, Form()] = "",
         psu_input_new: Annotated[str, Form()] = "",
         choice: Annotated[str, Form()] = "",
+        count: Annotated[str, Form()] = "",
+        dims: Annotated[str, Form()] = "",
+        dims_custom: Annotated[str, Form()] = "",
+        dims_other: Annotated[str, Form()] = "",
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
         """„Hinzufügen“ auf der Startseite: Teil mit Kategorie, Behälter, oder „Alle“ (beides).
@@ -318,7 +355,10 @@ def create_app(settings: Settings) -> FastAPI:
         if mode == "container":
             if kind == "neu":
                 kind = kinds.create(conn, new_kind, new_prefix)
-            cid = repo.create_container(conn, text.strip(), kind, parent_id=opt_int(target))
+            cid = repo.create_container(
+                conn, text.strip(), kind, parent_id=opt_int(target),
+                dims=pick_dims(dims, dims_custom, dims_other),
+            )  # fmt: skip
             if image:
                 repo.set_container_photo(conn, cid, photos.save(image, photo_dir))
             return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt")
@@ -329,6 +369,15 @@ def create_app(settings: Settings) -> FastAPI:
         names = []
         # Aus den Kategorie-Feldern: genau ein Teil, Felder direkt übernehmen (nicht neu erkennen)
         parts = [(None, "", text.strip())] if given else entries(conn, text)
+        if cat in repo.INDIVIDUAL:  # Einzelstücke: jedes Stück ein Eintrag mit eigenem Etikett
+            spread: list[tuple[int | None, str, str]] = []
+            for amount, unit, name in parts:
+                measure = unit.casefold() in ("m", "cm", "meter", "v", "volt")
+                n = opt_int(count) or (amount if amount and not measure and not given else 1)
+                spread += [(amount if measure else None, unit if measure else "", name)] * max(
+                    1, min(n or 1, 50)
+                )
+            parts = spread
         for amount, unit, name in parts:
             code = (
                 codes.new_item_code(conn) if cat == codes.ITEM_PREFIX
@@ -447,6 +496,10 @@ def create_app(settings: Settings) -> FastAPI:
             spec_fields=materials.FIELDS.get(item["material"] or "", ()),
             spec_groups=materials.GROUPS,
             rest=materials.remaining(item),
+            dry_programs=dryer.programs(conn) if item["material"] == "fil" else [],
+            dry_history=dryer.history(conn, item_id, 8) if item["material"] == "fil" else [],
+            individual=bool(item["code"]) and item["code"][:3] in repo.INDIVIDUAL,
+            today=date.today().isoformat(),
         )
 
     @app.post("/items/{item_id}/weigh")
@@ -903,8 +956,10 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/einkauf", response_class=HTMLResponse)
     def shopping_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(request, conn, "list.html", title="Einkaufsliste",
-                      rows=repo.shopping_list(conn), kind="shopping")  # fmt: skip
+        rows = repo.shopping_list(conn)
+        total = sum(float(r["cost"]) for r in rows if r["cost"] is not None)
+        return render(request, conn, "list.html", title="Einkaufsliste", rows=rows,
+                      kind="shopping", total=total)  # fmt: skip
 
     @app.get("/platz", response_class=HTMLResponse)
     def free_page(request: Request, conn: Conn) -> HTMLResponse:
@@ -1335,6 +1390,9 @@ def create_app(settings: Settings) -> FastAPI:
         grid: Annotated[str, Form()] = "",
         position: Annotated[str, Form()] = "",
         model: Annotated[str, Form()] = "",
+        dims: Annotated[str, Form()] = "",
+        dims_custom: Annotated[str, Form()] = "",
+        dims_other: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         if not name.strip():
             raise LagerError("Name fehlt")
@@ -1349,6 +1407,7 @@ def create_app(settings: Settings) -> FastAPI:
             grid=None if model_key else (grid.strip() or None),
             position=position.strip() or None,
             model=model_key,
+            dims=pick_dims(dims, dims_custom, dims_other),
         )
         return redirect(f"/n/{cid}")
 
@@ -1606,6 +1665,9 @@ def create_app(settings: Settings) -> FastAPI:
         order_url: Annotated[str, Form()] = "",
         price: Annotated[str, Form()] = "",
         material: Annotated[str, Form()] = "",
+        expires: Annotated[str, Form()] = "",
+        opened: Annotated[str, Form()] = "",
+        order_qty: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         before = repo.get_item(conn, item_id)
         if material != (before["material"] or ""):
@@ -1628,6 +1690,9 @@ def create_app(settings: Settings) -> FastAPI:
             tags=tags.strip(),
             notes=notes,
             min_qty=opt_int(min_qty),
+            expires=iso_date(expires),
+            opened=iso_date(opened),
+            order_qty=opt_int(order_qty),
         )
         msg = "Gespeichert"
         url = datasheet_url.strip()

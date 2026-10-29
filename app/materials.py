@@ -247,6 +247,21 @@ def save_specs(conn: sqlite3.Connection, item_id: int, material: str, form: dict
         )
     if material in ("cbl", "psu") and row is not None:
         _auto_name(conn, row, material, values)
+        _queue_label(conn, item_id)
+
+
+def _queue_label(conn: sqlite3.Connection, item_id: int) -> None:
+    """Kabel/Netzteile sind Einzelstücke: eigenes Etikett in der Warteschlange, bis gedruckt."""
+    from app import labels  # spät importiert: labels -> repo/codes
+
+    item = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,)).fetchone()
+    if item is None or not item["code"] or item["label_printed"]:
+        return
+    holder = conn.execute(
+        "SELECT kind, name, position FROM container WHERE id = ?", (item["container_id"],)
+    ).fetchone()
+    extra = (holder["position"] if holder["kind"] == "compartment" else holder["name"]) or ""
+    labels.enqueue(conn, item["code"], item["name"], extra)
 
 
 def _auto_name(conn: sqlite3.Connection, row: Row, material: str, values: dict[str, str]) -> None:
