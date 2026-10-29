@@ -47,6 +47,9 @@ def node_json(conn: sqlite3.Connection, c: Row | dict[str, Any]) -> dict[str, An
             "position": c["position"], "path": repo.path_label(conn, c["id"])}  # fmt: skip
 
 
+AI_TAG = "KI"  # Teile über die API (MCP, Haiku) kommen mit diesem Tag in die Freigaben
+
+
 class NewItem(BaseModel):
     container: str  # Code oder ID des Behälters
     text: str  # Schnelleingabe, z. B. "3 Rollen Lötzinn und 50 M3 Muttern"
@@ -101,6 +104,12 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
             raise HTTPException(401, "API-Schlüssel fehlt oder ist ungültig (nur Schreiben)")
 
     Write = Depends(require_key)
+
+    def mark_ai(conn: sqlite3.Connection, item_ids: list[int]) -> None:
+        """Von außen angelegt: zu prüfen (Freigaben) und Tag „KI“."""
+        tag_id = itemtypes.create(conn, AI_TAG)
+        for item_id in item_ids:
+            repo.update_item(conn, item_id, review=1, type_id=tag_id)
 
     def find_node(conn: sqlite3.Connection, ref: str) -> Row:
         node = repo.get_container_by_code(conn, codes.normalize(ref) or ref)
@@ -172,6 +181,7 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
         for amount, unit, name in quick.parse_many(body.text):
             item_id = repo.add_item(conn, node["id"], name, qty=amount, unit=unit,
                                     code=codes.new_item_code(conn))  # fmt: skip
+            mark_ai(conn, [item_id])
             out.append(item_json(conn, repo.get_item(conn, item_id)))
         return out
 
@@ -192,7 +202,13 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
 
     @router.post("/import", dependencies=[Write])
     def import_json(conn: Conn, body: ImportText) -> dict[str, Any]:
-        report = importer.run(conn, body.text, commit=True, review=body.review)
+        report = importer.run(
+            conn,
+            body.text,
+            commit=True,
+            review=body.review,
+            ai_tag=AI_TAG if body.review else "",
+        )
         return {
             "errors": report.errors,
             "warnings": report.warnings,
@@ -269,6 +285,7 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
                                body.specs, body.count)  # fmt: skip
         except LagerError as exc:
             raise HTTPException(400, str(exc)) from None
+        mark_ai(conn, ids)
         return [item_json(conn, repo.get_item(conn, i)) for i in ids]
 
     @router.post("/bulk", dependencies=[Write])

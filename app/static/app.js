@@ -102,13 +102,33 @@
     var btn = document.getElementById("note-rec");
     if (!btn && !document.querySelector("[data-start-note]")) return;
     var bar = document.getElementById("rec-bar"), time = document.getElementById("rec-time");
-    var rec = null, chunks = [], started = 0, timer = null, keep = true;
+    var rec = null, chunks = [], started = 0, timer = null, keep = true, lastSecs = 0, lastType = "";
+    function upload() {
+      time.textContent = "wird gespeichert …";
+      bar.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
+      var form = new FormData();
+      form.append("audio", new Blob(chunks, { type: lastType }), "diktat.webm");
+      form.append("duration", lastSecs);
+      form.append("transcribe", "0");
+      fetch("/api/notes", { method: "POST", body: form })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) throw new Error(d.msg);
+          chunks = [];
+          location.href = "/sprache?msg=" + encodeURIComponent(d.msg) + "#aufnahmen";
+        })
+        .catch(function () {
+          time.textContent = "Speichern fehlgeschlagen";
+          var stop = document.getElementById("rec-stop");
+          stop.disabled = false; stop.textContent = "Erneut speichern";
+        });
+    }
     function fmt(sec) { return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0"); }
     function guard(ev) { ev.preventDefault(); ev.returnValue = ""; }
     function finish() {
       clearInterval(timer);
       window.removeEventListener("beforeunload", guard);
-      btn.classList.remove("recording");
+      if (btn) btn.classList.remove("recording");
     }
     function start() {
       if (!navigator.mediaDevices || !window.MediaRecorder || !window.isSecureContext) {
@@ -123,15 +143,8 @@
           finish();
           var secs = Math.round((Date.now() - started) / 1000);
           if (!keep) { bar.hidden = true; rec = null; return; }
-          time.textContent = "wird erkannt …";
-          bar.querySelectorAll("button").forEach(function (b) { b.disabled = true; });
-          var form = new FormData();
-          form.append("audio", new Blob(chunks, { type: rec.mimeType }), "diktat.webm");
-          form.append("duration", secs);
-          fetch("/api/notes", { method: "POST", body: form })
-            .then(function (r) { return r.json(); })
-            .then(function (d) { location.href = "/sprache?msg=" + encodeURIComponent(d.msg) + "#aufnahmen"; })
-            .catch(function () { alert("Hochladen fehlgeschlagen"); bar.hidden = true; });
+          lastSecs = secs; lastType = rec.mimeType;
+          upload();
         };
         rec.start(1000);
         started = Date.now();
@@ -146,9 +159,12 @@
     document.querySelectorAll("[data-start-note]").forEach(function (b) {
       b.addEventListener("click", function () { if (!(rec && rec.state === "recording")) start(); });
     });
-    document.getElementById("rec-stop").addEventListener("click", function () { if (rec) rec.stop(); });
+    document.getElementById("rec-stop").addEventListener("click", function () {
+      if (!rec) return;
+      if (rec.state === "inactive") upload(); else rec.stop();
+    });
     document.getElementById("rec-cancel").addEventListener("click", function () {
-      if (rec && confirm("Aufnahme verwerfen?")) { keep = false; rec.stop(); }
+      if (rec && rec.state === "recording" && confirm("Aufnahme verwerfen?")) { keep = false; rec.stop(); }
     });
   });
 

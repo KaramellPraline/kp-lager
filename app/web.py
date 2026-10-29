@@ -9,8 +9,18 @@ from typing import Annotated, Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import Body, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi import (
+    BackgroundTasks,
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+)
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -1324,21 +1334,50 @@ def create_app(settings: Settings) -> FastAPI:
         except (httpx.HTTPError, OSError) as exc:
             notes.set_result(conn, note_id, error=str(exc)[:300])
 
+    async def transcribe_in_background(note_id: int) -> None:
+        conn = connect(settings.db_path)
+        try:
+            await transcribe_note(conn, note_id)
+        finally:
+            conn.close()
+
     @app.post("/api/notes")
     async def create_note(
-        conn: Conn, audio: UploadFile, duration: Annotated[int, Form()] = 0
+        conn: Conn,
+        background: BackgroundTasks,
+        audio: UploadFile,
+        duration: Annotated[int, Form()] = 0,
+        transcribe: Annotated[int, Form()] = 1,
     ) -> JSONResponse:
-        """Lange Aufnahme sichern (Audio zuerst – geht nichts verloren), dann transkribieren."""
+        """Lange Aufnahme sichern (nur Audio, sofort fertig); der Text entsteht danach im
+        Hintergrund bzw. auf Knopfdruck – so geht nichts verloren und nichts blockiert."""
         try:
             name = notes.save_audio(await audio.read(), note_dir, audio.content_type or "")
         except LagerError as exc:
             return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
         note_id = notes.create(conn, name, duration)
-        await transcribe_note(conn, note_id)
+        if transcribe and settings.whisper_url:
+            background.add_task(transcribe_in_background, note_id)
+        return JSONResponse({"ok": True, "id": note_id, "msg": "Aufnahme gespeichert"})
+
+    @app.get("/notes/{note_id}/audio")
+    def note_audio(note_id: int, conn: Conn) -> Response:
         note = notes.get(conn, note_id)
-        ok = note["status"] == "fertig"
-        msg = "Aufnahme gespeichert – Prompt bereit" if ok else "Aufnahme gespeichert, Text fehlt"
-        return JSONResponse({"ok": ok, "id": note_id, "msg": msg})
+        path = note_dir / (note["audio"] or "")
+        if not note["audio"] or not path.is_file():
+            raise HTTPException(404, "Audiodatei nicht gefunden")
+        stamp = notes.filename(note).removesuffix(".txt").replace("haiku-diktat", "diktat")
+        return FileResponse(path, filename=f"{stamp}{path.suffix}")
+
+    @app.get("/notes/{note_id}/text.txt")
+    def note_transcript(note_id: int, conn: Conn) -> Response:
+        note = notes.get(conn, note_id)
+        name = notes.filename(note).replace("haiku-diktat", "transkript")
+        return Response(
+            note["transcript"],
+            media_type="text/plain; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{name}"'},
+        )
 
     @app.post("/notes/{note_id}/retry")
     async def retry_note(note_id: int, conn: Conn) -> RedirectResponse:

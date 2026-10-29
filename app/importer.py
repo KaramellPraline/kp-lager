@@ -94,7 +94,11 @@ def _slot_container(conn: sqlite3.Connection, parent_id: int, slot: str) -> int:
 
 
 def apply(
-    conn: sqlite3.Connection, data: list[dict[str, Any]], report: Report, review: bool = False
+    conn: sqlite3.Connection,
+    data: list[dict[str, Any]],
+    report: Report,
+    review: bool = False,
+    ai_tag: str = "",
 ) -> None:
     pending = list(data)
     while pending:
@@ -110,11 +114,15 @@ def apply(
             return
         for c in ready:
             pending.remove(c)
-            _apply_container(conn, c, report, review)
+            _apply_container(conn, c, report, review, ai_tag)
 
 
 def _apply_container(
-    conn: sqlite3.Connection, c: dict[str, Any], report: Report, review: bool = False
+    conn: sqlite3.Connection,
+    c: dict[str, Any],
+    report: Report,
+    review: bool = False,
+    ai_tag: str = "",
 ) -> None:
     code, name = _str(c.get("code")), _str(c["name"])
     parent_code = _str(c.get("parent"))
@@ -191,6 +199,11 @@ def _apply_container(
             extra["type_id"] = itemtypes.create(conn, type_name)  # neu oder vorhanden
         if review:
             extra["review"] = 1
+        if ai_tag:  # Herkunft kennzeichnen: eigener Tag, sonst als Suchwort
+            if "type_id" not in extra:
+                extra["type_id"] = itemtypes.create(conn, ai_tag)
+            else:
+                extra["tags"] = f"{_str(item.get('tags'))} {ai_tag.lower()}".strip()
         if extra:
             repo.update_item(conn, item_id, **extra)
         report.items_added += 1
@@ -212,7 +225,9 @@ def _spread(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
-def run(conn: sqlite3.Connection, text: str, commit: bool, review: bool = False) -> Report:
+def run(
+    conn: sqlite3.Connection, text: str, commit: bool, review: bool = False, ai_tag: str = ""
+) -> Report:
     """review=True: alles Angelegte bekommt das Flag „zu prüfen“ (KI-Ergebnisse)."""
     report = Report()
     data = parse(text)
@@ -229,10 +244,10 @@ def run(conn: sqlite3.Connection, text: str, commit: bool, review: bool = False)
     # Erst immer auf einer Kopie – so bleibt die echte DB bei Fehlern unverändert.
     scratch = connect(":memory:")
     conn.backup(scratch)
-    apply(scratch, data, report, review)
+    apply(scratch, data, report, review, ai_tag)
     scratch.close()
     if commit and not report.errors:
-        apply(conn, data, Report(), review)
+        apply(conn, data, Report(), review, ai_tag)
     return report
 
 
