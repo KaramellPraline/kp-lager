@@ -1,0 +1,9 @@
+<label class="add-label" data-dims-for="eurobox" hidden>Maße Eurobox (L × B × H)
+  <select name="dims" data-reveal="dims-new">
+    <option value="">– wählen –</option>
+    {% for d in EURO_DIMS %}<option value="{{ d }}">{{ d|replace('x', ' × ') }} mm</option>{% endfor %}
+    <option value="neu">Eigene Maße …</option>
+  </select></label>
+<div class="row" id="dims-new" hidden><input name="dims_custom" placeholder="Maße, z. B. 450x350x200 (mm)" aria-label="Eigene Maße"></div>
+<label class="add-label" data-dims-other>Maße (optional, mm)
+  <input name="dims_other" placeholder="L x B x H, z. B. 450x350x200" aria-label="Maße"></label>

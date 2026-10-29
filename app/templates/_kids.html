@@ -11,7 +11,7 @@
   {% for k in kids %}
   <a href="/n/{{ k.id }}">
     <b>{{ k.name }}</b>
-    <small>{{ KIND_LABELS[k.kind] }}{% if k.code %} · {{ k.code }}{% endif %}{% if k.n_items %} · {{ k.n_items }} Teile{% endif %}</small>
+    <small>{{ KIND_LABELS[k.kind] }}{% if k.code %} · {{ k.code }}{% endif %}{% if k.n_items %} · {{ k.n_items }} Teile{% endif %}{% if VAL and VAL.get(k.id) %} · {{ euro(VAL[k.id]) }}{% endif %}</small>
   </a>
   {% endfor %}
 </div>

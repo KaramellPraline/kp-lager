@@ -19,6 +19,9 @@
         {% if item.code %}<span class="chip code">{{ item.code }}</span>{% if not item.label_printed %}<span class="chip">Etikett offen</span>{% endif %}{% endif %}
         <span class="chip">{{ icon('content.place', size='xs') }} {{ path[-1].name }}</span>
         {% if item.tags %}<span class="chip">{{ item.tags }}</span>{% endif %}
+        {% if individual %}<span class="chip">Einzelstück</span>{% endif %}
+        {% if item.expires %}<span class="chip {% if item.expires < today %}review{% endif %}">{{ 'abgelaufen' if item.expires < today else 'haltbar bis' }} {{ item.expires }}</span>{% endif %}
+        {% if item.opened %}<span class="chip">geöffnet {{ item.opened }}</span>{% endif %}
       </div>
     </div>
   </div>
@@ -68,6 +71,21 @@
       <button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
     </form>
     <p class="meta">Rest = Brutto − Leer{{ 'spule' if item.material == 'fil' else 'flasche' }} (im Datenblatt, sonst Standardwert). Unter 15 % kommt es auf die Einkaufsliste.</p>
+  </div>
+  {% endif %}
+
+  {% if item.material == 'fil' %}
+  <div class="card" id="trocknen">
+    <h2 style="margin-top:0">Trocknen</h2>
+    {% if dry_history %}<ul class="history">{% for h in dry_history %}<li>{{ h.started_at[:16] }} · {{ h.program }} {{ h.temp_c|round|int }} °C / {{ h.hours }} h{% if h.done_at %} · fertig{% elif h.ready %} · <b>fertig, entnehmen</b>{% else %} · läuft ({{ h.left }}){% endif %}
+      {% if h.running %}<form method="post" action="/trockner/{{ h.id }}/fertig" style="display:inline"><input type="hidden" name="back" value="/items/{{ item.id }}#trocknen"><button class="link">entnommen</button></form>{% endif %}</li>{% endfor %}</ul>
+    {% else %}<p class="meta">Noch nicht getrocknet vermerkt.</p>{% endif %}
+    <form method="post" action="/trockner/start" class="add-item">
+      <input type="hidden" name="item_id" value="{{ item.id }}"><input type="hidden" name="back" value="/items/{{ item.id }}#trocknen">
+      <select name="program_id" aria-label="Trockner-Programm">{% for p in dry_programs %}<option value="{{ p.id }}">{{ p.name }} · {{ p.temp_c|round|int }} °C · {{ p.hours }} h</option>{% endfor %}</select>
+      <button class="primary">Trocknen starten</button>
+    </form>
+    <p class="meta"><a href="/trockner">Programme und Verlauf</a></p>
   </div>
   {% endif %}
 
@@ -166,8 +184,16 @@
         <label>Einheit <input name="unit" value="{{ item.unit }}" placeholder="Stk"></label>
       </div>
       <label>Mengenhinweis <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="z. B. viele"></label>
-      <label>Mindestbestand (darunter → Einkaufsliste)
-        <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner"></label>
+      <div class="row">
+        <label>Mindestbestand (darunter → Einkaufsliste)
+          <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner"></label>
+        <label>Wunschmenge beim Nachkaufen
+          <input name="order_qty" value="{{ item.order_qty if item.order_qty is not none else '' }}" inputmode="numeric" placeholder="leer = bis Mindestbestand"></label>
+      </div>
+      <div class="row">
+        <label>Haltbar bis <input name="expires" type="date" value="{{ item.expires or '' }}"></label>
+        <label>Geöffnet am <input name="opened" type="date" value="{{ item.opened or '' }}"></label>
+      </div>
       <label>Suchbegriffe <input name="tags" value="{{ item.tags }}"></label>
       <label>Notizen <textarea name="notes">{{ item.notes }}</textarea></label>
       <button class="primary">Speichern</button>

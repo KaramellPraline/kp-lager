@@ -21,6 +21,7 @@
 {% endif %}
 
 {% if items %}
+<p class="meta"><a href="/auswahl?q={{ q|urlencode }}{% if tag %}&amp;tag={{ tag }}{% endif %}">Alle Treffer bearbeiten / verschieben</a></p>
 <ul class="list">
   {% for i in items %}
   <li class="result"><a href="/items/{{ i.id }}">

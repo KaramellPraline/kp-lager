@@ -144,16 +144,18 @@ def _apply_container(
         if parent_code and node["parent_id"] != parent_id:
             repo.move_container(conn, cid, parent_id)
             report.containers_moved.append(f"{code} {node['name']}")
-    for item in c.get("items") or []:
+    for item in _spread(c.get("items") or []):
         target = cid
         if slot := _str(item.get("slot")):
             target = _slot_container(conn, cid, slot)
         iname = _str(item["name"])
-        if any(i["name"].casefold() == iname.casefold() for i in repo.items_in(conn, target)):
-            report.items_skipped += 1
-            continue
         cat = _str(item.get("cat")).upper()
         cat = cat if cat in code_schema.ITEM_PREFIXES else code_schema.ITEM_PREFIX
+        if cat not in repo.INDIVIDUAL and any(
+            i["name"].casefold() == iname.casefold() for i in repo.items_in(conn, target)
+        ):
+            report.items_skipped += 1
+            continue
         item_id = repo.add_item(
             conn,
             target,
@@ -170,7 +172,7 @@ def _apply_container(
             ),
         )  # fmt: skip
         if profile := materials.PREFIX_MATERIAL.get(cat):
-            raw = item.get("specs") if isinstance(item.get("specs"), dict) else {}
+            raw: dict[str, Any] = item["specs"] if isinstance(item.get("specs"), dict) else {}
             keys = {f.key for f in materials.FIELDS[profile]}
             form = {
                 f"spec_{k}": ok for k, v in raw.items()
@@ -192,6 +194,22 @@ def _apply_container(
         if extra:
             repo.update_item(conn, item_id, **extra)
         report.items_added += 1
+
+
+def _spread(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Kabel/Netzteile sind Einzelstücke: „3 Stück“ werden drei Einträge (je ein Etikett)."""
+    out: list[dict[str, Any]] = []
+    for item in items:
+        qty = item.get("qty")
+        if (
+            _str(item.get("cat")).upper() in repo.INDIVIDUAL
+            and _str(item.get("unit")).casefold() not in repo.METER_UNITS
+            and isinstance(qty, int) and not isinstance(qty, bool) and qty > 1
+        ):  # fmt: skip
+            out += [{**item, "qty": None} for _ in range(min(qty, 50))]
+        else:
+            out.append(item)
+    return out
 
 
 def run(conn: sqlite3.Connection, text: str, commit: bool, review: bool = False) -> Report:

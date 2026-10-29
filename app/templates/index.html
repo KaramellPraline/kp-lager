@@ -27,7 +27,7 @@
     {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
     <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
-  <div class="spec-fields cable" data-cat="CBL" data-hint="Name entsteht daraus, z. B. „USB-A – USB-C 2m“ · nur Stecker A = beidseitig gleich" hidden>
+  <div class="spec-fields cable" data-cat="CBL" data-hint="Jedes Kabel bekommt ein eigenes Etikett · Anzahl = so viele Einzelstücke · nur Stecker A = beidseitig gleich" hidden>
     <label>Stecker A<select name="plug_a" data-reveal="plug-a-new">
       <option value="">– wählen –</option>{% for p in PLUG_NAMES %}<option>{{ p }}</option>{% endfor %}
       <option value="neu">Anderer …</option></select></label>
@@ -35,11 +35,13 @@
       <option value="">wie A</option>{% for p in PLUG_NAMES %}<option>{{ p }}</option>{% endfor %}
       <option value="neu">Anderer …</option></select></label>
     <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
+    <label>Anzahl<input name="count" inputmode="numeric" placeholder="1" autocomplete="off" aria-label="Anzahl Stück, jedes bekommt ein Etikett"></label>
     <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
   </div>
   <div class="spec-fields psu" data-cat="PSU" data-hint="Name entsteht aus Volt, Ampere und Stecker, z. B. „Netzteil 12V 2A DC 5,5x2,1“ · der Eingang steht im Datenblatt" hidden>
     <label>Volt<input name="volt" inputmode="decimal" placeholder="12" autocomplete="off"></label>
     <label>Ampere<input name="amp" inputmode="decimal" placeholder="2" autocomplete="off"></label>
+    <label>Anzahl<input name="count" inputmode="numeric" placeholder="1" autocomplete="off" aria-label="Anzahl Stück, jedes bekommt ein Etikett"></label>
     <label>Stecker (Ausgang)<select name="psu_plug" data-reveal="psu-plug-new">
       <option value="">– wählen –</option>{% for p in PSU_PLUGS %}<option>{{ p }}</option>{% endfor %}
       <option value="neu">Anderer …</option></select></label>
@@ -57,6 +59,7 @@
   <div class="photo-preview" id="add-photo-preview" hidden>
     <img alt="Vorschau des Fotos">
     <span class="meta">Foto wird angehängt</span>
+    {% if AI %}<button type="button" class="link" id="add-photo-ai">{{ icon('action.ai', size='sm') }} Mit KI auswerten</button>{% endif %}
     <button type="button" class="link" id="add-photo-clear">Entfernen</button>
   </div>
   <div data-for="container" hidden class="stack">
@@ -68,6 +71,7 @@
       <input name="new_kind" placeholder="Name der Art, z. B. Schublade" aria-label="Name der neuen Art">
       <input name="new_prefix" placeholder="Präfix, z. B. SCH" maxlength="3" aria-label="Präfix" style="text-transform:uppercase">
     </div>
+    {% include "_dims.html" %}
   </div>
   <div data-for="all" hidden>
     <label class="add-label">Kategorie

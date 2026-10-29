@@ -65,3 +65,5 @@ Keller (raum)
 
 ## Schnittstellen
 - Keine externen Dienste im Betrieb. Erst-Inventur: manuell im Claude-Chat (Haiku) → JSON → `/import`.
+
+- `app/scheduler.py` tägliches Backup · `app/status.py` Statusseite · `app/value.py` Lagerwert · `app/dryer.py` Trockner · `app/slicer.py` G-Code/3MF-Verbrauch · `app/vision.py` Foto-Erkennung · `app/bulk.py` Massenaktionen · `app/creation.py` Teile mit Kategorie anlegen (API/MCP) · `app/web_ops.py` Routen dazu

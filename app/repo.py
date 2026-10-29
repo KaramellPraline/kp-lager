@@ -2,11 +2,15 @@
 
 import sqlite3
 from string import ascii_uppercase
+from typing import Any
 
 Row = sqlite3.Row
 
 # Gültige Arten; füllt app/kinds (feste + eigene, zur Laufzeit aktuell)
 KINDS: list[str] = []
+# Einzelstücke (Kabel, Netzteile): keine Menge, jedes Stück bekommt ein eigenes Etikett
+INDIVIDUAL = ("CBL", "PSU")
+METER_UNITS = ("m", "cm", "meter")  # Meterware zählt in Metern, nicht in Stück
 
 
 class LagerError(ValueError):
@@ -38,6 +42,7 @@ def create_container(
     notes: str = "",
     size: str | None = None,
     model: str | None = None,
+    dims: str = "",
 ) -> int:
     """Legt einen Behälter an. Mit `grid` werden die Fächer als Kind-Behälter erzeugt."""
     from app.kinds import resolve  # spät: kinds importiert repo
@@ -49,8 +54,8 @@ def create_container(
     with conn:
         cur = conn.execute(
             "INSERT INTO container (code, parent_id, kind, name, position, grid, notes, size,"
-            " model) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (code, parent_id, kind, name, position, grid, notes, size, model),
+            " model, dims) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (code, parent_id, kind, name, position, grid, notes, size, model, dims),
         )
         cid = cur.lastrowid
         assert cid is not None
@@ -251,6 +256,8 @@ def add_item(
 ) -> int:
     if qty is not None and qty < 0:
         raise LagerError("Menge darf nicht negativ sein")
+    if code and code[:3] in INDIVIDUAL and unit.casefold() not in METER_UNITS:
+        qty, qty_hint, unit = None, "", ""  # Kabel/Netzteile sind Einzelstücke (Meterware nicht)
     with conn:
         cur = conn.execute(
             "INSERT INTO item (container_id, name, qty, qty_hint, unit, tags, notes, code)"
@@ -327,7 +334,8 @@ def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | fl
     allowed = {
         "name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list",
         "full_name", "type_id", "model", "datasheet_url", "datasheet", "review", "archived",
-        "ai_backup", "order_url", "price", "specs", "ai_checked",
+        "ai_backup", "order_url", "price", "specs", "ai_checked", "opened", "expires",
+        "ordered_at", "order_qty",
     }  # fmt: skip
     if not fields or not set(fields) <= allowed:
         raise LagerError(f"Erlaubte Felder: {sorted(allowed)}")
@@ -360,7 +368,7 @@ SEARCH_TEXT = "fold(name || ' ' || full_name || ' ' || model || ' ' || tags || '
 # --- Suche ----------------------------------------------------------------------
 
 
-def search(conn: sqlite3.Connection, q: str, limit: int = 50) -> list[dict[str, object]]:
+def search(conn: sqlite3.Connection, q: str, limit: int = 50) -> list[dict[str, Any]]:
     """Items, deren Name/Tags/Notizen alle Suchwörter (Teilwörter) enthalten, mit Fundort-Pfad.
 
     Wörter ab 3 Zeichen laufen über FTS5-trigram (Ranking), kürzere über LIKE.
@@ -384,7 +392,7 @@ def search(conn: sqlite3.Connection, q: str, limit: int = 50) -> list[dict[str, 
     return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]
 
 
-def search_containers(conn: sqlite3.Connection, q: str, limit: int = 20) -> list[dict[str, object]]:
+def search_containers(conn: sqlite3.Connection, q: str, limit: int = 20) -> list[dict[str, Any]]:
     """Behälter nach Name/Notizen (Fächer nur mit eigenem Namen) oder exaktem Code."""
     terms = q.split()
     if not terms:
@@ -411,7 +419,7 @@ def parse_synonyms(text: str) -> dict[str, list[str]]:
 
 def search_synonyms(
     conn: sqlite3.Connection, q: str, synonyms: dict[str, list[str]], limit: int = 50
-) -> list[dict[str, object]]:
+) -> list[dict[str, Any]]:
     """Wie search(), aber jedes Wort darf auch durch ein Synonym erfüllt sein."""
     terms = [t.casefold() for t in q.replace('"', " ").split() if t]
     if not terms:
@@ -522,27 +530,37 @@ def return_item(conn: sqlite3.Connection, item_id: int) -> None:
         _log(conn, item, "return", note=item["lent_to"] or "")
 
 
-def _with_path(conn: sqlite3.Connection, rows: list[Row]) -> list[dict[str, object]]:
+def _with_path(conn: sqlite3.Connection, rows: list[Row]) -> list[dict[str, Any]]:
     return [{**dict(r), "path": path_label(conn, r["container_id"])} for r in rows]
 
 
-def lent_items(conn: sqlite3.Connection) -> list[dict[str, object]]:
+def lent_items(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     rows = conn.execute(
         "SELECT * FROM item WHERE lent_to IS NOT NULL ORDER BY lent_since, name"
     ).fetchall()
     return _with_path(conn, rows)
 
 
-def shopping_list(conn: sqlite3.Connection) -> list[dict[str, object]]:
+def shopping_list(conn: sqlite3.Connection) -> list[dict[str, Any]]:
     """Manuell markierte Teile und alles unter Mindestbestand."""
     rows = conn.execute(
-        "SELECT * FROM item WHERE on_list = 1"
-        " OR (min_qty IS NOT NULL AND qty IS NOT NULL AND qty < min_qty) ORDER BY name"
+        "SELECT * FROM item WHERE (on_list = 1"
+        " OR (min_qty IS NOT NULL AND qty IS NOT NULL AND qty < min_qty)) AND archived = 0"
+        " ORDER BY ordered_at IS NOT NULL, name"
     ).fetchall()
-    return _with_path(conn, rows)
+    out = _with_path(conn, rows)
+    for r in out:
+        qty, low = r["qty"], r["min_qty"]
+        # Bedarf: Wunschmenge, sonst bis zum Mindestbestand auffüllen, sonst 1
+        need = r["order_qty"] or (
+            low - qty if low is not None and qty is not None and low > qty else 1
+        )
+        r["need"] = int(need)
+        r["cost"] = float(r["price"]) * r["need"] if r["price"] is not None else None
+    return out
 
 
-def free_places(conn: sqlite3.Connection) -> dict[str, list[dict[str, object]]]:
+def free_places(conn: sqlite3.Connection) -> dict[str, list[dict[str, Any]]]:
     """Leere Boxen/Kisten und Sortierkästen mit freien Fächern."""
     empty = conn.execute(
         "SELECT c.* FROM container c WHERE c.kind IN"

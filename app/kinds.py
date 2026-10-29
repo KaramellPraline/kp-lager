@@ -184,6 +184,13 @@ KIND_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Schlüssel) für 
 SCHEMA_GROUPS: list[tuple[str, list[str]]] = []  # (Gruppenname, Präfixe) fürs Code-Schema
 PREFIX_DESC: dict[str, str] = {}  # Präfix -> Beschreibung (nur Codes-Seite)
 # Teile-Kategorien für die Auswahl beim Hinzufügen: [(Präfix, Name)], ART zuerst
+# Eurobox-Normmaße L×B×H in mm (Stapelbehälter 600×400, 400×300, 300×200)
+EURO_DIMS = [
+    f"{lb}x{h}" for lb, heights in (("600x400", (120, 170, 220, 270, 320)),
+                                    ("400x300", (120, 170, 220, 270, 320)),
+                                    ("300x200", (120, 170, 220)))
+    for h in heights
+]  # fmt: skip
 ITEM_CATS: list[tuple[str, str]] = []
 CAT_ORDER = ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")
 # Kurznamen für die Kategorie-Kacheln auf Start (DE, EN)

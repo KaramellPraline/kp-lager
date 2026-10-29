@@ -13,9 +13,9 @@ from pathlib import Path
 from app.config import load_settings
 
 
-def run(data_dir: Path, target: Path, keep_days: int = 30) -> list[Path]:
+def run(data_dir: Path, target: Path, keep_days: int = 30, day: date | None = None) -> list[Path]:
     target.mkdir(parents=True, exist_ok=True)
-    stamp = date.today().isoformat()
+    stamp = (day or date.today()).isoformat()
     db_copy = target / f"lager-{stamp}.db"
     src = sqlite3.connect(data_dir / "lager.db")
     dst = sqlite3.connect(db_copy)

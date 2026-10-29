@@ -61,3 +61,7 @@
 | 2026-10-27 | CNS/RAW/CBL/CMP/PPE sind Teile-Kategorien (Code-Präfix am Teil), keine Behälter-Arten; TYP heißt TAG (alte TYP-Codes werden umgeleitet) | Nutzer wählt sie beim Teil-Hinzufügen; Verbrauch/Material sind Dinge, keine Orte. |
 | 2026-10-27 | KI-Eigenschaften: Modell fast als Standard (3–7 s/Teil, mid 25–40 s), nur leere Felder, Zahlen mit Plausibilitätsgrenzen, Richtwerte im Prompt; alles bleibt „zu prüfen“ | Live-Test: fast ohne Grenzen riet grob falsch (PETG 180 °C, Fluss 150 mm³/s). |
 | 2026-10-27 | Bin-Etiketten getrennt: oben fester 40×12-QR-Tag (Kasten + Position), vorne Inhaltsetikett ohne QR (Warteschlange content_queue) | Inhalt ändert sich, der Code-Tag nicht. |
+
+- 2026-10-29 Kabel (CBL) und Netzteile (PSU) sind Einzelstücke: keine Menge, jedes Stück ein Eintrag mit eigenem Code/Etikett (Meterware mit Einheit m bleibt zählbar). Warum: jedes Stück wird einzeln beschriftet und gefunden.
+- 2026-10-29 CLI/MCP lesen Kategorien aus `/api/v1/schema` statt sie fest zu kodieren. Warum: neue Kategorien/Felder erscheinen ohne Änderung an tools/.
+- 2026-10-29 Backup läuft im Server-Prozess (Thread, Sperrdatei) statt als Windows-Aufgabe. Warum: kein Autostart/Admin nötig, beide Prozesse (80/443) sichern nur einmal.

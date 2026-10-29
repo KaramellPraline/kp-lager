@@ -318,4 +318,62 @@
     next.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); });
     stop.addEventListener("click", function () { finishing = true; if (rec) rec.stop(); });
   });
+  // Eurobox: Normmaße zur Auswahl, andere Arten bekommen ein freies Maßfeld
+  function syncDims(form) {
+    var kind = form.querySelector("select[name=kind]");
+    if (!kind || !form.querySelector("[data-dims-for]")) return;
+    form.querySelectorAll("[data-dims-for]").forEach(function (l) { l.hidden = l.dataset.dimsFor !== kind.value; });
+    form.querySelectorAll("[data-dims-other]").forEach(function (l) { l.hidden = kind.value === "eurobox"; });
+    var isEuro = kind.value === "eurobox", sel = form.querySelector("select[name=dims]");
+    if (!isEuro && sel) { sel.value = ""; var box = form.querySelector("#dims-new"); if (box) box.hidden = true; }
+  }
+  document.addEventListener("change", function (ev) {
+    if (ev.target.matches("select[name=kind]") && ev.target.form) syncDims(ev.target.form);
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("form").forEach(syncDims);
+  });
+
+  // Start: Foto mit lokaler KI auswerten und das Formular vorausfüllen
+  function setSelect(form, sel, val) {
+    var want = String(val).trim().toLowerCase(), hit = null;
+    Array.prototype.forEach.call(sel.options, function (o) { if (o.text.trim().toLowerCase() === want) hit = o; });
+    if (hit) { sel.value = hit.value; return; }
+    var other = form.querySelector('[name="' + sel.name + '_new"]');
+    if (other && sel.querySelector('option[value="neu"]')) {
+      sel.value = "neu"; sel.dispatchEvent(new Event("change", { bubbles: true })); other.value = val;
+    }
+  }
+  function fillFromPhoto(form, items) {
+    var it = items[0], specs = it.specs || {};
+    if (form.querySelector("#add-mode").value !== "item") form.querySelector('.seg button[data-mode=item]').click();
+    var radio = form.querySelector('input[name=cat][value="' + it.cat + '"]');
+    if (radio) { radio.checked = true; radio.dispatchEvent(new Event("change", { bubbles: true })); }
+    form.querySelector("#quick-home").value = items.map(function (i) { return (i.qty ? i.qty + " " : "") + i.name; }).join(", ");
+    var box = form.querySelector('.spec-fields[data-cat="' + it.cat + '"]');
+    if (box) {
+      var put = function (name, val) {
+        var el = box.querySelector('[name="' + name + '"]');
+        if (!el || !val) return;
+        if (el.tagName === "SELECT") setSelect(form, el, val); else el.value = val;
+      };
+      put("plug_a", specs.plug_a); put("plug_b", specs.plug_b); put("length", specs.length);
+      put("volt", specs.volt); put("amp", specs.amp); put("psu_plug", specs.plug); put("psu_input", specs.input);
+    }
+    var hint = form.querySelector("#add-hint");
+    if (hint) hint.textContent = "Von der KI vorgeschlagen (" + items.length + ") – bitte prüfen, dann hinzufügen.";
+  }
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest("#add-photo-ai");
+    if (!b) return;
+    var form = b.closest("form"), input = form.querySelector("#add-photo");
+    if (!input.files || !input.files[0]) return;
+    var fd = new FormData(); fd.append("photo", input.files[0]);
+    var orig = b.innerHTML; b.disabled = true; b.textContent = "KI schaut hin …";
+    fetch("/api/foto-erkennen", { method: "POST", body: fd })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d.ok) fillFromPhoto(form, d.items); else alert(d.msg || "Nichts erkannt"); })
+      .catch(function () { alert("Auswertung fehlgeschlagen"); })
+      .finally(function () { b.disabled = false; b.innerHTML = orig; });
+  });
 })();
