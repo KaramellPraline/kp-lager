@@ -67,3 +67,7 @@ Stand: 2026-10-26
 - pytest-Warnung: Starlette empfiehlt `httpx2` statt `httpx` für TestClient. Harmlos; Wechsel erst nach Prüfung des Pakets.
 - LXC: Debian 13 nehmen (Python 3.13); install.sh lässt uv sonst passendes Python laden.
 - Raspberry Pi 2B: nur Notbetrieb, ungetestet.
+
+## Etikettenbild + D30-Direktdruck (2026-10-30)
+- `app/labelimg.py`: Etikett 320×96 px (40×12 mm), QR links, Name mittig mit Auto-Schriftgröße (einzeilig), ID groß darunter, kein Rahmen. Route `/labels/img/<CODE>.png`.
+- `tools/d30_print.py`: BLE-Direktdruck (bleak, Phomemo-Protokoll, Service FF00/FF02). Verbindung getestet; Testdruck ausstehend (D30 war nicht auffindbar → einschalten, dann `uv run --with bleak python tools/d30_print.py CBL-025`).
