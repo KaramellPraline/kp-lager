@@ -72,3 +72,12 @@ Stand: 2026-10-26
 - `app/labelimg.py`: Etikett 320×96 px (40×12 mm), QR links, Name mittig mit Auto-Schriftgröße (einzeilig), ID groß darunter, kein Rahmen. Route `/labels/img/<CODE>.png`.
 - `tools/d30_print.py`: BLE-Direktdruck (bleak, Phomemo-Protokoll, Service FF00/FF02). Verbindung getestet; Testdruck ausstehend (D30 war nicht auffindbar → einschalten, dann `uv run --with bleak python tools/d30_print.py CBL-025`).
 - Direktdruck in der App: Checkbox beim Eintragen (leuchtet bei erreichbarem D30, /d30/status), Knopf am Teil solange Etikett offen, app/d30.py, LAGER_D30=1 (Standard). Bluetooth am Server-PC nötig.
+
+## Bedienung & Direktdruck (2026-10-30)
+- Druck: COM-Port (Bluetooth-Seriell, Auto-Erkennung, `LAGER_D30_PORT`/`LAGER_D30_ADDR`) zuerst, bei Fehler BLE. Vorschau: „Auf D30 drucken“ + „In Warteschlange“ (`/labels/export` fmt=d30|queue).
+- Untere Leiste ohne „Plätze“ (bleibt in Mehr/Seitenleiste). Hinzufügen: 3×3-Matrix (seitlich scrollbar) für Kategorien und Behälterarten, zuletzt verwendete vorn (Cookies qa_cats/qa_kinds).
+- Filament/Harz: Auswahllisten (app/choices.py; Standard + im Lager Vorhandenes, häufigste zuerst), Name = Hersteller Werkstoff Farbe, Anzahl = Menge. Neues Feld „Hersteller“.
+- Behälter: Größe aus vorhandenen Boxen/Euro-Normen, Luftdicht (Migration 018). Neue Arten Maschine (MAS) und Filamenttrockner (TRO) bekommen sofort Code + Etikett in der Warteschlange.
+- Trockner-Scan: Trockner-Etikett scannen → 10 min Modus (Cookie), dann Filament-Etikett(en) = getrocknet mit Datum/Uhrzeit (dry_log, Seite /trockner/scan/<id>).
+- Inhalt unter „Wohin?“ (/n/<id>/inhalt) und Behälterliste: ab dem 10. Eintrag „Mehr anzeigen“.
+- Fix: ausgeblendete Kategorie-Felder werden nicht mehr mitgeschickt (Anzahl ging verloren).

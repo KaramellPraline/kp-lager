@@ -35,7 +35,39 @@
     document.querySelectorAll("button.pick").forEach(function (b) {
       b.classList.toggle("on", b.dataset.id === select.value);
     });
+    peek(select);
   }
+  // Inhalt des gewählten Behälters unter „Wohin?“ zeigen (ab dem 10. Eintrag „Mehr“)
+  function peek(select) {
+    var box = document.getElementById("qa-peek");
+    if (!box) return;
+    if (!select.value) { box.hidden = true; box.innerHTML = ""; return; }
+    fetch("/n/" + select.value + "/inhalt").then(function (r) { return r.text(); }).then(function (html) {
+      box.innerHTML = html; box.hidden = !html.trim(); collapse(box);
+    }).catch(function () { box.hidden = true; });
+  }
+  // Listen mit data-collapse="9": ab dem 10. Eintrag per Knopf aufklappen
+  function collapse(root) {
+    root.querySelectorAll("ul[data-collapse]").forEach(function (ul) {
+      var limit = parseInt(ul.dataset.collapse, 10), rows = Array.prototype.slice.call(ul.children);
+      var old = ul.nextElementSibling;
+      if (old && old.classList.contains("more-btn")) old.remove();
+      if (rows.length <= limit + 1) { rows.forEach(function (r) { r.hidden = false; }); return; }
+      rows.forEach(function (r, i) { r.hidden = i >= limit; });
+      var btn = document.createElement("button");
+      btn.type = "button"; btn.className = "more-btn";
+      var more = rows.length - limit, open = false;
+      function label() { btn.textContent = open ? "Weniger anzeigen" : "Mehr anzeigen (" + more + ")"; }
+      label();
+      btn.addEventListener("click", function () {
+        open = !open;
+        rows.forEach(function (r, i) { r.hidden = !open && i >= limit; });
+        label();
+      });
+      ul.after(btn);
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () { collapse(document); });
   document.addEventListener("click", function (ev) {
     var pick = ev.target.closest("button.pick");
     if (!pick) return;
@@ -231,6 +263,7 @@
     form.querySelectorAll(".spec-fields").forEach(function (box) {
       var on = item && cat && box.dataset.cat === cat.value;
       box.hidden = !on;
+      box.querySelectorAll("input, select").forEach(function (el) { el.disabled = !on; });
       if (on) active = box;
     });
     free.hidden = !!active;
@@ -238,6 +271,7 @@
       var sel = form.querySelector('[data-reveal="' + o.id + '"]');
       o.hidden = !(sel && sel.closest(".spec-fields") === active && sel.value === "neu");
       o.querySelector("input").required = !o.hidden;
+      o.querySelector("input").disabled = o.hidden;
     });
     form.querySelector("#quick-home").required = !active;
     var hint = form.querySelector("#add-hint"), seg = form.querySelector(".seg button.active");
@@ -334,20 +368,39 @@
     next.addEventListener("click", function () { if (rec && rec.state === "recording") rec.stop(); });
     stop.addEventListener("click", function () { finishing = true; if (rec) rec.stop(); });
   });
-  // Eurobox: Normmaße zur Auswahl, andere Arten bekommen ein freies Maßfeld
+  // Behälter: Art (Kacheln oder Liste) -> passende Größen zur Auswahl, Airtight nur bei Boxen
+  function kindOf(form) {
+    var r = form.querySelector("input[name=kind]:checked"), sel = form.querySelector("select[name=kind]");
+    return r ? r.value : (sel ? sel.value : "");
+  }
   function syncDims(form) {
-    var kind = form.querySelector("select[name=kind]");
-    if (!kind || !form.querySelector("[data-dims-for]")) return;
-    form.querySelectorAll("[data-dims-for]").forEach(function (l) { l.hidden = l.dataset.dimsFor !== kind.value; });
-    form.querySelectorAll("[data-dims-other]").forEach(function (l) { l.hidden = kind.value === "eurobox"; });
-    var isEuro = kind.value === "eurobox", sel = form.querySelector("select[name=dims]");
-    if (!isEuro && sel) { sel.value = ""; var box = form.querySelector("#dims-new"); if (box) box.hidden = true; }
+    var box = form.querySelector("[data-dims]");
+    if (!box) return;
+    var kind = kindOf(form), kinds = JSON.parse(box.dataset.kinds || "[]");
+    var sel = box.querySelector("select"), opts = JSON.parse(sel.dataset.opts || "{}");
+    var show = kinds.indexOf(kind) >= 0, keep = sel.value;
+    var list = opts[kind] || opts["*"] || [];
+    sel.innerHTML = "";
+    function add(v, t) { var o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); }
+    add("", "– keine Angabe –");
+    list.forEach(function (d) { add(d, d.replace(/x/g, " × ") + " mm"); });
+    add("neu", "Andere Maße …");
+    sel.value = list.indexOf(keep) >= 0 || keep === "neu" ? keep : "";
+    box.hidden = !show; sel.disabled = !show;
+    var air = form.querySelector("[data-airtight]");
+    if (air) { air.hidden = !show; air.querySelector("input").disabled = !show; }
+    var custom = form.querySelector("#dims-new");
+    if (custom) { custom.hidden = !show || sel.value !== "neu"; custom.querySelector("input").disabled = custom.hidden; }
+    var nk = form.querySelector("#new-kind");
+    if (nk) nk.hidden = kind !== "neu";
   }
   document.addEventListener("change", function (ev) {
-    if (ev.target.matches("select[name=kind]") && ev.target.form) syncDims(ev.target.form);
+    if (ev.target.matches("[name=kind]") && ev.target.form) syncDims(ev.target.form);
+    if (ev.target.matches("select[name=dims]") && ev.target.form) syncDims(ev.target.form);
   });
   document.addEventListener("DOMContentLoaded", function () {
     document.querySelectorAll("form").forEach(syncDims);
+    document.querySelectorAll(".add-anything").forEach(syncCable);
   });
 
   // Start: Foto mit lokaler KI auswerten und das Formular vorausfüllen
@@ -403,7 +456,7 @@
     els.forEach(function (el) {
       el.classList.toggle("on", ok);
       el.title = ok ? "D30 bereit" : (msg || "D30 nicht erreichbar");
-      var box = el.querySelector("input[type=checkbox]"), btn = el.querySelector("button.d30-btn");
+      var box = el.querySelector("input[type=checkbox]"), btn = el.matches("button") ? el : el.querySelector("button.d30-btn");
       if (box) {
         box.disabled = !ok;
         if (!ok) box.checked = false;

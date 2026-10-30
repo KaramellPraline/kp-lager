@@ -1,0 +1,7 @@
+{% if kids or items %}
+<p class="meta" style="margin:0">Darin: {{ items|length }} Teile{% if kids %}, {{ kids|length }} Behälter/Fächer{% endif %}</p>
+<ul class="list peek-list" data-collapse="9">
+  {% for k in kids %}<li><a href="/n/{{ k.id }}"><span class="name">{{ k.name }}</span>{% if k.code %}<span class="meta">{{ k.code }}</span>{% endif %}</a></li>{% endfor %}
+  {% for i in items %}<li><a href="/items/{{ i.id }}"><span class="name">{{ i.name }}</span><span class="meta">{% if i.qty is not none %}{{ i.qty }}{% if i.unit %} {{ i.unit }}{% endif %}{% else %}{{ i.qty_hint or 'ungezählt' }}{% endif %}</span></a></li>{% endfor %}
+</ul>
+{% else %}<p class="meta" style="margin:0">Noch leer.</p>{% endif %}

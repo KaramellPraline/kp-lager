@@ -307,7 +307,11 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 .add-label { font: 13px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--sub); display: block; }
 .add-label select { margin-top: 6px; text-transform: none; letter-spacing: 0; font: inherit; font-family: var(--font-ui); }
 .add-hint { margin: -4px 0 0; font-size: 13px; }
-.cats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin-top: 6px; }
+/* 3×3-Matrix, seitlich scrollbar; zuletzt Verwendetes steht vorn */
+.cats-grid { display: grid; grid-template-rows: repeat(3, auto); grid-auto-flow: column;
+  grid-auto-columns: calc((100% - 12px) / 3); gap: 6px; margin-top: 6px; overflow-x: auto;
+  scroll-snap-type: x proximity; padding-bottom: 6px; overscroll-behavior-x: contain; }
+.cats-grid .cat-tile { scroll-snap-align: start; }
 .cat-tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
   min-height: 52px; padding: 6px 4px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
   cursor: pointer; text-align: center; }
@@ -326,6 +330,8 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 .spec-fields { display: grid; gap: 8px; align-items: end; }
 .spec-fields.cable { grid-template-columns: 1fr 1fr 0.8fr auto; }
 .spec-fields.psu { grid-template-columns: 0.9fr 0.9fr 1.4fr auto; }
+.spec-fields.mat { grid-template-columns: 1fr 1fr; }
+.spec-fields.mat .photo-trigger { grid-column: 1 / -1; }
 .spec-fields[hidden], #free-row[hidden] { display: none; }
 .spec-fields label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--sub); min-width: 0; }
 .spec-fields input { min-width: 0; }
@@ -345,3 +351,9 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
 [data-d30].on .d30-dot { background: var(--ok); box-shadow: 0 0 8px 2px var(--ok); }
 [data-d30].on .d30-check, .d30-check.on { color: var(--fg); }
 .d30-btn:disabled { opacity: .55; }
+
+/* Inhalt des gewählten Behälters (Hinzufügen) + „Mehr anzeigen“ */
+.peek { display: flex; flex-direction: column; gap: 6px; }
+.peek-list li > a { flex-direction: row; justify-content: space-between; gap: 12px; padding: 8px 14px; }
+.peek-list .meta { white-space: nowrap; }
+.more-btn { display: block; width: 100%; margin-top: 8px; min-height: 44px; }

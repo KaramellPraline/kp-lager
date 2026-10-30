@@ -81,3 +81,37 @@ def test_print_error_keeps_item(
     )
     assert "nicht gedruckt: D30 nicht gefunden" in r.text
     assert c.get(f"/api/v1/containers/{box}").json()["items"][0]["name"] == "Mutter"
+
+
+def test_serial_first_then_ble(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(d30, "spp_port", lambda: "COM5")
+
+    def fail_serial(port: str, imgs: list[Image.Image]) -> None:
+        calls.append("serial")
+        raise OSError("weg")
+
+    async def ble(imgs: list[Image.Image]) -> None:
+        calls.append("ble")
+
+    monkeypatch.setattr(d30, "_via_serial", fail_serial)
+    monkeypatch.setattr(d30, "_send", ble)
+    d30.send([Image.new("1", (320, 96), 1)])
+    assert calls == ["serial", "ble"]
+    monkeypatch.setattr(d30, "_via_serial", lambda port, imgs: calls.append("ok-serial"))
+    d30.send([Image.new("1", (320, 96), 1)])
+    assert calls == ["serial", "ble", "ok-serial"]
+
+
+def test_preview_prints_or_queues(printer: tuple[TestClient, list[int]]) -> None:
+    c, sent = printer
+    box = _box(c)
+    c.post("/quickadd", data={"mode": "item", "cat": "ART", "target": box, "text": "Schraube"})
+    code = c.get(f"/api/v1/containers/{box}").json()["items"][0]["code"]
+    page = c.post("/labels/preview", data={"source": "pending"}).text
+    assert "Auf D30 drucken" in page and "In Warteschlange" in page
+    form = {"code": code, "text": "Schraube", "extra": "", "source": "pending"}
+    r = c.post("/labels/export", data={**form, "fmt": "queue"})
+    assert "in der Warteschlange" in r.text and code in c.get("/labels").text
+    r = c.post("/labels/export", data={**form, "fmt": "d30", "source": "queue"})
+    assert "gedruckt" in r.text and sent == [320]

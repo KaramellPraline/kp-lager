@@ -65,3 +65,5 @@
 - 2026-10-29 Kabel (CBL) und Netzteile (PSU) sind Einzelstücke: keine Menge, jedes Stück ein Eintrag mit eigenem Code/Etikett (Meterware mit Einheit m bleibt zählbar). Warum: jedes Stück wird einzeln beschriftet und gefunden.
 - 2026-10-29 CLI/MCP lesen Kategorien aus `/api/v1/schema` statt sie fest zu kodieren. Warum: neue Kategorien/Felder erscheinen ohne Änderung an tools/.
 - 2026-10-29 Backup läuft im Server-Prozess (Thread, Sperrdatei) statt als Windows-Aufgabe. Warum: kein Autostart/Admin nötig, beide Prozesse (80/443) sichern nur einmal.
+
+- 2026-10-30: D30-Direktdruck über Bluetooth-Seriell (COM) zuerst, BLE als Rückfall; USB des D30 ist nur Ladeanschluss (kein Datenweg gefunden). Trockner-Ablauf per Cookie (je Gerät/Handy), nicht serverweit.

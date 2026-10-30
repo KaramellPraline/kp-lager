@@ -29,6 +29,7 @@ GROUPS = {
     "box": ("Behälter & Aufbewahrung", "Containers, Cases & Storage"),
     "mat": ("Verbrauch & Rohmaterial", "Consumables & Materials"),
     "ppe": ("Sicherheit & Ausrüstung", "Safety & Equipment"),
+    "mach": ("Maschinen & Geräte", "Machines & Devices"),
     "own": ("Eigene Arten", "Custom kinds"),
     "item": ("Gegenstände & Kategorien", "Items & System Classification"),
 }
@@ -128,6 +129,24 @@ BUILTIN = (
         "Small insert or visible storage bin",
     ),
     Kind(
+        "machine",
+        "MAS",
+        "mach",
+        "Maschine",
+        "Machine",
+        "Maschine oder Gerät (3D-Drucker, Fräse, Laser) mit eigenem Etikett",
+        "Machine or device (3D printer, mill, laser) with its own label",
+    ),
+    Kind(
+        "dryer",
+        "TRO",
+        "mach",
+        "Filamenttrockner",
+        "Filament Dryer",
+        "Trockner: Scan auf Trockner-Etikett, dann Filament-Etikett = getrocknet",
+        "Dryer: scan the dryer tag, then a filament tag = dried",
+    ),
+    Kind(
         "compartment",
         None,
         "box",
@@ -198,6 +217,9 @@ CAT_SHORT = {"ART": ("Gegenstand", "Item"), "CNS": ("Verbrauch", "Consumables"),
              "CMP": ("Elektronik", "Electronics"), "PPE": ("Schutz", "Safety"),
              "RES": ("UV-Harz", "Resin"), "RAW": ("Rohmaterial", "Raw")}  # fmt: skip
 ITEM_CATS_SHORT: list[tuple[str, str]] = []
+# Arten fürs „Behälter anlegen“ (Schlüssel, Präfix, Name); Maße/Airtight nur bei Boxen
+ADD_KINDS: list[tuple[str, str, str]] = []
+BOXY = ("toolbox", "case", "module", "sortingbox", "eurobox", "crate", "box")
 
 
 def set_lang(conn: sqlite3.Connection, value: str) -> None:
@@ -259,6 +281,12 @@ def _apply(rows: list[Row], en: bool) -> None:
     ITEM_CATS[:] = [(p, codes.PREFIX_LABELS[p]) for p in CAT_ORDER if p in codes.PREFIX_LABELS]
     ITEM_CATS_SHORT[:] = [
         (p, CAT_SHORT[p][1 if en else 0] if p in CAT_SHORT else label) for p, label in ITEM_CATS
+    ]
+    ADD_KINDS[:] = [
+        (key, codes.KIND_PREFIX[key], KIND_LABELS[key])
+        for g in ("box", "mach", "own")
+        for key in groups.get(g, [])
+        if key not in ("compartment", "bin")
     ]
     i = 1 if en else 0
     KIND_GROUPS[:] = [(GROUPS[g][i], groups[g]) for g in GROUPS if g in groups]

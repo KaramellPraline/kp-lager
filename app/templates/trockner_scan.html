@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Trockner · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/trockner">Trockner</a> › {{ dryer_node.name }}</nav>
+<div class="card stack">
+  <h1 style="margin:0">{{ dryer_node.name }} bereit</h1>
+  <p>Jetzt das <b>Filament-Etikett</b> scannen: Die Spule wird mit aktuellem Datum und Uhrzeit als getrocknet gespeichert.
+  Es lassen sich nacheinander mehrere Spulen scannen (10 Minuten ab dem letzten Scan).</p>
+  <a class="button primary" href="/scan">{{ icon('action.scan') }} Filament scannen</a>
+  <form method="post" action="/trockner/scan/{{ dryer_node.id }}/ende"><button>Fertig</button></form>
+</div>
+{% if recent %}
+<h2>Zuletzt in diesem Trockner</h2>
+<ul class="history">{% for r in recent %}<li><a href="/items/{{ r.id }}">{{ r.name }}</a> · {{ r.started_at[8:10] }}.{{ r.started_at[5:7] }}. {{ r.started_at[11:16] }}</li>{% endfor %}</ul>
+{% endif %}
+<p class="meta"><a href="/n/{{ dryer_node.id }}">Trockner-Seite</a></p>
+{% endblock %}
