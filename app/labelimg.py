@@ -14,6 +14,7 @@ from app.labels import Label
 W, H = 320, 96
 QR_BOX = 80  # maximale QR-Kantenlänge in px (10 mm)
 GAP = 6
+MARGIN = 8  # 1 mm Spaltmaß links und rechts (8 px bei 203 dpi)
 NAME_MAX, NAME_MIN = 28, 10
 ID_MAX, ID_MIN = 40, 14
 
@@ -61,9 +62,9 @@ def render(label: Label) -> Image.Image:
     img = Image.new("1", (W, H), 1)
     draw = ImageDraw.Draw(img)
     code = _qr(label.qr)
-    img.paste(code, (4, (H - code.height) // 2))
-    left = 4 + code.width + GAP
-    area = W - left - 4
+    img.paste(code, (MARGIN, (H - code.height) // 2))
+    left = MARGIN + code.width + GAP
+    area = W - left - MARGIN
     cx = left + area // 2
     if label.text.strip():
         name = label.text.strip()

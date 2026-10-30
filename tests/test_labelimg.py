@@ -21,7 +21,7 @@ def test_size_and_no_frame() -> None:
     edge = [px[x, 0] for x in range(320)] + [px[x, 95] for x in range(320)]
     edge += [px[319, y] for y in range(96)]
     assert all(v == 1 for v in edge)  # weiß – kein Rahmen
-    assert any(px[x, y] == 0 for x in range(4, 84) for y in range(96))  # QR links
+    assert any(px[x, y] == 0 for x in range(8, 88) for y in range(96))  # QR links
 
 
 def test_name_shrinks_to_fit() -> None:
@@ -46,3 +46,11 @@ def test_png_route(client: TestClient) -> None:
     r = client.get(f"/labels/img/{code}.png")
     assert r.status_code == 200 and Image.open(io.BytesIO(r.content)).size == (320, 96)
     assert client.get("/labels/img/XXX-999.png").status_code == 404
+
+
+def test_one_mm_margin_left_and_right() -> None:
+    img = labelimg.render(_label("USB-A – USB-A Buchse 3m extra lang extra lang"))
+    px = img.load()
+    assert px is not None
+    black = [x for x in range(320) for y in range(96) if px[x, y] == 0]
+    assert min(black) >= 8 and max(black) <= 319 - 8  # 1 mm = 8 px
