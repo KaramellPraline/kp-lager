@@ -38,6 +38,7 @@ from app import (
     itemtypes,
     kasten,
     kinds,
+    labelimg,
     labels,
     materials,
     notes,
@@ -585,6 +586,16 @@ def create_app(settings: Settings) -> FastAPI:
         )
 
     # --- Etiketten: Vorschau (Namen bearbeiten) → XLSX für D30 oder A8-Bogen -------
+
+    @app.get("/labels/img/{code}.png")
+    def label_image(code: str, conn: Conn) -> Response:
+        """Etikett 40×12 mm als Bild (320×96 px) – für den Direktdruck und zum Prüfen."""
+        norm = codes.normalize(code)
+        found = [r for r in labels.queue(conn, settings.base_url) if r.code == norm]
+        found = found or [r for r in labels.all_coded(conn, settings.base_url) if r.code == norm]
+        if not found:
+            raise HTTPException(404, "Kein Etikett mit diesem Code")
+        return Response(labelimg.png(found[0]), media_type="image/png")
 
     @app.get("/labels", response_class=HTMLResponse)
     def labels_page(request: Request, conn: Conn) -> HTMLResponse:
