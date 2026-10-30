@@ -393,3 +393,41 @@
       .finally(function () { b.disabled = false; b.innerHTML = orig; });
   });
 })();
+
+/* D30: Erreichbarkeit abfragen; Checkbox/Knopf leuchten und sind nur dann bedienbar */
+(function () {
+  var els = document.querySelectorAll("[data-d30]");
+  if (!els.length) return;
+  var KEY = "d30_direct";
+  function apply(ok, msg) {
+    els.forEach(function (el) {
+      el.classList.toggle("on", ok);
+      el.title = ok ? "D30 bereit" : (msg || "D30 nicht erreichbar");
+      var box = el.querySelector("input[type=checkbox]"), btn = el.querySelector("button.d30-btn");
+      if (box) {
+        box.disabled = !ok;
+        if (!ok) box.checked = false;
+        else if (!box.dataset.init) {
+          box.dataset.init = "1";
+          try { box.checked = localStorage.getItem(KEY) === "1"; } catch (e) { /* ohne Speicher */ }
+        }
+      }
+      if (btn) btn.disabled = !ok;
+    });
+  }
+  els.forEach(function (el) {
+    var box = el.querySelector("input[type=checkbox]");
+    if (box) box.addEventListener("change", function () {
+      try { localStorage.setItem(KEY, box.checked ? "1" : "0"); } catch (e) { /* ohne Speicher */ }
+    });
+  });
+  function poll() {
+    if (document.hidden) return;
+    fetch("/d30/status").then(function (r) { return r.json(); })
+      .then(function (d) { apply(!!d.available, d.msg); })
+      .catch(function () { apply(false, "Server nicht erreichbar"); });
+  }
+  poll();
+  setInterval(poll, 20000);
+  document.addEventListener("visibilitychange", poll);
+})();

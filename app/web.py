@@ -31,6 +31,7 @@ from app import (
     backup,
     cables,
     codes,
+    d30,
     datasheets,
     dryer,
     icons,
@@ -219,6 +220,7 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["NQUEUE"] = labels.queue_count(conn)
         ctx["P"] = prefs.values(conn)
         ctx["VOICE"] = bool(settings.whisper_url)
+        ctx["D30"] = settings.d30
         ctx["AI"] = bool(ai_url)
         ctx["NREVIEW"] = ai.count(conn)
         if name in ("node.html", "index.html"):
@@ -288,6 +290,16 @@ def create_app(settings: Settings) -> FastAPI:
             voice=bool(settings.whisper_url),
         )
 
+    def direct_print(conn: sqlite3.Connection, codes_: list[str]) -> str:
+        """Direktdruck nach dem Eintragen; ein Druckfehler lässt das Eintragen gelten."""
+        if not (settings.d30 and codes_):
+            return ""
+        try:
+            n = d30.print_codes(conn, settings.base_url, codes_)
+        except LagerError as exc:
+            return f" · nicht gedruckt: {exc}"
+        return f" · {n} Etikett{'en' if n != 1 else ''} gedruckt"
+
     @app.post("/quickadd")
     def home_quick_add(
         request: Request,
@@ -315,6 +327,7 @@ def create_app(settings: Settings) -> FastAPI:
         dims: Annotated[str, Form()] = "",
         dims_custom: Annotated[str, Form()] = "",
         dims_other: Annotated[str, Form()] = "",
+        d30_print: Annotated[str, Form()] = "",
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
         """„Hinzufügen“ auf der Startseite: Teil mit Kategorie, Behälter, oder „Alle“ (beides).
@@ -372,12 +385,16 @@ def create_app(settings: Settings) -> FastAPI:
             )  # fmt: skip
             if image:
                 repo.set_container_photo(conn, cid, photos.save(image, photo_dir))
-            return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt")
+            created = repo.get_container(conn, cid)
+            new_code = created["code"] if created else None
+            printed = direct_print(conn, [new_code] if new_code and d30_print else [])
+            return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt{printed}")
         dest = need_node(conn, int(target) if target else repo.inbox(conn))
         cat = cat.strip().upper()
         if cat not in codes.ITEM_PREFIXES:
             raise LagerError(f"Unbekannte Kategorie {cat}")
         names = []
+        new_codes: list[str] = []
         # Aus den Kategorie-Feldern: genau ein Teil, Felder direkt übernehmen (nicht neu erkennen)
         parts = [(None, "", text.strip())] if given else entries(conn, text)
         if cat in repo.INDIVIDUAL:  # Einzelstücke: jedes Stück ein Eintrag mit eigenem Etikett
@@ -412,10 +429,12 @@ def create_app(settings: Settings) -> FastAPI:
             if image:
                 repo.update_item(conn, new_id, photo=photos.save(image, photo_dir))
             names.append(name)
+            new_codes.append(str(code))
         undo = repo.last_event_id(conn)
         if (holder := content_holder(conn, dest)) and prefs.flag(conn, "queue_on_quickadd"):
             labels.enqueue_content(conn, holder)
         msg = f"{', '.join(f'„{n}“' for n in names)} → {repo.path_label(conn, dest['id'])}"
+        msg += direct_print(conn, new_codes if d30_print else [])
         resp = redirect("/", msg, undo)
         ids = [dest["id"]] + [i for i in recent_targets(request) if i != dest["id"]]
         resp.set_cookie(
@@ -590,12 +609,10 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/labels/img/{code}.png")
     def label_image(code: str, conn: Conn) -> Response:
         """Etikett 40×12 mm als Bild (320×96 px) – für den Direktdruck und zum Prüfen."""
-        norm = codes.normalize(code)
-        found = [r for r in labels.queue(conn, settings.base_url) if r.code == norm]
-        found = found or [r for r in labels.all_coded(conn, settings.base_url) if r.code == norm]
-        if not found:
+        label = labels.find(conn, settings.base_url, code)
+        if label is None:
             raise HTTPException(404, "Kein Etikett mit diesem Code")
-        return Response(labelimg.png(found[0]), media_type="image/png")
+        return Response(labelimg.png(label), media_type="image/png")
 
     @app.get("/labels", response_class=HTMLResponse)
     def labels_page(request: Request, conn: Conn) -> HTMLResponse:

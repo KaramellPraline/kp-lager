@@ -192,6 +192,16 @@ def queue(conn: sqlite3.Connection, base_url: str) -> list[Label]:
     ]
 
 
+def find(conn: sqlite3.Connection, base_url: str, code: str) -> Label | None:
+    """Etikett zu einem Code: Warteschlange zuerst, sonst aus dem Bestand."""
+    norm = codes.normalize(code)
+    for rows in (queue(conn, base_url), all_coded(conn, base_url)):
+        for r in rows:
+            if r.code == norm:
+                return r
+    return None
+
+
 def queue_count(conn: sqlite3.Connection) -> int:
     return int(conn.execute("SELECT COUNT(*) FROM label_queue").fetchone()[0])
 

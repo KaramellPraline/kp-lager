@@ -71,3 +71,4 @@ Stand: 2026-10-26
 ## Etikettenbild + D30-Direktdruck (2026-10-30)
 - `app/labelimg.py`: Etikett 320×96 px (40×12 mm), QR links, Name mittig mit Auto-Schriftgröße (einzeilig), ID groß darunter, kein Rahmen. Route `/labels/img/<CODE>.png`.
 - `tools/d30_print.py`: BLE-Direktdruck (bleak, Phomemo-Protokoll, Service FF00/FF02). Verbindung getestet; Testdruck ausstehend (D30 war nicht auffindbar → einschalten, dann `uv run --with bleak python tools/d30_print.py CBL-025`).
+- Direktdruck in der App: Checkbox beim Eintragen (leuchtet bei erreichbarem D30, /d30/status), Knopf am Teil solange Etikett offen, app/d30.py, LAGER_D30=1 (Standard). Bluetooth am Server-PC nötig.
