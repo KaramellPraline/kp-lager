@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app import (
     backup,
     bulk,
+    d30,
     dryer,
     itemtypes,
     kinds,
@@ -54,6 +55,24 @@ def register(
         files = backup.run(settings.data_dir, settings.data_dir / "backups",
                            prefs.number(conn, "backup_days"))  # fmt: skip
         return redirect("/status", "Backup erstellt: " + ", ".join(f.name for f in files))
+
+    # --- D30-Direktdruck -----------------------------------------------------------
+
+    @app.get("/d30/status")
+    def d30_status() -> JSONResponse:
+        if not settings.d30:
+            return JSONResponse({"enabled": False, "available": False, "msg": "aus"})
+        ok, msg = d30.status()
+        return JSONResponse({"enabled": True, "available": ok, "msg": msg})
+
+    @app.post("/d30/print")
+    def d30_print(
+        conn: Conn, code: Annotated[list[str], Form()], back: Annotated[str, Form()] = "/"
+    ) -> RedirectResponse:
+        if not settings.d30:
+            raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
+        n = d30.print_codes(conn, settings.base_url, code)
+        return redirect(safe_back(back, "/"), f"{n} Etikett{'en' if n != 1 else ''} gedruckt")
 
     # --- Trockner ----------------------------------------------------------------
 

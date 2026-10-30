@@ -337,3 +337,11 @@ dl.specs dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; 
 li.item.ordered { opacity: .7; }
 .bulk-bar { position: sticky; bottom: 70px; z-index: 5; }
 dd.bad, .bad { color: var(--danger, #e5484d); }
+
+/* D30-Direktdruck: Punkt leuchtet grün, wenn der Drucker erreichbar ist */
+.d30-check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--sub); min-height: 40px; }
+.d30-check input { width: 20px; height: 20px; margin: 0; }
+.d30-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--strong); flex: none; }
+[data-d30].on .d30-dot { background: var(--ok); box-shadow: 0 0 8px 2px var(--ok); }
+[data-d30].on .d30-check, .d30-check.on { color: var(--fg); }
+.d30-btn:disabled { opacity: .55; }

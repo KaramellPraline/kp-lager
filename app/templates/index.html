@@ -99,6 +99,8 @@
       {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
     </select>
   </div>
+  {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+    <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
   <button class="primary add-submit" id="add-submit">{{ icon('action.add', size='sm') }} <span class="lbl">Teil hinzufügen</span></button>
 </form>
 

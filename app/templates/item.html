@@ -138,6 +138,7 @@
       <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">{{ icon('action.move') }} Umlagern</button></form>
       <form method="post" action="/items/{{ item.id }}/list"><button>{{ icon('content.shopping') }} {% if item.on_list %}Von Liste{% else %}Auf Einkaufsliste{% endif %}</button></form>
       {% if item.code %}
+      {% if D30 and not item.label_printed %}<form method="post" action="/d30/print" data-d30 data-busy="Druckt …"><input type="hidden" name="code" value="{{ item.code }}"><input type="hidden" name="back" value="/items/{{ item.id }}"><button class="primary d30-btn" disabled><span class="d30-dot" aria-hidden="true"></span> Jetzt auf D30 drucken</button></form>{% endif %}
       <form method="post" action="/labels/queue/item/{{ item.id }}"><button>{{ icon('content.tag') }} In Warteschlange</button></form>
       <form method="post" action="/labels/preview"><input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}"><button>{{ icon('action.print') }} Etikett drucken</button></form>
       {% else %}
