@@ -1,0 +1,56 @@
+{
+  "name": "Kistenberg NORB16 Bins",
+  "units": "mm",
+  "axes": "X = Breite (parallel zu Bodenrippen), Y = Tiefe (+ Rückwand, - Vorderseite), Z = Höhe",
+  "box": { "outer": [399, 303, 50], "grid": { "cols": 5, "rows": 7 }, "blocked_cells": ["C1", "D1", "E1"], "blocked_reason": "Griff" },
+  "bin": {
+    "pitch": 54.77,
+    "height": 45.5,
+    "size_units": { "w": "1..N (X)", "d": "1..N (Y)" },
+    "wall": 1.2,
+    "floor": 1.2,
+    "corner_outer": 3.0,
+    "draft_per_side": 2.3,
+    "chamfer_bottom": 3.0,
+    "inner_radius_vertical": 5.0,
+    "floor_wall_fillet": 2.5,
+    "scoop_front_radius": 15.0,
+    "scoop_per_row": true,
+    "dividers": { "div_x": 1, "div_y": 1, "thickness": 1.2, "drop_below_top": 2.0 },
+    "grooves": {
+      "when": "d > 1",
+      "positions_y": "-size_y/2 + k*pitch, k=1..d-1",
+      "across": "full width (X)",
+      "bottom_width": 9.8,
+      "top_width": 5.0,
+      "flank_height": 4.6,
+      "roof": "45deg pointed arch (support-free)",
+      "housing_wall": 1.2,
+      "housing_floor_extra": 1.2
+    },
+    "label_pocket": {
+      "label": [40.0, 12.0],
+      "clearance": 0.3,
+      "pocket": [40.6, 12.6],
+      "depth": 0.6,
+      "side": "back wall (+Y)",
+      "shelf_depth": 15.0,
+      "shelf_thickness": 2.0,
+      "shelf_top_below_rim": 0.4,
+      "support": "45deg underside",
+      "min_inner_width": 42,
+      "optional": true
+    }
+  },
+  "standard_set": [
+    { "w": 1, "d": 1, "div": "1x1" }, { "w": 1, "d": 1, "div": "2x1" }, { "w": 1, "d": 1, "div": "3x1" },
+    { "w": 2, "d": 1, "div": "1x1" }, { "w": 2, "d": 1, "div": "3x1" }, { "w": 2, "d": 1, "div": "5x1" },
+    { "w": 1, "d": 2, "div": "1x1" }, { "w": 1, "d": 2, "div": "1x2" }, { "w": 1, "d": 2, "div": "3x1" },
+    { "w": 2, "d": 2, "div": "1x1" }, { "w": 2, "d": 2, "div": "2x1" }, { "w": 2, "d": 2, "div": "3x2" }
+  ],
+  "labels": {
+    "top_tag": "40x12 QR, Code = Kasten + Position (fest)",
+    "content_label": "40x12 ohne QR, Inhalt, außen vorne"
+  },
+  "printing": { "support": "none", "exports": ["STEP", "STL"], "naming": "Bin_{w}x{d}[_div{dx}x{dy}][_label]" }
+}
