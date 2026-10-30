@@ -74,6 +74,26 @@ def register(
         n = d30.print_codes(conn, settings.base_url, code)
         return redirect(safe_back(back, "/"), f"{n} Etikett{'en' if n != 1 else ''} gedruckt")
 
+    # --- Trockner: Etikett scannen, dann Filament-Etiketten = getrocknet ---------------
+
+    @app.get("/trockner/scan/{node_id}", response_class=HTMLResponse)
+    def dryer_scan(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
+        node = repo.get_container(conn, node_id)
+        if node is None or node["kind"] != "dryer":
+            raise LagerError("Das ist kein Filamenttrockner")
+        recent = conn.execute(
+            "SELECT d.started_at, i.name, i.code, i.id FROM dry_log d"
+            " JOIN item i ON i.id = d.item_id WHERE d.note LIKE ? ORDER BY d.id DESC LIMIT 8",
+            (f"Trockner {node['name']} ({node['code'] or '–'})%",),
+        ).fetchall()
+        return render(request, conn, "trockner_scan.html", dryer_node=node, recent=recent)
+
+    @app.post("/trockner/scan/{node_id}/ende")
+    def dryer_scan_end(node_id: int) -> RedirectResponse:
+        resp = redirect(f"/n/{node_id}", "Trockner-Modus beendet")
+        resp.delete_cookie("dryer_wait")
+        return resp
+
     # --- Trockner ----------------------------------------------------------------
 
     @app.get("/trockner", response_class=HTMLResponse)

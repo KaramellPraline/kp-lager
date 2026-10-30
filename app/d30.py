@@ -5,6 +5,7 @@ Protokoll (Phomemo, Service FF00 / Schreib-Characteristic FF02) nach polskafan/p
 """
 
 import asyncio
+import os
 import sqlite3
 import threading
 import time
@@ -72,13 +73,63 @@ async def _send(images: list[Image.Image]) -> None:
             await asyncio.sleep(2.5)  # Drucker braucht Zeit je Etikett
 
 
+def spp_port() -> str | None:
+    """Bluetooth-Seriell-Port (COMx) des gekoppelten D30, falls Windows ihn anlegt.
+
+    LAGER_D30_PORT erzwingt einen Port. Sonst: der ausgehende Bluetooth-Port (Adresse ≠ 0);
+    gibt es mehrere, entscheidet LAGER_D30_ADDR (z. B. E2B733D33FE0)."""
+    if forced := os.environ.get("LAGER_D30_PORT", ""):
+        return forced
+    try:
+        from serial.tools import list_ports  # type: ignore[import-untyped]
+    except ImportError:
+        return None
+    ports = [
+        (p.device, p.hwid or "")
+        for p in list_ports.comports()
+        if "BTHENUM" in (p.hwid or "") and "000000000000" not in (p.hwid or "")
+    ]
+    addr = os.environ.get("LAGER_D30_ADDR", "").replace(":", "").upper()
+    if addr:
+        ports = [x for x in ports if addr in x[1].upper()]
+    return ports[0][0] if len(ports) == 1 else None
+
+
+def _via_serial(port: str, images: list[Image.Image]) -> None:
+    import serial  # type: ignore[import-untyped]
+
+    with serial.Serial(port, 115200, timeout=3, write_timeout=15) as ser:
+        for img in images:
+            for packet in INIT:
+                ser.write(bytes.fromhex(packet))
+                ser.flush()
+                time.sleep(0.05)
+            data = labelimg.d30_bytes(img)
+            for i in range(0, len(data), 512):
+                ser.write(data[i : i + 512])
+                ser.flush()
+            time.sleep(2.5)  # Drucker braucht Zeit je Etikett
+
+
+def _transmit(images: list[Image.Image]) -> None:
+    """Zuerst Bluetooth-Seriell (COM, braucht keinen Scan), bei Fehler Bluetooth LE."""
+    port = spp_port()
+    if port:
+        try:
+            _via_serial(port, images)
+            return
+        except Exception:  # Port weg, Drucker aus/außer Reichweite → LE versuchen
+            pass
+    asyncio.run(_send(images))
+
+
 def send(images: list[Image.Image]) -> None:
     """Bilder (320×96) nacheinander drucken; immer nur ein Druckauftrag gleichzeitig."""
     global _cache
     if not _lock.acquire(blocking=False):
         raise LagerError("Der D30 druckt gerade – gleich nochmal versuchen")
     try:
-        asyncio.run(_send(images))
+        _transmit(images)
         _cache = (time.monotonic(), True, "")
     except LagerError:
         raise
@@ -91,17 +142,23 @@ def send(images: list[Image.Image]) -> None:
         _lock.release()
 
 
+def print_labels(rows: list[labels.Label]) -> int:
+    """Etiketten (nach Code-Text, noch ohne Buchführung) drucken."""
+    if not rows:
+        raise LagerError("Kein Etikett zum Drucken")
+    if len(rows) > MAX_LABELS:
+        raise LagerError(f"Höchstens {MAX_LABELS} Etiketten auf einmal")
+    send([labelimg.render(r) for r in rows])
+    return len(rows)
+
+
 def print_codes(conn: sqlite3.Connection, base_url: str, codes_: list[str]) -> int:
     """Etiketten dieser Codes drucken, als gedruckt markieren und aus der Warteschlange nehmen."""
     rows = []
     for code in dict.fromkeys(codes_):
         if label := labels.find(conn, base_url, code):
             rows.append(label)
-    if not rows:
-        raise LagerError("Kein Etikett zum Drucken")
-    if len(rows) > MAX_LABELS:
-        raise LagerError(f"Höchstens {MAX_LABELS} Etiketten auf einmal")
-    send([labelimg.render(r) for r in rows])
+    print_labels(rows)
     done = [(r.code,) for r in rows]
     with conn:
         conn.executemany("UPDATE container SET label_printed = 1 WHERE code = ?", done)

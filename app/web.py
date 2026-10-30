@@ -2,7 +2,7 @@
 
 import json
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any
@@ -30,6 +30,7 @@ from app import (
     apikeys,
     backup,
     cables,
+    choices,
     codes,
     d30,
     datasheets,
@@ -128,11 +129,33 @@ def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectRespon
 
 
 RECENT_COOKIE = "recent"
+DRYER_COOKIE = "dryer_wait"  # gescannter Trockner wartet 10 min auf Filament-Etiketten
 TARGET_COOKIE = "qa_targets"  # zuletzt gewählte Ziele der Schnelleingabe (neueste zuerst)
 
 
 def recent_targets(request: Request) -> list[int]:
     return [int(x) for x in request.cookies.get(TARGET_COOKIE, "").split(",") if x.isdigit()]
+
+
+def recent_list(request: Request, name: str) -> list[str]:
+    return [x for x in request.cookies.get(name, "").split(",") if x]
+
+
+def ordered[T](rows: list[T], recents: list[str], key: Callable[[T], str]) -> list[T]:
+    """Zuletzt verwendete zuerst (in der Reihenfolge der Nutzung), der Rest wie bisher."""
+    first = [r for name in recents for r in rows if key(r) == name]
+    return first + [r for r in rows if r not in first]
+
+
+def remember(resp: RedirectResponse, request: Request, name: str, value: str) -> None:
+    names = [value] + [x for x in recent_list(request, name) if x != value]
+    resp.set_cookie(name, ",".join(names[:12]), max_age=31_536_000, samesite="lax")
+
+
+async def spec_form(request: Request) -> dict[str, str]:
+    """Alle Formularfelder spec_* (Auswahllisten für Filament/Harz beim Anlegen)."""
+    form = await request.form()
+    return {k: v for k, v in form.items() if k.startswith("spec_") and isinstance(v, str)}
 
 
 def last_target(request: Request) -> int | None:
@@ -221,6 +244,10 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["P"] = prefs.values(conn)
         ctx["VOICE"] = bool(settings.whisper_url)
         ctx["D30"] = settings.d30
+        ctx.setdefault("dims_opts", dims_options(conn))
+        ctx.setdefault(
+            "dims_kinds", [k for k, _, _ in kinds.ADD_KINDS if k not in ("machine", "dryer")]
+        )
         ctx["AI"] = bool(ai_url)
         ctx["NREVIEW"] = ai.count(conn)
         if name in ("node.html", "index.html"):
@@ -288,7 +315,31 @@ def create_app(settings: Settings) -> FastAPI:
             fav_targets=repo.favorites(conn)[:10],
             recent_targets=repo.containers_by_ids(conn, recent_targets(request))[:3],
             voice=bool(settings.whisper_url),
+            cats=ordered(kinds.ITEM_CATS_SHORT, recent_list(request, "qa_cats"), lambda c: c[0]),
+            add_kinds=ordered(
+                kinds.ADD_KINDS, recent_list(request, "qa_kinds") or ["box"], lambda k: k[0]
+            ),
+            spec_forms=choices.forms(conn),
         )
+
+    def dims_options(conn: sqlite3.Connection) -> dict[str, list[str]]:
+        """Maße je Art: Euro-Normen, dazu alles, was bei Behältern schon vorkommt."""
+        used: dict[str, list[str]] = {"*": []}
+        for r in conn.execute(
+            "SELECT kind, dims, COUNT(*) n FROM container WHERE dims != ''"
+            " GROUP BY kind, dims ORDER BY n DESC, dims"
+        ):
+            used.setdefault(r["kind"], []).append(r["dims"])
+            if r["dims"] not in used["*"]:
+                used["*"].append(r["dims"])
+        out = {k: v for k, v in used.items() if k != "*"}
+        out["eurobox"] = used.get("eurobox", []) + [
+            d for d in kinds.EURO_DIMS if d not in used.get("eurobox", [])
+        ]
+        for kind in kinds.BOXY:
+            out.setdefault(kind, [])
+        out["*"] = used["*"]
+        return out
 
     def direct_print(conn: sqlite3.Connection, codes_: list[str]) -> str:
         """Direktdruck nach dem Eintragen; ein Druckfehler lässt das Eintragen gelten."""
@@ -327,7 +378,9 @@ def create_app(settings: Settings) -> FastAPI:
         dims: Annotated[str, Form()] = "",
         dims_custom: Annotated[str, Form()] = "",
         dims_other: Annotated[str, Form()] = "",
+        airtight: Annotated[str, Form()] = "",
         d30_print: Annotated[str, Form()] = "",
+        specs: Annotated[dict[str, str] | None, Depends(spec_form)] = None,
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
         """„Hinzufügen“ auf der Startseite: Teil mit Kategorie, Behälter, oder „Alle“ (beides).
@@ -359,6 +412,18 @@ def create_app(settings: Settings) -> FastAPI:
             if not text:
                 raise LagerError("Bitte die Spannung angeben")
             given = {k: v for k, v in psu.items() if v}
+        if mode == "item" and cat.upper() in choices.FORM:  # Filament/Harz aus den Auswahllisten
+            fields = {f.key for f in materials.FIELDS[materials.PREFIX_MATERIAL[cat.upper()]]}
+            raw = {k[5:]: v for k, v in (specs or {}).items() if not k.endswith("_new")}
+            vals = {
+                k: ((specs or {}).get(f"spec_{k}_new", "") if v == "neu" else v).strip()
+                for k, v in raw.items()
+                if k in fields
+            }
+            vals = {k: v for k, v in vals.items() if v}
+            if any(vals.get(k) for k in ("brand", "material", "color")):
+                given = vals
+                text = choices.name(vals)
         if not text.strip():
             raise LagerError("Was soll eingetragen werden?")
         image = photo.file.read() if photo is not None and photo.filename else b""
@@ -381,14 +446,22 @@ def create_app(settings: Settings) -> FastAPI:
                 kind = kinds.create(conn, new_kind, new_prefix)
             cid = repo.create_container(
                 conn, text.strip(), kind, parent_id=opt_int(target),
-                dims=pick_dims(dims, dims_custom, dims_other),
+                dims=pick_dims(dims, dims_custom, dims_other), airtight=bool(airtight),
             )  # fmt: skip
             if image:
                 repo.set_container_photo(conn, cid, photos.save(image, photo_dir))
             created = repo.get_container(conn, cid)
-            new_code = created["code"] if created else None
+            prefix = codes.KIND_PREFIX.get(kind)
+            if created and prefix and (kind in ("machine", "dryer") or d30_print):
+                new_code = codes.reserve(conn, prefix, 1)[0]  # Maschinen/Trockner: immer Etikett
+                repo.assign_code(conn, cid, new_code)
+                labels.enqueue(conn, new_code, *labels.container_label(conn, created))
+            else:
+                new_code = None
             printed = direct_print(conn, [new_code] if new_code and d30_print else [])
-            return redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt{printed}")
+            resp = redirect(f"/n/{cid}", f"„{text.strip()}“ angelegt{printed}")
+            remember(resp, request, "qa_kinds", kind)
+            return resp
         dest = need_node(conn, int(target) if target else repo.inbox(conn))
         cat = cat.strip().upper()
         if cat not in codes.ITEM_PREFIXES:
@@ -396,7 +469,11 @@ def create_app(settings: Settings) -> FastAPI:
         names = []
         new_codes: list[str] = []
         # Aus den Kategorie-Feldern: genau ein Teil, Felder direkt übernehmen (nicht neu erkennen)
-        parts = [(None, "", text.strip())] if given else entries(conn, text)
+        parts: list[tuple[int | None, str, str]]
+        if given and cat in choices.FORM:  # Spulen/Flaschen: Anzahl = Menge
+            parts = [(opt_int(count) or 1, "", text.strip())]
+        else:
+            parts = [(None, "", text.strip())] if given else list(entries(conn, text))
         if cat in repo.INDIVIDUAL:  # Einzelstücke: jedes Stück ein Eintrag mit eigenem Etikett
             spread: list[tuple[int | None, str, str]] = []
             for amount, unit, name in parts:
@@ -422,6 +499,8 @@ def create_app(settings: Settings) -> FastAPI:
                 form = {f"spec_{k}": v for k, v in given.items()} or materials.auto_specs(
                     "psu", name
                 )
+            if given and cat in choices.FORM:
+                form = {f"spec_{k}": v for k, v in given.items()}
             new_id = repo.add_item(conn, dest["id"], name, qty=amount, unit=unit, code=code)
             if material := materials.PREFIX_MATERIAL.get(cat):
                 materials.save_specs(conn, new_id, material, form)
@@ -436,6 +515,7 @@ def create_app(settings: Settings) -> FastAPI:
         msg = f"{', '.join(f'„{n}“' for n in names)} → {repo.path_label(conn, dest['id'])}"
         msg += direct_print(conn, new_codes if d30_print else [])
         resp = redirect("/", msg, undo)
+        remember(resp, request, "qa_cats", cat)
         ids = [dest["id"]] + [i for i in recent_targets(request) if i != dest["id"]]
         resp.set_cookie(
             TARGET_COOKIE, ",".join(map(str, ids[:3])), max_age=31_536_000, samesite="lax"
@@ -448,8 +528,19 @@ def create_app(settings: Settings) -> FastAPI:
         code = codes.normalize(code) or code.strip()
         msg = request.query_params.get("msg", "")
         if node := repo.get_container_by_code(conn, code):
+            if node["kind"] == "dryer":  # Trockner scannen → jetzt Filament-Etiketten scannen
+                resp = redirect(f"/trockner/scan/{node['id']}", msg)
+                resp.set_cookie(DRYER_COOKIE, str(node["id"]), max_age=600, samesite="lax")
+                return resp
             return redirect(f"/n/{node['id']}", msg)
         if item := repo.get_item_by_code(conn, code):
+            wait = request.cookies.get(DRYER_COOKIE, "")
+            dryer_node = repo.get_container(conn, int(wait)) if wait.isdigit() else None
+            if item["material"] == "fil" and dryer_node and dryer_node["kind"] == "dryer":
+                done = dryer.mark_dried(conn, item["id"], dryer_node)
+                resp = redirect(f"/trockner/scan/{dryer_node['id']}", done)
+                resp.set_cookie(DRYER_COOKIE, str(dryer_node["id"]), max_age=600, samesite="lax")
+                return resp
             return redirect(f"/items/{item['id']}", msg)
         if t := itemtypes.by_code(conn, code):
             return redirect(f"/typen/{t['id']}", msg)
@@ -505,6 +596,17 @@ def create_app(settings: Settings) -> FastAPI:
             RECENT_COOKIE, ",".join(map(str, recent[:20])), max_age=31_536_000, samesite="lax"
         )
         return resp
+
+    @app.get("/n/{node_id}/inhalt", response_class=HTMLResponse)
+    def node_peek(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
+        """Kleine Inhaltsliste für „Wohin?“ beim Hinzufügen."""
+        node = need_node(conn, node_id)
+        return templates.TemplateResponse(
+            request,
+            "_peek.html",
+            {"kids": repo.children(conn, node_id), "items": repo.items_in(conn, node_id),
+             "node": node, "icon": templates.env.globals.get("icon")},
+        )  # fmt: skip
 
     @app.get("/items/{item_id}", response_class=HTMLResponse)
     def item_page(request: Request, item_id: int, conn: Conn) -> HTMLResponse:
@@ -751,13 +853,36 @@ def create_app(settings: Settings) -> FastAPI:
     ) -> Response:
         if not (len(code) == len(text) == len(extra)):
             raise HTTPException(400, "Tabelle unvollständig")
-        rows = labels.finalize(
-            conn, settings.base_url, list(zip(code, text, extra, strict=True)), bool(save_names)
-        )
+        entries_ = list(zip(code, text, extra, strict=True))
+        if fmt == "d30":  # erst drucken – nur Gedrucktes wird als gedruckt gebucht
+            if not settings.d30:
+                raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
+            d30.print_labels(
+                [
+                    labels.Label(c, labels.qr_content(settings.base_url, c), t.strip(), e.strip())
+                    for raw, t, e in entries_
+                    if (c := codes.normalize(raw))
+                ]
+            )
+        rows = labels.finalize(conn, settings.base_url, entries_, bool(save_names))
         if not rows:
             raise LagerError("Keine gültigen Codes")
+        if fmt == "queue":  # nur merken (z. B. für später oder den XLSX-Export)
+            for r in rows:
+                labels.enqueue(conn, r.code, r.text, r.extra)
+            with conn:
+                conn.executemany(
+                    "UPDATE container SET label_printed = 0 WHERE code = ?",
+                    [(r.code,) for r in rows],
+                )
+                conn.executemany(
+                    "UPDATE item SET label_printed = 0 WHERE code = ?", [(r.code,) for r in rows]
+                )
+            return redirect("/labels", f"{len(rows)} Etikett(en) in der Warteschlange")
         if source == "queue":
             labels.dequeue(conn, [r.code for r in rows])
+        if fmt == "d30":
+            return redirect("/labels", f"{len(rows)} Etikett(en) auf dem D30 gedruckt")
         if fmt == "a4":
             cells = [(r, labels.qr_svg(r.qr)) for r in rows]
             per = labels.A4_COLS * labels.A4_ROWS
@@ -1460,6 +1585,7 @@ def create_app(settings: Settings) -> FastAPI:
         dims: Annotated[str, Form()] = "",
         dims_custom: Annotated[str, Form()] = "",
         dims_other: Annotated[str, Form()] = "",
+        airtight: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         if not name.strip():
             raise LagerError("Name fehlt")
@@ -1475,6 +1601,7 @@ def create_app(settings: Settings) -> FastAPI:
             position=position.strip() or None,
             model=model_key,
             dims=pick_dims(dims, dims_custom, dims_other),
+            airtight=bool(airtight),
         )
         return redirect(f"/n/{cid}")
 

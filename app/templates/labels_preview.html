@@ -26,7 +26,9 @@
   <label class="check"><input type="checkbox" name="save_names" value="1"> Geänderte Texte auch als Namen im Lager speichern</label>
   {% endif %}
   <div class="row">
-    <button name="fmt" value="xlsx" class="primary">{{ icon('action.download', size='sm') }} XLSX für D30 exportieren</button>
+    {% if D30 %}<button name="fmt" value="d30" class="primary d30-btn" data-d30 disabled><span class="d30-dot" aria-hidden="true"></span> Auf D30 drucken</button>{% endif %}
+    {% if source != 'queue' %}<button name="fmt" value="queue">{{ icon('content.tag', size='sm') }} In Warteschlange</button>{% endif %}
+    <button name="fmt" value="xlsx">{{ icon('action.download', size='sm') }} XLSX für D30 exportieren</button>
   </div>
   <p class="meta">Auf Papier drucken: <a href="/labels/a4">A4-Druck</a> (Auswahl aus allen Etiketten). Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
 </form>

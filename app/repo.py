@@ -43,6 +43,7 @@ def create_container(
     size: str | None = None,
     model: str | None = None,
     dims: str = "",
+    airtight: bool = False,
 ) -> int:
     """Legt einen Behälter an. Mit `grid` werden die Fächer als Kind-Behälter erzeugt."""
     from app.kinds import resolve  # spät: kinds importiert repo
@@ -54,8 +55,8 @@ def create_container(
     with conn:
         cur = conn.execute(
             "INSERT INTO container (code, parent_id, kind, name, position, grid, notes, size,"
-            " model, dims) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (code, parent_id, kind, name, position, grid, notes, size, model, dims),
+            " model, dims, airtight) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (code, parent_id, kind, name, position, grid, notes, size, model, dims, int(airtight)),
         )
         cid = cur.lastrowid
         assert cid is not None

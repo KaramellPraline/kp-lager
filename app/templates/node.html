@@ -18,7 +18,7 @@
         <span class="chip">{{ KIND_LABELS[node.kind] }}</span>
         {% if node.code %}<span class="chip code">{{ node.code }}</span>{% endif %}
         {% if node.size %}<span class="chip">{{ node.size }}</span>{% endif %}
-        {% if node.dims %}<span class="chip">{{ node.dims|replace('x', ' × ') }} mm</span>{% endif %}
+        {% if node.dims %}<span class="chip">{{ node.dims|replace('x', ' × ') }} mm</span>{% endif %}{% if node.airtight %}<span class="chip">Luftdicht</span>{% endif %}
         {% if VAL.get(node.id) %}<span class="chip" title="Menge × Preis aller Teile darin{% if UNPRICED.get(node.id) %} · {{ UNPRICED[node.id] }} Teile ohne Preis{% endif %}">{{ euro(VAL[node.id]) }}</span>{% endif %}
         {% if node.grid %}<span class="chip">Fächer {{ node.grid }}</span>{% endif %}
         {% if items %}<span class="chip">{{ items|length }} Teile</span>{% endif %}
@@ -40,7 +40,7 @@
 
   {% if items %}
   <h2>Inhalt</h2>
-  <ul class="list items">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
+  <ul class="list items" data-collapse="9">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
   {% elif not node.model and not kids %}
   <p class="empty">Noch leer – oben eintragen, scannen oder per Chat-Inventur importieren.</p>
   {% endif %}

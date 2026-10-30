@@ -1,5 +1,6 @@
 """Filament-Trockner: Programme (Temperatur, Dauer) und Verlauf je Spule."""
 
+import json
 import sqlite3
 from datetime import datetime, timedelta
 
@@ -50,6 +51,43 @@ def start(conn: sqlite3.Connection, item_id: int, program_id: int, note: str = "
             (item_id, prog["name"], prog["temp_c"], prog["hours"], note.strip()),
         )
     return int(cur.lastrowid or 0)
+
+
+def mark_dried(conn: sqlite3.Connection, item_id: int, dryer: sqlite3.Row) -> str:
+    """Scan Trockner-Etikett, dann Filament-Etikett: sofort als getrocknet (jetzt) vermerken."""
+    item = conn.execute("SELECT * FROM item WHERE id = ?", (item_id,)).fetchone()
+    if item is None or item["material"] != "fil":
+        raise LagerError("Trocknen gibt es nur für Filament")
+    try:
+        specs = json.loads(item["specs"] or "{}")
+    except ValueError:
+        specs = {}
+    material = str(specs.get("material", "")).strip()
+    prog = conn.execute(
+        "SELECT * FROM dryer_program WHERE name = ? COLLATE NOCASE OR material = ? COLLATE NOCASE"
+        " ORDER BY name = ? COLLATE NOCASE DESC LIMIT 1",
+        (material, material, material),
+    ).fetchone()
+    temp = float(prog["temp_c"] if prog else specs.get("dry_temp", 0) or 0)
+    hours = float(prog["hours"] if prog else specs.get("dry_hours", 0) or 0)
+    stamp = datetime.now().strftime(FMT)
+    with conn:
+        conn.execute(
+            "INSERT INTO dry_log (item_id, program, temp_c, hours, started_at, done_at, note)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                item_id,
+                prog["name"] if prog else "Scan",
+                temp,
+                hours,
+                stamp,
+                stamp,
+                f"Trockner {dryer['name']} ({dryer['code'] or '–'}), per Scan",
+            ),
+        )
+    return (
+        f"„{item['name']}“ als getrocknet gespeichert ({stamp[8:10]}.{stamp[5:7]}. {stamp[11:16]})"
+    )
 
 
 def finish(conn: sqlite3.Connection, log_id: int) -> None:

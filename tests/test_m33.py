@@ -123,7 +123,7 @@ def test_cables_and_psus_are_individual(client: TestClient) -> None:
 
 
 def test_eurobox_dims(client: TestClient) -> None:
-    assert "600 × 400 × 170 mm" in client.get("/").text
+    assert "600x400x170" in client.get("/").text  # Auswahlliste (JSON), Anzeige per JS
     box = _box(client, "Eurobox groß", "eurobox", dims="600x400x170")
     assert "600 × 400 × 170 mm" in client.get(f"/n/{box}").text
     other = _box(client, "Kiste eigene", "crate", dims_other="45 x 35 x 20")

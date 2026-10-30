@@ -50,6 +50,7 @@ _MECH = (
 )
 FIELDS: dict[str, tuple[Field, ...]] = {
     "fil": (
+        Field("brand", "base", "Hersteller", "Manufacturer", "", "Prusament, eSun, Sunlu …"),
         Field("material", "base", "Werkstoff", "Material", "", "PLA, PETG, ABS, ASA, TPU …"),
         Field("color", "base", "Farbe", "Color"),
         Field("diameter", "base", "Durchmesser", "Diameter", "mm", "1.75"),
@@ -70,6 +71,7 @@ FIELDS: dict[str, tuple[Field, ...]] = {
         *_MECH,
     ),
     "res": (
+        Field("brand", "base", "Hersteller", "Manufacturer", "", "Elegoo, Anycubic, Siraya …"),
         Field("material", "base", "Harztyp", "Resin type", "", "Standard, ABS-like, Tough, Flex …"),
         Field("color", "base", "Farbe", "Color"),
         Field("volume", "base", "Inhalt je Flasche", "Volume per bottle", "ml", "1000"),

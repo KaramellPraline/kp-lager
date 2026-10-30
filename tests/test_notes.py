@@ -84,7 +84,8 @@ def test_header_icons_and_bottom_bar(voice: TestClient) -> None:
     assert 'href="/mehr"' in header and 'href="/verlauf"' in header and 'id="top-search"' in header
     assert 'id="note-rec"' not in header  # langes Diktat: Sprache-Tab
     bottom = page.split('class="bottomnav')[1].split("</nav>")[0]
-    assert 'href="/mehr"' not in bottom and bottom.count("<a ") == 6
-    for href in ("/einkauf", "/platz", "/scan", "/sprache", "/labels"):
+    assert 'href="/mehr"' not in bottom and bottom.count("<a ") == 5
+    for href in ("/einkauf", "/scan", "/sprache", "/labels"):
         assert f'href="{href}"' in bottom
+    assert 'href="/platz"' not in bottom
     assert 'href="/suche"' not in bottom
