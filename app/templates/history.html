@@ -4,7 +4,18 @@
 <h1>Verlauf</h1>
 <nav class="seg tabs" aria-label="Verlauf">
   <a href="/verlauf" class="{% if tab == 'aktionen' %}active{% endif %}">Aktionen</a>
-  <a href="/verlauf?tab=gesehen" class="{% if tab == 'gesehen' %}active{% endif %}">Zuletzt angesehen</a>
+  <a href="/verlauf?tab=gesehen" class="{% if tab == 'druck' %}
+<form method="post" action="/druck/wiederholen" class="stack">
+  {% if jobs %}<ul class="list">{% for j in jobs %}
+    <li class="item"><label class="name"><input type="checkbox" name="job" value="{{ j.id }}"> {{ j.n }} Etikett{{ 'en' if j.n != 1 }} · {{ j.codes[:60] }}
+      <small>{{ j.ts }}{% if not j.ok %} · fehlgeschlagen: {{ j.error }}{% endif %}</small></label>
+      <button name="job" value="{{ j.id }}" title="Erneut drucken" aria-label="Erneut drucken">{{ icon('action.print') }}</button></li>
+  {% endfor %}</ul>
+  <button class="primary">Gewählte erneut drucken (Batch)</button>
+  {% else %}<p class="empty">Noch nichts gedruckt.</p>{% endif %}
+</form>
+{% elif tab == 'gesehen' %}active{% endif %}">Zuletzt angesehen</a>
+  <a href="/verlauf?tab=druck" class="{% if tab == 'druck' %}active{% endif %}">Drucke</a>
 </nav>
 {% if tab == 'gesehen' %}
 {% if recent %}{% with kids=recent, cols=0 %}{% include "_kids.html" %}{% endwith %}{% else %}<p class="empty">Noch nichts angesehen.</p>{% endif %}

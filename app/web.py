@@ -1196,11 +1196,25 @@ def create_app(settings: Settings) -> FastAPI:
             request,
             conn,
             "history.html",
-            tab="gesehen" if tab == "gesehen" else "aktionen",
+            tab=tab if tab in ("gesehen", "druck") else "aktionen",
+            jobs=d30.history(conn) if tab == "druck" else [],
             events=repo.recent_events(conn),
             undoable=repo.UNDOABLE,
             recent=recent[: prefs.number(conn, "home_recent")],
         )
+
+    @app.post("/druck/wiederholen")
+    async def print_repeat(request: Request, conn: Conn) -> RedirectResponse:
+        """Druckaufträge aus dem Verlauf erneut drucken (ein Auftrag oder mehrere als Batch)."""
+        form = await request.form()
+        ids = [int(v) for v in form.getlist("job") if isinstance(v, str) and v.isdigit()]
+        marks = ",".join("?" * len(ids))
+        rows = conn.execute(f"SELECT codes FROM label_job WHERE id IN ({marks})", ids).fetchall()
+        wanted = list(dict.fromkeys(c for r in rows for c in r["codes"].split()))
+        if not wanted:
+            raise LagerError("Keinen Auftrag gewählt")
+        n = d30.print_codes(conn, settings.base_url, wanted)
+        return redirect("/verlauf?tab=druck", f"{n} Etikett{'en' if n != 1 else ''} erneut gedruckt")
 
     @app.get("/verliehen", response_class=HTMLResponse)
     def lent_page(request: Request, conn: Conn) -> HTMLResponse:

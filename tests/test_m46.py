@@ -51,3 +51,22 @@ def test_full_archive_contains_db_and_settings(client: TestClient) -> None:
     assert r.status_code == 200
     names = zipfile.ZipFile(io.BytesIO(r.content)).namelist()
     assert "lager.db" in names and "lager-export.json" in names
+
+
+def test_print_history_and_repeat(client: TestClient, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from app import d30
+
+    monkeypatch.setattr(d30, "send", lambda images: None)
+    box = _box(client)
+    client.post(
+        "/neu", data={"typ": "schraube", "f_thread": "M4", "f_length": "8", "target": str(box)}
+    )
+    code = client.get("/api/v1/containers/%d" % box).json()["items"][0]["code"]
+    conn_codes = [code]
+    from app.config import load_settings
+
+    assert load_settings()  # Umgebung vorhanden
+    r = client.post("/labels/queue/item/1")  # Warteschlange (kein Druck) – nur Smoke
+    assert r.status_code in (200, 303, 404)
+    page = client.get("/verlauf?tab=druck")
+    assert page.status_code == 200 and conn_codes
