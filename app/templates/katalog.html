@@ -11,7 +11,7 @@
     <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
     </details>
     {% endfor %}
-    <p class="meta">Kabel, Netzteile, Filament und Harz: Reiter <a href="/neu/material">Kabel &amp; Material</a>.</p>
+    <p class="meta">Filament und Harz (mit Spulen-/Flaschendaten): <a href="/neu/material">hier anlegen</a>.</p>
   </aside>
   <nav class="jump-bar" aria-label="Zu Kategorie springen">{% for g, types in groups %}<a href="#g{{ loop.index }}" data-jump="g{{ loop.index }}" title="{{ g }}">{{ g[:2] }}</a>{% endfor %}</nav>
 
@@ -48,12 +48,14 @@
         <div class="chips place-sugg" data-select="target" aria-label="Platz-Vorschläge"></div>
       </div>
       <label class="meta"><input type="checkbox" name="no_label" value="1"> Kein eigenes Etikett (nur Tags, Fachinhalt)</label>
-      {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+      {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" {% if auto_print %}checked{% endif %} disabled>
         <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
       <div class="row"><button class="primary" id="neu-submit">{{ icon('action.add', size='sm') }} Anlegen</button>
         <span class="meta">Enter legt an · danach bleibt dieser Typ mit leeren Feldern offen</span></div>
     </form>
 
+    {% if D30 %}<form method="post" action="/neu/autodruck" class="row"><input type="hidden" name="on" value="{{ '0' if auto_print else '1' }}"><input type="hidden" name="back" value="/neu">
+      <button class="link">{{ 'Automatisch drucken ausschalten' if auto_print else 'Neue Teile automatisch drucken (40x12)' }}</button></form>{% endif %}
     {% if recent %}
     <h2>Zuletzt angelegt</h2>
     <ul class="list">{% for r in recent %}<li><a href="/items/{{ r.id }}"><span class="name">{{ r.name }}</span><span class="meta">{{ r.code }} · {{ r.place }}{% if r.qty is not none %} · {{ r.qty }}×{% endif %}</span></a></li>{% endfor %}</ul>

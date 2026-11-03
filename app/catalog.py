@@ -872,6 +872,18 @@ TYPES: tuple[Type, ...] = (
         (("{kind}",), ("{form}",), ("{size}",)),
     ),
     Type(
+        "kabel",
+        GROUPS[3],
+        "Kabel (USB, Strom, Audio, Meterware)",
+        "ART",
+        (
+            F("kind", "Art", "USB-Kabel|Stromkabel|Verlängerung|HDMI|Audio|Lautsprecher|Litze|Meterware"),
+            F("ends", "Stecker", "", hint="z. B. USB-C auf USB-A"),
+            F("length", "Länge", "0.5|1|2|3|5|10", "m"),
+        ),
+        (("{kind}",), ("{ends}",), ("{length}m",)),
+    ),
+    Type(
         "gridfinity",
         GROUPS[6],
         "Gridfinity (Bin / Baseplate)",

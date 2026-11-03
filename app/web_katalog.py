@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import catalog, d30, kasten, labels, repo
+from app import catalog, codes, d30, kasten, labels, repo
 from app.config import Settings
 from app.repo import LagerError
 
@@ -64,6 +64,7 @@ def register(
             "katalog.html",
             groups=catalog.grouped(conn),
             favs=catalog.favorite_keys(conn),
+            auto_print=codes.get_setting(conn, "auto_print", "0") == "1",
             ctype=current,
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
@@ -84,6 +85,11 @@ def register(
         if catalog.lookup(conn, key):
             catalog.toggle_favorite(conn, key)
         return RedirectResponse(f"/neu?typ={key}", status_code=303)
+
+    @app.post("/neu/autodruck")
+    def katalog_auto_print(conn: Conn, form: Form) -> RedirectResponse:
+        codes.set_setting(conn, "auto_print", "1" if form.get("on") == "1" else "0")
+        return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
     @app.get("/neu/vorschau")
     def katalog_preview(request: Request, typ: str, conn: Conn) -> JSONResponse:
@@ -116,7 +122,8 @@ def register(
         )
         item = repo.get_item(conn, item_id)
         msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"
-        if form.get("d30_print") and settings.d30 and item["code"]:
+        auto = codes.get_setting(conn, "auto_print", "0") == "1"  # Regel: 40x12 sofort drucken
+        if (form.get("d30_print") or auto) and settings.d30 and item["code"]:
             msg += print_now(conn, [item["code"]])
         # gleicher Typ nochmal, Felder zurückgesetzt (Ziel bleibt)
         resp = redirect(f"/neu?typ={typ}", msg)

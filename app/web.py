@@ -1214,7 +1214,9 @@ def create_app(settings: Settings) -> FastAPI:
         if not wanted:
             raise LagerError("Keinen Auftrag gewählt")
         n = d30.print_codes(conn, settings.base_url, wanted)
-        return redirect("/verlauf?tab=druck", f"{n} Etikett{'en' if n != 1 else ''} erneut gedruckt")
+        return redirect(
+            "/verlauf?tab=druck", f"{n} Etikett{'en' if n != 1 else ''} erneut gedruckt"
+        )
 
     @app.get("/verliehen", response_class=HTMLResponse)
     def lent_page(request: Request, conn: Conn) -> HTMLResponse:
