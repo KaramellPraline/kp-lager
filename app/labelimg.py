@@ -44,9 +44,17 @@ def fit(draw: ImageDraw.ImageDraw, text: str, width: int, biggest: int, smallest
     """Größte Schrift, bei der der Text einzeilig in die Breite passt."""
     for size in range(biggest, smallest - 1, -1):
         font = _font(size)
-        if draw.textlength(text, font=font) <= width:
+        left, _, right, _ = draw.textbbox((0, 0), text, font=font)
+        if max(right - left, draw.textlength(text, font=font)) <= width:
             return font
     return _font(smallest)
+
+
+def clip(draw: ImageDraw.ImageDraw, text: str, font: Font, width: int) -> str:
+    """Passt der Text auch in der kleinsten Schrift nicht, wird er mit „…“ gekürzt."""
+    while len(text) > 1 and draw.textlength(text, font=font) > width:
+        text = text[:-2].rstrip() + "…"
+    return text
 
 
 def _qr(content: str) -> Image.Image:
@@ -65,15 +73,16 @@ def render(label: Label) -> Image.Image:
     img.paste(code, (MARGIN, (H - code.height) // 2))
     left = MARGIN + code.width + GAP
     area = W - left - MARGIN
+    room = area - 4  # Luft für Glyphen-Überhang (je nach Schrift)
     cx = left + area // 2
     if label.text.strip():
         name = label.text.strip()
-        nf = fit(draw, name, area, NAME_MAX, NAME_MIN)
-        draw.text((cx, 26), name, font=nf, fill=0, anchor="mm")
-        idf = fit(draw, label.code, area, ID_MAX, ID_MIN)
+        nf = fit(draw, name, room, NAME_MAX, NAME_MIN)
+        draw.text((cx, 26), clip(draw, name, nf, room), font=nf, fill=0, anchor="mm")
+        idf = fit(draw, label.code, room, ID_MAX, ID_MIN)
         draw.text((cx, 66), label.code, font=idf, fill=0, anchor="mm")
     else:
-        idf = fit(draw, label.code, area, ID_MAX + 6, ID_MIN)
+        idf = fit(draw, label.code, room, ID_MAX + 6, ID_MIN)
         draw.text((cx, H // 2), label.code, font=idf, fill=0, anchor="mm")
     return img
 
