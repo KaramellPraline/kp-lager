@@ -8,7 +8,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app import catalog, kinds, repo, sortiment
+from app import catalog, kinds, repo, sortiment, typesettings
 from app.config import Settings
 
 
@@ -115,7 +115,7 @@ def register(
             request, conn, "sortiment_typ.html",
             kind=k, rows=rows, facets=sortiment.facets(k, all_rows), filters=filters,
             grid=grid, row_f=row_f, col_f=col_f, labels={f: lb for f, lb, _ in k.fields},
-            custom=key.startswith("c_"),
+            custom=key.startswith("c_"), tset=typesettings.get(conn, key),
         )  # fmt: skip
 
     # --- Typ am Teil ---------------------------------------------------------------------

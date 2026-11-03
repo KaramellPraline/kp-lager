@@ -28,6 +28,27 @@
 
   <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
   {% include "_typsheet.html" %}
+  {% if item.material not in ('fil', 'res') %}
+  <details id="waage" class="card" {% if item.unit_weight %}open{% endif %}>
+    <summary><b>Zählen per Waage</b>{% if item.unit_weight %} <span class="meta">{{ '%.3g'|format(item.unit_weight) }} g/Stück{% if item.tare %} · Tara {{ '%g'|format(item.tare) }} g{% endif %}</span>{% endif %}</summary>
+    {% if item.unit_weight %}
+    <form method="post" action="/items/{{ item.id }}/zaehlen" class="add-item" style="margin:8px 0">
+      <input name="gross" inputmode="decimal" placeholder="Gesamtgewicht in g" required aria-label="Gesamtgewicht in Gramm">
+      <button class="primary">Menge übernehmen</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/items/{{ item.id }}/stueckgewicht" class="stack">
+      <span class="meta">Stückgewicht ermitteln: einige Stück abzählen und wiegen (Leergewicht von Tüte/Dose optional).</span>
+      <div class="row"><input name="count" inputmode="numeric" placeholder="Stück" class="short" required><input name="grams" inputmode="decimal" placeholder="Gramm" class="short" required><input name="tare" inputmode="decimal" placeholder="Tara g" class="short"></div>
+      <button>{% if item.unit_weight %}Neu ermitteln{% else %}Stückgewicht speichern{% endif %}</button>
+    </form>
+  </details>
+  {% endif %}
+  <section class="card row" id="ablauf" style="flex-wrap:wrap;gap:8px">
+    <span class="grow">{% if item.expires %}Haltbar bis <b>{{ item.expires }}</b>{% else %}Keine Haltbarkeit eingetragen{% endif %}{% if tset.shelf_months %} <span class="meta">· Typ: {{ tset.shelf_months }} Monate nach Öffnen</span>{% endif %}</span>
+    <form method="post" action="/items/{{ item.id }}/geoeffnet"><button>Heute geöffnet</button></form>
+    {% if item.expires %}<form method="post" action="/items/{{ item.id }}/verlaengern"><input type="hidden" name="months" value="3"><button>+3 Monate</button></form>{% endif %}
+  </section>
 
   {% if open_takes %}
   <div class="card">
@@ -216,7 +237,7 @@
       <label>Mengenhinweis <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="z. B. viele"></label>
       <div class="row">
         <label>Mindestbestand (darunter → Einkaufsliste)
-          <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner"></label>
+          <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="{% if tset.min_qty is not none %}leer = Typ-Standard {{ tset.min_qty }}{% else %}leer = keiner{% endif %}"></label>
         <label>Wunschmenge beim Nachkaufen
           <input name="order_qty" value="{{ item.order_qty if item.order_qty is not none else '' }}" inputmode="numeric" placeholder="leer = bis Mindestbestand"></label>
       </div>

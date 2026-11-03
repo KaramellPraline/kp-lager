@@ -52,7 +52,9 @@ from app import (
     repo,
     scheduler,
     status,
+    typesettings,
     value,
+    web_extra,
     web_katalog,
     web_lab,
     web_ops,
@@ -282,6 +284,7 @@ def create_app(settings: Settings) -> FastAPI:
     web_katalog.register(app, Conn, render, redirect, settings)
     web_lab.register(app, Conn, render, redirect, settings)
     web_sortiment.register(app, Conn, render, redirect, settings)
+    web_extra.register(app, Conn, render, redirect, settings)
 
     @app.middleware("http")
     async def force_https(request: Request, call_next: Any) -> Response:
@@ -325,7 +328,7 @@ def create_app(settings: Settings) -> FastAPI:
              len(inventory.due(conn, prefs.number(conn, "inventory_days")))),
             ("/labels", "content.tag", "Etiketten wartend", labels.queue_count(conn)),
             ("/entnahmen", "action.take", "Entnahmen offen", withdrawals.open_count(conn)),
-            ("/status", "status.attention", "Läuft ab", len(status.expiring(conn))),
+            ("/ablauf", "status.attention", "Läuft ab", len(status.expiring(conn))),
             ("/projekte", "content.project", "Offene Projekte",
              conn.execute("SELECT COUNT(*) FROM project WHERE done = 0").fetchone()[0]),
             ("/verliehen", "content.lent", "Verliehen", len(repo.lent_items(conn))),
@@ -705,6 +708,7 @@ def create_app(settings: Settings) -> FastAPI:
             ctype=catalog.lookup(conn, item["ctype"]) if item["ctype"] else None,
             cvalues=catalog.values_of(item),
             type_groups=catalog.grouped(conn) if not item["material"] else [],
+            tset=typesettings.get(conn, typesettings.key_of(item)),
             buys=purchases.for_item(conn, item_id),
             supplier_names=purchases.names(conn),
         )

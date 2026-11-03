@@ -336,7 +336,7 @@ def update_item(conn: sqlite3.Connection, item_id: int, **fields: str | int | fl
         "name", "qty", "qty_hint", "unit", "tags", "notes", "photo", "min_qty", "on_list",
         "full_name", "type_id", "model", "datasheet_url", "datasheet", "review", "archived",
         "ai_backup", "order_url", "price", "specs", "ai_checked", "opened", "expires",
-        "ordered_at", "order_qty",
+        "ordered_at", "order_qty", "unit_weight", "tare",
     }  # fmt: skip
     if not fields or not set(fields) <= allowed:
         raise LagerError(f"Erlaubte Felder: {sorted(allowed)}")
@@ -543,15 +543,22 @@ def lent_items(conn: sqlite3.Connection) -> list[dict[str, Any]]:
 
 
 def shopping_list(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-    """Manuell markierte Teile und alles unter Mindestbestand."""
+    """Manuell markierte Teile und alles unter Mindestbestand.
+
+    Mindestbestand: Wert am Teil, sonst Standard des Typs (`type_setting.min_qty`).
+    """
     rows = conn.execute(
-        "SELECT * FROM item WHERE (on_list = 1"
-        " OR (min_qty IS NOT NULL AND qty IS NOT NULL AND qty < min_qty)) AND archived = 0"
-        " ORDER BY ordered_at IS NOT NULL, name"
+        "SELECT i.*, COALESCE(i.min_qty, ts.min_qty) AS min_eff,"
+        " (i.min_qty IS NULL AND ts.min_qty IS NOT NULL) AS min_from_type"
+        " FROM item i"
+        " LEFT JOIN type_setting ts ON ts.key = COALESCE(i.ctype, 'mat:' || i.material)"
+        " WHERE (i.on_list = 1 OR (COALESCE(i.min_qty, ts.min_qty) IS NOT NULL"
+        " AND i.qty IS NOT NULL AND i.qty < COALESCE(i.min_qty, ts.min_qty))) AND i.archived = 0"
+        " ORDER BY i.ordered_at IS NOT NULL, i.name"
     ).fetchall()
     out = _with_path(conn, rows)
     for r in out:
-        qty, low = r["qty"], r["min_qty"]
+        qty, low = r["qty"], r["min_eff"]
         # Bedarf: Wunschmenge, sonst bis zum Mindestbestand auffüllen, sonst 1
         need = r["order_qty"] or (
             low - qty if low is not None and qty is not None and low > qty else 1

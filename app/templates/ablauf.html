@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Ablauf · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Haltbarkeit</h1>
+<p class="meta">Abgelaufen oder in den nächsten 30 Tagen fällig. „Haltbar bis“ und „geöffnet am“ stehen am Teil; mit einer Standard-Haltbarkeit je Typ setzt „Heute geöffnet“ das Datum automatisch.</p>
+{% for title, rows in (('Abgelaufen', expired), ('Läuft bald ab', soon)) %}
+<h2>{{ title }} <span class="meta">{{ rows|length }}</span></h2>
+<ul class="list">
+  {% for r in rows %}
+  <li class="item">
+    <a class="name" href="/items/{{ r.id }}">{{ r.name }}<small>{{ r.path }} · {% if r.days < 0 %}seit {{ -r.days }} Tagen abgelaufen{% elif r.days == 0 %}heute{% else %}noch {{ r.days }} Tage{% endif %} ({{ r.expires }}){% if r.opened %} · geöffnet {{ r.opened }}{% endif %}</small></a>
+    <form method="post" action="/items/{{ r.id }}/verlaengern"><input type="hidden" name="months" value="3"><input type="hidden" name="back" value="/ablauf"><button>+3 Monate</button></form>
+    <form method="post" action="/items/{{ r.id }}/verbraucht"><input type="hidden" name="back" value="/ablauf"><button>Verbraucht</button></form>
+  </li>
+  {% else %}<li class="empty">Nichts.</li>{% endfor %}
+</ul>
+{% endfor %}
+{% endblock %}

@@ -78,6 +78,7 @@
       <option value="" id="qa-empty" {% if not target %}selected{% endif %}>Zu sortieren (später einräumen)</option>
       {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
     </select>
+    <div class="chips place-sugg" data-select="qa-target" aria-label="Platz-Vorschläge"></div>
     <div id="qa-peek" class="peek" hidden></div>
   </div>
   {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>

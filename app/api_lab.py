@@ -210,7 +210,10 @@ def register(
             where += f" AND i.container_id IN ({','.join('?' * len(ids))})"
             args += ids
         if low:
-            where += " AND i.min_qty IS NOT NULL AND i.qty IS NOT NULL AND i.qty < i.min_qty"
+            where += (
+                " AND i.qty IS NOT NULL AND i.qty < COALESCE(i.min_qty, (SELECT ts.min_qty"
+                " FROM type_setting ts WHERE ts.key = COALESCE(i.ctype, 'mat:' || i.material)))"
+            )
         total = conn.execute(f"SELECT COUNT(*) FROM item i WHERE {where}", args).fetchone()[0]
         rows = conn.execute(
             f"SELECT i.* FROM item i WHERE {where} ORDER BY i.id LIMIT ? OFFSET ?",

@@ -425,3 +425,36 @@
     });
   });
 })();
+
+/* Platz-Vorschlag beim Anlegen: Behälter mit ähnlichen Teilen (oder leere Boxen) als Chips */
+(function () {
+  var box = document.querySelector(".place-sugg");
+  if (!box) return;
+  var form = box.closest("form"), select = document.getElementById(box.dataset.select), timer = null;
+  function query() {
+    var p = new URLSearchParams();
+    var typ = form.querySelector("input[name=typ]"), cat = form.querySelector("input[name=cat]:checked");
+    if (typ) p.set("typ", typ.value); else if (cat) p.set("cat", cat.value);
+    form.querySelectorAll("input[name^=f_]").forEach(function (el) { if (el.value) p.set(el.name, el.value); });
+    return p.toString();
+  }
+  function load() {
+    fetch("/neu/platz?" + query()).then(function (r) { return r.json(); }).then(function (rows) {
+      box.innerHTML = "";
+      rows.forEach(function (r) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "chip" + (select && select.value === String(r.id) ? " on" : "");
+        b.title = r.reason; b.textContent = r.label + " · " + r.reason;
+        b.addEventListener("click", function () {
+          if (!select) return;
+          select.value = String(r.id); select.dispatchEvent(new Event("change", { bubbles: true }));
+          box.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("on", c === b); });
+        });
+        box.appendChild(b);
+      });
+    }).catch(function () { box.innerHTML = ""; });
+  }
+  form.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(load, 400); });
+  form.addEventListener("change", function (ev) { if (ev.target.name === "cat") load(); });
+  load();
+})();
