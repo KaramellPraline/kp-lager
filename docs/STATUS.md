@@ -20,6 +20,7 @@ Stand: 2026-11-03
 - 2026-11-04 (M40): Standard-Mindestbestand je Typ (Teil überschreibt), Platz-Vorschlag beim Anlegen, Zählen per Waage (Stückgewicht/Tara), Ablauf-Seite mit „Heute geöffnet“ (Haltbarkeit je Typ), Verlängern, Verbraucht.
 - 2026-11-04 (M41): Projekt-Reservierung (andere Projekte sehen nur Freies, Einsammeln/Erledigt gibt frei), Einkauf aus CSV, Rechnungstext oder PDF (`app/invoice.py`, pypdf) mit Zuordnung per Artikelnummer/Name/Suche, Bestand wird eingebucht; API `/purchases/import`, `/projects/{id}/reserve`. Migration 021.
 - 2026-11-04 (M42): Etikettenvorlagen je Typ (große/kleine Zeile mit Feldern, gilt für Warteschlange, XLSX, D30), Sammeldruck aller ungedruckten Etiketten einer Box samt Unterbehältern, Schnellaktionsmenü an Teilen (langer Druck, Rechtsklick, Knopf).
+- 2026-11-04 (M43): Installierbare, offline-fähige App (Service Worker `/sw.js`: zuletzt gesehene Seiten offline lesbar, Buchungen ohne Netz in IndexedDB gemerkt und nachgesendet; `docs/ANDROID.md`), Home-Assistant-Sensor `/api/v1/ha` und `/api/v1/ha/item/<CODE>` (`docs/HOME_ASSISTANT.md`).
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.

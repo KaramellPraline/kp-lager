@@ -16,9 +16,11 @@ from app import (
     cards,
     catalog,
     codes,
+    expiry,
     inventory,
     invoice,
     kinds,
+    labels,
     materials,
     prefs,
     projects,
@@ -26,7 +28,9 @@ from app import (
     repo,
     scheduler,
     sortiment,
+    typesettings,
     value,
+    withdrawals,
 )
 from app.repo import LagerError, Row
 
@@ -172,6 +176,55 @@ def register(
             "last_backup": codes.get_setting(conn, "backup_last", ""),
             "extern_backup": scheduler.extern_target(conn) != "",
         }
+
+    @router.get("/ha")
+    def home_assistant(conn: Conn) -> dict[str, Any]:
+        """Home-Assistant-REST-Sensor: state = Teile unter Mindestbestand, Rest als Attribute."""
+        low = repo.shopping_list(conn)
+        due = expiry.due(conn)
+        amount, _ = value.total(conn)
+        err = codes.get_setting(conn, "backup_error", "")
+        return {
+            "state": len(low),
+            "attributes": {
+                "to_buy": len(low),
+                "to_buy_items": [f"{r['name']} ({r['need']}×)" for r in low[:20]],
+                "to_buy_eur": round(sum(r["cost"] for r in low if r["cost"] is not None), 2),
+                "expired": len(due["expired"]),
+                "expiring": len(due["soon"]),
+                "expiring_items": [
+                    f"{r['name']} ({r['expires']})" for r in (due["expired"] + due["soon"])[:20]
+                ],
+                "unsorted": len(repo.items_in(conn, repo.inbox(conn))),
+                "inventory_due": len(inventory.due(conn, prefs.number(conn, "inventory_days"))),
+                "labels_waiting": labels.queue_count(conn),
+                "open_withdrawals": withdrawals.open_count(conn),
+                "open_projects": conn.execute(
+                    "SELECT COUNT(*) FROM project WHERE done = 0"
+                ).fetchone()[0],
+                "items": conn.execute("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
+                "value_eur": round(amount, 2),
+                "last_backup": codes.get_setting(conn, "backup_last", ""),
+                "backup_ok": not err,
+                "version": __version__,
+                "unit_of_measurement": "Teile",
+                "friendly_name": "Lager: nachkaufen",
+            },
+        }
+
+    @router.get("/ha/item/{ref}")
+    def home_assistant_item(conn: Conn, ref: str) -> dict[str, Any]:
+        """Bestand eines einzelnen Teils (z. B. Filament-Spulen) als eigener Sensor."""
+        i = find_item(conn, ref)
+        min_eff, _ = typesettings.effective_min(conn, i)
+        return {
+            "state": i["qty"] if i["qty"] is not None else "ungezählt",
+            "attributes": {
+                "name": i["name"], "code": i["code"], "unit": i["unit"], "min": min_eff,
+                "low": i["qty"] is not None and min_eff is not None and i["qty"] < min_eff,
+                "path": repo.path_label(conn, i["container_id"]), "expires": i["expires"],
+            },
+        }  # fmt: skip
 
     @router.get("/tree")
     def tree(conn: Conn, depth: int = 4) -> list[dict[str, Any]]:

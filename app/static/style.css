@@ -446,3 +446,9 @@ table.raster small { display: block; color: var(--sub); font-size: 11px; }
 .qa-sheet .qa-title { padding: 8px 10px; font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
 .qa-sheet button { text-align: left; padding: 12px 10px; border-radius: var(--r-sm); }
 .qa-sheet .qa-cancel { text-align: center; color: var(--sub); }
+
+/* Offline */
+.offline-bar { position: fixed; left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 55;
+  background: var(--raised); border: 1px solid var(--accent); border-radius: var(--r-sm); padding: 10px 12px; font-size: 14px; }
+html.is-offline .topbar::after { content: "offline"; font: 12px var(--font-mono); color: var(--accent); margin-left: 8px; }
+@media (min-width: 900px) { .offline-bar { bottom: 16px; left: auto; max-width: 420px; } }

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Offline · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Keine Verbindung</h1>
+<div class="card">
+  <p>Diese Seite war noch nicht offline gespeichert. Zuletzt geöffnete Behälter und Teile sind ohne Netz lesbar;
+  Entnehmen, Einlagern, Umlagern und Inventur werden gemerkt und automatisch gesendet, sobald das Lager wieder erreichbar ist.</p>
+  <p><a href="/">Zur Startseite</a> · <a href="javascript:history.back()">Zurück</a></p>
+</div>
+{% endblock %}

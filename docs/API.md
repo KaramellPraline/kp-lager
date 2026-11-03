@@ -40,6 +40,11 @@ auch zum Lesen einen Schlüssel (empfohlen, sobald das Lager von außen erreichb
    – die Antwort zeigt je Zeile `ok` / `teil` / `fehlt`, Fehlmengen und Kosten.
 3. `POST /projects/{id}/shopping` – Fehlendes landet auf der Einkaufsliste.
 
+## Typen, Einkauf, Home Assistant
+`GET /types/catalog` (alle Typen mit Feldern) · `GET /types/catalog/{key}/items` · `PATCH /items/{ref}` mit `ctype`, `fields`, `rename` ·
+`POST /purchases/import/preview` und `/purchases/import` (Rechnung/CSV) · `POST /projects/{id}/reserve?release=` ·
+`GET /ha` und `/ha/item/{ref}` für Home Assistant (siehe `docs/HOME_ASSISTANT.md`).
+
 ## MCP-Server
 `uv run --group mcp python tools/lager_mcp.py` (Vorlage `docs/mcp.example.json`) bietet dieselben Funktionen als
 Werkzeuge für KI-Assistenten (`LAGER_URL`, `LAGER_API_KEY`). Mit Lese-Schlüssel funktionieren alle Abfragen;

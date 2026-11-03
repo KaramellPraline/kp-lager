@@ -1380,19 +1380,49 @@ def create_app(settings: Settings) -> FastAPI:
             {"type": "unknown", "code": norm, "name": "", "prefix": codes.prefix_of(norm)}
         )
 
+    @app.get("/sw.js")
+    def service_worker() -> Response:
+        """Service Worker im Wurzelpfad (Geltungsbereich „/“); Version = Stand von CSS/JS."""
+        js = (APP_DIR / "static" / "sw.js").read_text(encoding="utf-8")
+        return Response(
+            js.replace("__V__", str(templates.env.globals["ASSET_V"])),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+        )
+
+    @app.get("/offline", response_class=HTMLResponse)
+    def offline_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "offline.html")
+
     @app.get("/manifest.webmanifest")
     def manifest(conn: Conn) -> JSONResponse:
         return JSONResponse(
             {
+                "id": "/",
                 "name": prefs.raw(conn, "app_name"),
                 "short_name": prefs.raw(conn, "app_name"),
+                "description": "Lager mit QR-Codes: suchen, einlagern, entnehmen – auch offline.",
+                "lang": "de",
                 "start_url": "/",
+                "scope": "/",
                 "display": "standalone",
-                "background_color": "#ffffff",
-                "theme_color": "#2563eb",
+                "orientation": "portrait",
+                "background_color": "#0B0306",
+                "theme_color": "#0B0306",
                 "icons": [
                     {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
                     {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                    {
+                        "src": "/static/icon-512.png",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "maskable",
+                    },
+                ],
+                "shortcuts": [
+                    {"name": "Scannen", "url": "/scan"},
+                    {"name": "Hinzufügen", "url": "/neu/go"},
+                    {"name": "Suche", "url": "/suche"},
                 ],
             },
             media_type="application/manifest+json",

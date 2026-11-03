@@ -3,6 +3,15 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [Unveröffentlicht]
+
+### Neu
+- Typen am Teil mit Datenblatt, Sortiment nach Typ, Variantenraster für alle Arten, Dublettenwarnung, eigene Typen, Altbestand-Zuordnung.
+- Standard-Mindestbestand je Typ, Platz-Vorschlag beim Anlegen, Zählen per Waage, Ablauf-Erinnerung.
+- Projekt-Reservierung; Einkauf aus CSV, Rechnungstext oder PDF übernehmen.
+- Etikettenvorlagen je Typ, Sammeldruck je Box, Schnellaktionsmenü an Teilen.
+- Installierbare Offline-App (Android), Home-Assistant-Sensor.
+
 ## [0.2.0] – 2026-11-03
 
 ### Neu

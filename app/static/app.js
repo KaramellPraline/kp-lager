@@ -530,3 +530,35 @@
     if (fired) { ev.preventDefault(); fired = false; }  // kein Klick auf den Link nach langem Druck
   });
 })();
+
+/* Offline: Service Worker registrieren, Hinweis bei gemerkten Buchungen, bei Verbindung senden */
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+  var bar = null;
+  function show(n) {
+    if (!n) { if (bar) { bar.remove(); bar = null; } return; }
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "offline-bar"; bar.setAttribute("role", "status");
+      document.body.appendChild(bar);
+    }
+    bar.textContent = n + (n === 1 ? " Buchung" : " Buchungen") + " offline gemerkt – " +
+      (navigator.onLine ? "wird gesendet …" : "wird gesendet, sobald Verbindung besteht");
+  }
+  navigator.serviceWorker.addEventListener("message", function (ev) {
+    if (ev.data && ev.data.type === "queue") show(ev.data.count);
+  });
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").then(function () {
+      return navigator.serviceWorker.ready;
+    }).then(function (reg) {
+      if (reg.active) reg.active.postMessage(navigator.onLine ? "flush" : "count");
+    }).catch(function () { /* ohne HTTPS/localhost gibt es keinen Service Worker */ });
+  });
+  window.addEventListener("online", function () {
+    if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage("flush");
+    document.documentElement.classList.remove("is-offline");
+  });
+  window.addEventListener("offline", function () { document.documentElement.classList.add("is-offline"); });
+  if (!navigator.onLine) document.documentElement.classList.add("is-offline");
+})();
