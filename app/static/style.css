@@ -422,3 +422,18 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
 table.pinout { width: 100%; border-collapse: collapse; font: 14px var(--font-mono); }
 table.pinout th, table.pinout td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 @media (max-width: 420px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+/* Sortiment: Filter, Variantenraster, Zuordnen */
+.facets { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.facets label { display: flex; flex-direction: column; font-size: 13px; color: var(--sub); min-width: 120px; }
+.raster-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: var(--r-sm); }
+table.raster { border-collapse: collapse; font-size: 14px; min-width: 100%; }
+table.raster th, table.raster td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap; }
+table.raster thead th, table.raster tbody th { background: var(--surface); position: sticky; }
+table.raster tbody th { left: 0; text-align: left; }
+table.raster td.has a { display: block; text-decoration: none; color: var(--fg); }
+table.raster td.has { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+table.raster td.empty { color: var(--sub); }
+table.raster small { display: block; color: var(--sub); font-size: 11px; }
+.assign-row { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.assign-row select { grid-column: 2; }

@@ -1,0 +1,30 @@
+{% if not item.material %}
+<section id="typ" class="card">
+  {% if ctype %}
+  <div class="title-row"><h2 style="margin:0">Typ: <a href="/sortiment/{{ ctype.key }}">{{ ctype.label }}</a></h2></div>
+  <dl class="specs">{% for f in ctype.fields %}{% if cvalues.get(f.key) %}<dt>{{ f.label }}</dt><dd>{{ cvalues[f.key] }}{% if f.unit %} {{ f.unit }}{% endif %}</dd>{% endif %}{% endfor %}</dl>
+  <details><summary>{{ icon('action.edit', size='sm') }} Felder bearbeiten</summary>
+    <form method="post" action="/items/{{ item.id }}/typ" class="stack">
+      <input type="hidden" name="typ" value="{{ ctype.key }}">
+      {% for f in ctype.fields %}
+      <label>{{ f.label }}{% if f.unit %} ({{ f.unit }}){% endif %}
+        <input name="f_{{ f.key }}" value="{{ cvalues.get(f.key, '') }}" {% if f.options %}list="tdl_{{ f.key }}"{% endif %} autocomplete="off"></label>
+      {% if f.options %}<datalist id="tdl_{{ f.key }}">{% for o in f.options %}<option value="{{ o }}">{% endfor %}</datalist>{% endif %}
+      {% endfor %}
+      <label class="check"><input type="checkbox" name="rename" value="1" checked> Namen aus den Feldern neu bilden</label>
+      <button class="primary">Speichern</button>
+    </form>
+    <form method="post" action="/items/{{ item.id }}/typ"><input type="hidden" name="typ" value=""><button class="link">Typ entfernen</button></form>
+  </details>
+  {% else %}
+  <form method="post" action="/items/{{ item.id }}/typ" class="add-item" style="margin:0">
+    <select name="typ" aria-label="Typ zuordnen" required>
+      <option value="">Typ zuordnen …</option>
+      {% for g, ts in type_groups %}<optgroup label="{{ g }}">{% for t in ts %}<option value="{{ t.key }}">{{ t.label }}</option>{% endfor %}</optgroup>{% endfor %}
+    </select>
+    <button>Zuordnen</button>
+  </form>
+  <p class="meta" style="margin:6px 0 0">Mit Typ erscheint das Teil im Sortiment und Variantenraster; Felder lassen sich danach ausfüllen.</p>
+  {% endif %}
+</section>
+{% endif %}

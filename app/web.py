@@ -28,6 +28,7 @@ from app import (
     backup,
     cables,
     cards,
+    catalog,
     choices,
     codes,
     d30,
@@ -55,6 +56,7 @@ from app import (
     web_katalog,
     web_lab,
     web_ops,
+    web_sortiment,
     withdrawals,
 )
 from app import search as finder  # Modul; „search“ ist der Name der Such-Route
@@ -279,6 +281,7 @@ def create_app(settings: Settings) -> FastAPI:
     web_ops.register(app, Conn, render, redirect, settings)
     web_katalog.register(app, Conn, render, redirect, settings)
     web_lab.register(app, Conn, render, redirect, settings)
+    web_sortiment.register(app, Conn, render, redirect, settings)
 
     @app.middleware("http")
     async def force_https(request: Request, call_next: Any) -> Response:
@@ -699,6 +702,9 @@ def create_app(settings: Settings) -> FastAPI:
             individual=bool(item["code"]) and item["code"][:3] in repo.INDIVIDUAL,
             today=date.today().isoformat(),
             cards=cards.for_item(conn, item_id),
+            ctype=catalog.lookup(conn, item["ctype"]) if item["ctype"] else None,
+            cvalues=catalog.values_of(item),
+            type_groups=catalog.grouped(conn) if not item["material"] else [],
             buys=purchases.for_item(conn, item_id),
             supplier_names=purchases.names(conn),
         )

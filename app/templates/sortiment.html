@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Sortiment · {{ APP_NAME }}{% endblock %}
+{% block content %}
+{% include "_browse_tabs.html" %}
+<p class="meta">Bestand nach Typ: filtern nach Gewinde, Länge, Wert … und als Variantenraster ansehen.</p>
+<div class="chips">
+  {% if n_untyped %}<a class="chip" href="/sortiment/zuordnen">{{ icon('action.edit', size='xs') }} {{ n_untyped }} Teile ohne Typ zuordnen</a>{% endif %}
+  <a class="chip" href="/sortiment/eigene">{{ icon('action.add', size='xs') }} Eigene Typen</a>
+</div>
+{% for g, ks in groups %}
+{% set used = ks|selectattr(1)|list %}
+<details class="grp card" {% if used %}open{% endif %}>
+  <summary><b>{{ g }}</b> <span class="meta">{{ used|length }} von {{ ks|length }} Typen belegt</span></summary>
+  <ul class="list">
+    {% for k, n in ks %}
+    <li><a href="/sortiment/{{ k.key }}"><span>{{ k.label }}</span><small>{{ n }} Teile</small></a></li>
+    {% endfor %}
+  </ul>
+</details>
+{% endfor %}
+{% endblock %}

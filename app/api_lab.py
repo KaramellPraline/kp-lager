@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from app import (
     __version__,
     cards,
+    catalog,
     codes,
     inventory,
     kinds,
@@ -23,6 +24,7 @@ from app import (
     purchases,
     repo,
     scheduler,
+    sortiment,
     value,
 )
 from app.repo import LagerError, Row
@@ -46,6 +48,9 @@ class ItemPatch(BaseModel):
     price: float | None = None  # Stückpreis in Euro
     on_list: bool | None = None  # auf die Einkaufsliste
     archived: bool | None = None
+    ctype: str | None = None  # Typ-Schlüssel (GET /types/catalog), "" = Typ entfernen
+    fields: dict[str, str] | None = None  # Felder des Typs; mit rename=true Name neu bilden
+    rename: bool = False
 
 
 class ContainerNew(BaseModel):
@@ -114,6 +119,7 @@ def register(
                 "order_qty": i["order_qty"], "on_list": bool(i["on_list"]),
                 "order_url": i["order_url"], "lent_to": i["lent_to"], "expires": i["expires"],
                 "specs": materials.specs(i), "checked_at": i["checked_at"],
+                "ctype": i["ctype"], "fields": catalog.values_of(i),
                 "last_supplier": purchases.last_supplier(conn, i["id"]),
                 "cards": [
                     {"id": c["id"], "kind": c["kind"], "title": c["title"], "body": c["body"]}
@@ -164,6 +170,31 @@ def register(
 
         return [walk(c, 1) for c in repo.children(conn, None)]
 
+    @router.get("/types/catalog")
+    def catalog_types(conn: Conn) -> list[dict[str, Any]]:
+        """Alle Typen (Katalog + eigene) mit Feldern und Auswahlwerten, plus Anzahl Teile."""
+        n = sortiment.counts(conn)
+        return [
+            {"key": t.key, "label": t.label, "group": g, "category": t.cat,
+             "items": n.get(t.key, 0),
+             "fields": [{"key": f.key, "label": f.label, "unit": f.unit, "options": list(f.options)}
+                        for f in t.fields]}
+            for g, ts in catalog.grouped(conn) for t in ts
+        ]  # fmt: skip
+
+    @router.get("/types/catalog/{key}/items")
+    def type_items(conn: Conn, key: str) -> list[dict[str, Any]]:
+        """Teile eines Typs (auch mat:fil, mat:cbl …) mit Feldwerten, natürlich sortiert."""
+        try:
+            k = sortiment.kind(conn, key)
+        except LagerError as exc:
+            raise HTTPException(404, str(exc)) from None
+        return [
+            {"code": r["code"], "name": r["name"], "qty": r["qty"], "unit": r["unit"],
+             "path": r["path"], "fields": r["values"]}
+            for r in sortiment.items(conn, k)
+        ]  # fmt: skip
+
     @router.get("/items")
     def list_items(
         conn: Conn, container: str = "", limit: int = 200, offset: int = 0, low: bool = False
@@ -194,12 +225,26 @@ def register(
         item = find_item(conn, ref)
         data = body.model_dump(exclude_none=True)
         qty, delta = data.pop("qty", None), data.pop("qty_delta", None)
+        ctype, fields, rename = (
+            data.pop("ctype", None),
+            data.pop("fields", None),
+            data.pop("rename"),
+        )
         for flag in ("on_list", "archived"):
             if flag in data:
                 data[flag] = int(data[flag])
         try:
             if data:
                 repo.update_item(conn, item["id"], **data)
+            if ctype == "":
+                with conn:
+                    conn.execute("UPDATE item SET ctype = NULL WHERE id = ?", (item["id"],))
+            elif ctype or fields is not None:
+                key = ctype or item["ctype"]
+                if not key:
+                    raise LagerError("Teil hat keinen Typ – ctype angeben")
+                current = catalog.values_of(item) if key == item["ctype"] else {}
+                catalog.set_fields(conn, item["id"], key, {**current, **(fields or {})}, rename)
             if qty is not None or delta is not None:
                 if item["qty"] is None and qty is None:
                     raise LagerError("Teil ist ungezählt – bitte qty setzen")

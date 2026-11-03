@@ -16,6 +16,7 @@ Stand: 2026-11-03
 - 2026-11-03 (M37): Windows: Client (Fenster + D30-PC-Bridge `app/d30_bridge.py`) und Server (Debug) als getrennte Installer (`windows/`, `docs/WINDOWS.md`), `tools/dev.ps1`, Docker-Compose mit Bridge-Modus (`LAGER_D30_BRIDGE`) und externem Backup-Volume. **Offen: .exe-Build und Bluetooth-Druck auf Windows testen.**
 - Offen (Oberfläche): Detail-Feinschliff nach Rückmeldung (Tabs, Menügruppen, Startseite sind umgesetzt).
 - 2026-11-03 (M38): Versionsnummer (0.2.0) in Status/Health/API, `tools/release.py`, CHANGELOG.md, Release-Workflow (Tests → Windows-Installer + Docker-Image → GitHub-Release), `docs/INSTALL.md`, `docs/RELEASE.md`; Bestand mit Orte/Baum-Reitern, mehr Aufgaben-Karten, Entnehmen mit Mengen-Schnellauswahl.
+- 2026-11-04 (M39): Typen am Teil (`item.ctype`/`cfields`, Migration 020): Typ-Datenblatt am Teil, Sortiment nach Typ mit Filtern und natürlicher Sortierung, Variantenraster für alle Typen inkl. Material-Profilen, Dublettenwarnung beim Anlegen, eigene Typen (`/sortiment/eigene`), Altbestand-Zuordnung per Regeln (`/sortiment/zuordnen`), API `/types/catalog`.
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.

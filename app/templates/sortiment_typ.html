@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{{ kind.label }} · Sortiment{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/sortiment">Sortiment</a> › {{ kind.label }}</nav>
+<div class="title-row">
+  <h1>{{ kind.label }}</h1>
+  <span class="chip">{{ rows|length }} Teile</span>
+</div>
+{% set base = request.url.path %}
+{% set raster_on = grid is not none %}
+<nav class="seg add-tabs" aria-label="Ansicht">
+  <a class="seg-link {{ 'active' if not raster_on }}" href="{{ base }}?{% for f, v in filters.items() %}f_{{ f }}={{ v|urlencode }}&{% endfor %}">Liste</a>
+  <a class="seg-link {{ 'active' if raster_on }}" href="{{ base }}?ansicht=raster&{% for f, v in filters.items() %}f_{{ f }}={{ v|urlencode }}&{% endfor %}">Variantenraster</a>
+</nav>
+
+{% if facets %}
+<form method="get" class="card facets">
+  {% if raster_on %}<input type="hidden" name="ansicht" value="raster"><input type="hidden" name="row" value="{{ row_f }}"><input type="hidden" name="col" value="{{ col_f }}">{% endif %}
+  {% for key, label, vals in facets %}
+  <label>{{ label }}
+    <select name="f_{{ key }}" onchange="this.form.submit()">
+      <option value="">alle</option>
+      {% for v, n in vals %}<option value="{{ v }}" {% if filters.get(key) == v %}selected{% endif %}>{{ v }} ({{ n }})</option>{% endfor %}
+    </select></label>
+  {% endfor %}
+  {% if filters %}<a class="button" href="{{ base }}{% if raster_on %}?ansicht=raster{% endif %}">Filter zurücksetzen</a>{% endif %}
+</form>
+{% endif %}
+
+{% if raster_on %}
+<form method="get" class="row" style="margin:8px 0">
+  <input type="hidden" name="ansicht" value="raster">
+  {% for f, v in filters.items() %}<input type="hidden" name="f_{{ f }}" value="{{ v }}">{% endfor %}
+  <label>Zeilen <select name="row" onchange="this.form.submit()">{% for f, lb, u in kind.fields %}<option value="{{ f }}" {% if f == row_f %}selected{% endif %}>{{ lb }}</option>{% endfor %}</select></label>
+  <label>Spalten <select name="col" onchange="this.form.submit()"><option value="">– keine –</option>{% for f, lb, u in kind.fields %}<option value="{{ f }}" {% if f == col_f %}selected{% endif %}>{{ lb }}</option>{% endfor %}</select></label>
+</form>
+<div class="raster-wrap">
+<table class="raster">
+  <thead><tr><th>{{ labels.get(row_f, '') }}{% if col_f %} \ {{ labels.get(col_f, '') }}{% endif %}</th>{% for c in grid.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+  <tbody>
+  {% for r in grid.rows %}
+  <tr><th>{{ r }}</th>
+    {% for c in grid.cols %}{% set cell = grid.cells.get(r ~ '\t' ~ c) %}
+    <td class="{{ 'has' if cell else 'empty' }}">
+      {% if cell %}
+        {% if cell.parts|length == 1 %}<a href="/items/{{ cell.parts[0].id }}" title="{{ cell.parts[0].name }} · {{ cell.parts[0].path }}">{% else %}<a href="{{ base }}?{% for f, v in filters.items() %}f_{{ f }}={{ v|urlencode }}&{% endfor %}f_{{ row_f }}={{ r|urlencode }}{% if col_f %}&f_{{ col_f }}={{ c|urlencode }}{% endif %}">{% endif %}
+        <b>{% if cell.qty or not cell.uncounted %}{{ cell.qty }}{% else %}{{ icon('select.check', size='xs') }}{% endif %}</b>{% if cell.parts|length > 1 %}<small>{{ cell.parts|length }} Orte</small>{% endif %}</a>
+      {% else %}<span aria-label="fehlt">·</span>{% endif %}
+    </td>{% endfor %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="meta">Zahl = Menge (Summe über alle Orte), Häkchen = vorhanden, aber ungezählt, · = fehlt.</p>
+{% else %}
+<ul class="list">
+  {% for r in rows %}
+  <li><a href="/items/{{ r.id }}"><span>{{ r.name }}</span>
+    <small>{% if r.qty is not none %}{{ r.qty }} {{ r.unit }} · {% endif %}{{ r.path }}{% if r.code %} · {{ r.code }}{% endif %}</small></a></li>
+  {% else %}<li class="empty">Keine Teile dieses Typs{% if filters %} mit diesen Filtern{% endif %}.</li>{% endfor %}
+</ul>
+{% endif %}
+{% if not kind.material %}<a class="button primary" href="/neu?typ={{ kind.key }}" style="margin-top:12px">{{ icon('action.add', size='sm') }} {{ kind.label }} anlegen</a>{% endif %}
+{% if custom %}<a class="button" href="/sortiment/eigene?key={{ kind.key }}" style="margin-top:12px">Typ bearbeiten</a>{% endif %}
+{% endblock %}
