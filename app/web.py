@@ -709,6 +709,7 @@ def create_app(settings: Settings) -> FastAPI:
             cvalues=catalog.values_of(item),
             type_groups=catalog.grouped(conn) if not item["material"] else [],
             tset=typesettings.get(conn, typesettings.key_of(item)),
+            reservations=projects.reservations(conn, item_id),
             buys=purchases.for_item(conn, item_id),
             supplier_names=purchases.names(conn),
         )

@@ -27,6 +27,7 @@
   </div>
 
   <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
+  {% if reservations %}<div class="card"><b>Reserviert:</b> {% for r in reservations %}<a href="/projekte/{{ r.id }}">{{ r.reserved }} für {{ r.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% if item.qty is not none %} · frei {{ [item.qty - reservations|sum(attribute='reserved'), 0]|max }}{% endif %}</div>{% endif %}
   {% include "_typsheet.html" %}
   {% if item.material not in ('fil', 'res') %}
   <details id="waage" class="card" {% if item.unit_weight %}open{% endif %}>

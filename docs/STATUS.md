@@ -18,6 +18,7 @@ Stand: 2026-11-03
 - 2026-11-03 (M38): Versionsnummer (0.2.0) in Status/Health/API, `tools/release.py`, CHANGELOG.md, Release-Workflow (Tests → Windows-Installer + Docker-Image → GitHub-Release), `docs/INSTALL.md`, `docs/RELEASE.md`; Bestand mit Orte/Baum-Reitern, mehr Aufgaben-Karten, Entnehmen mit Mengen-Schnellauswahl.
 - 2026-11-04 (M39): Typen am Teil (`item.ctype`/`cfields`, Migration 020): Typ-Datenblatt am Teil, Sortiment nach Typ mit Filtern und natürlicher Sortierung, Variantenraster für alle Typen inkl. Material-Profilen, Dublettenwarnung beim Anlegen, eigene Typen (`/sortiment/eigene`), Altbestand-Zuordnung per Regeln (`/sortiment/zuordnen`), API `/types/catalog`.
 - 2026-11-04 (M40): Standard-Mindestbestand je Typ (Teil überschreibt), Platz-Vorschlag beim Anlegen, Zählen per Waage (Stückgewicht/Tara), Ablauf-Seite mit „Heute geöffnet“ (Haltbarkeit je Typ), Verlängern, Verbraucht.
+- 2026-11-04 (M41): Projekt-Reservierung (andere Projekte sehen nur Freies, Einsammeln/Erledigt gibt frei), Einkauf aus CSV, Rechnungstext oder PDF (`app/invoice.py`, pypdf) mit Zuordnung per Artikelnummer/Name/Suche, Bestand wird eingebucht; API `/purchases/import`, `/projects/{id}/reserve`. Migration 021.
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.

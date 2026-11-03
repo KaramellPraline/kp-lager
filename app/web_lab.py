@@ -1,12 +1,13 @@
 """Routen für Lieferanten/Einkäufe, Notiz- und Pinout-Karten, Inventur und Stückliste-Abgleich."""
 
+import json
 from collections.abc import Callable
 from typing import Annotated, Any
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 
-from app import cards, inventory, prefs, projects, purchases, repo
+from app import cards, codes, inventory, invoice, prefs, projects, purchases, repo
 from app.config import Settings
 from app.repo import LagerError
 
@@ -172,6 +173,74 @@ def register(
         return redirect("/inventur", f"Inventur abgeschlossen{extra}")
 
     # --- Stückliste: Abgleich -----------------------------------------------------------
+
+    @app.post("/projekte/{pid}/reservieren")
+    def project_reserve(pid: int, conn: Conn) -> RedirectResponse:
+        n = projects.reserve(conn, pid)
+        return redirect(f"/projekte/{pid}", f"{n} Positionen reserviert")
+
+    @app.post("/projekte/{pid}/freigeben")
+    def project_release(pid: int, conn: Conn) -> RedirectResponse:
+        projects.release(conn, pid)
+        return redirect(f"/projekte/{pid}", "Reservierung aufgehoben")
+
+    # --- Einkauf aus Rechnung / CSV ------------------------------------------------------
+
+    @app.get("/einkauf/import", response_class=HTMLResponse)
+    def purchase_import_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(
+            request, conn, "einkauf_import.html", rows=None, suppliers=purchases.names(conn)
+        )
+
+    @app.post("/einkauf/import", response_class=HTMLResponse)
+    async def purchase_import_preview(
+        request: Request,
+        conn: Conn,
+        text: Annotated[str, Form()] = "",
+        supplier: Annotated[str, Form()] = "",
+        bought_at: Annotated[str, Form()] = "",
+        file: Annotated[UploadFile | None, File()] = None,
+    ) -> HTMLResponse:
+        data = await file.read() if file is not None and file.filename else b""
+        lines = invoice.parse(text, data, (file.filename or "") if file else "")
+        return render(
+            request, conn, "einkauf_import.html",
+            rows=invoice.preview(conn, lines, supplier), supplier=supplier, bought_at=bought_at,
+            suppliers=purchases.names(conn),
+        )  # fmt: skip
+
+    @app.post("/einkauf/import/uebernehmen")
+    async def purchase_import_apply(request: Request, conn: Conn) -> RedirectResponse:
+        form = await request.form()
+        rows = []
+        for key, raw in form.multi_items():
+            if not key.startswith("line_") or not isinstance(raw, str):
+                continue
+            idx = key[5:]
+            try:
+                line = json.loads(raw)
+            except ValueError:
+                continue
+            target = str(form.get(f"target_{idx}", "skip"))
+            code = str(form.get(f"code_{idx}", "")).strip()
+            if code:  # Code von Hand: hat Vorrang
+                item = repo.get_item_by_code(conn, codes.normalize(code) or code)
+                if item is None:
+                    raise LagerError(f"Kein Teil mit Code {code}")
+                target = f"item:{item['id']}"
+            qty_raw = str(form.get(f"qty_{idx}", "")).strip()
+            if qty_raw.isdigit():
+                line["qty"] = int(qty_raw)
+            rows.append({"line": line, "target": target})
+        done = invoice.apply(
+            conn, rows, str(form.get("supplier", "")), str(form.get("bought_at", "")),
+            book=bool(form.get("book")),
+        )  # fmt: skip
+        msg = (
+            f"{done['booked']} Teile eingebucht, {done['created']} neu (Zu sortieren),"
+            f" {done['skipped']} übersprungen"
+        )
+        return redirect("/einkauf", msg)
 
     @app.post("/projekte/{pid}/einkauf")
     def project_to_shopping(pid: int, conn: Conn) -> RedirectResponse:

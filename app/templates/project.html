@@ -12,7 +12,11 @@
   <section class="card bom {{ 'bom-ok' if bom.complete }}">
     <b>{% if bom.complete %}Alles verfügbar{% else %}Es fehlt etwas{% endif %}</b>
     <span class="meta">{{ bom.counts.ok }} da · {{ bom.counts.teil }} zu wenig · {{ bom.counts.fehlt }} fehlt{% if bom.counts.geholt %} · {{ bom.counts.geholt }} geholt{% endif %}{% if bom.cost %} · Nachkauf ca. {{ euro(bom.cost) }}{% endif %}</span>
+    <div class="row" style="flex-wrap:wrap;gap:8px">
     {% if not bom.complete %}<form method="post" action="/projekte/{{ project.id }}/einkauf"><button>{{ icon('content.shopping', size='sm') }} Fehlendes auf die Einkaufsliste</button></form>{% endif %}
+    {% if bom.reserved %}<form method="post" action="/projekte/{{ project.id }}/freigeben"><button>Reservierung aufheben ({{ bom.reserved }})</button></form>
+    {% else %}<form method="post" action="/projekte/{{ project.id }}/reservieren"><button>Verfügbares reservieren</button></form>{% endif %}
+    </div>
   </section>
   <a class="button primary" href="/scan?projekt={{ project.id }}" style="width:100%;margin:8px 0">{{ icon('action.scan', size='sm') }} Einsammeln per Scan</a>
   <h2>Sammelliste (Laufweg)</h2>
@@ -21,7 +25,7 @@
     <li class="item {% if l.gathered %}undone{% endif %}">
       <span class="name">
         {% if l.item_id %}<a href="/items/{{ l.item_id }}">{{ l.name }}</a>{% else %}{{ l.name }}{% endif %}
-        <small>{% set st = bom_status[l.id] %}{% if st.status == 'ok' %}<b class="ok">verfügbar</b> · {% elif st.status == 'teil' %}<b class="bad">zu wenig (fehlt {{ st.short }})</b> · {% elif st.status == 'fehlt' %}<b class="bad">fehlt</b> · {% endif %}{% if l.qty %}{{ l.qty }} × · {% endif %}{% if l.path %}{{ icon('content.place', size='xs') }} {{ l.path }}{% if l.stock is not none %} · Bestand {{ l.stock }}{% endif %}{% else %}nicht im Lager{% endif %}</small>
+        <small>{% set st = bom_status[l.id] %}{% if st.status == 'ok' %}<b class="ok">verfügbar</b> · {% elif st.status == 'teil' %}<b class="bad">zu wenig (fehlt {{ st.short }})</b> · {% elif st.status == 'fehlt' %}<b class="bad">fehlt</b> · {% endif %}{% if l.qty %}{{ l.qty }} × · {% endif %}{% if l.reserved %}reserviert {{ l.reserved }} · {% endif %}{% if l.path %}{{ icon('content.place', size='xs') }} {{ l.path }}{% if l.stock is not none %} · Bestand {{ l.stock }}{% endif %}{% else %}nicht im Lager{% endif %}</small>
       </span>
       {% if not l.gathered %}
       <form method="post" action="/projekte/lines/{{ l.id }}/gather"><button aria-label="Einsammeln">{{ icon('select.check', size='sm') }}</button></form>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Einkauf importieren · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/einkauf">Einkauf</a> › Rechnung / CSV importieren</nav>
+<h1>Einkauf importieren</h1>
+{% if rows is none %}
+<form method="post" action="/einkauf/import" enctype="multipart/form-data" class="card stack">
+  <p class="meta" style="margin:0">CSV-Export des Shops, PDF-Rechnung oder Rechnungstext einfügen. Erkannt werden Spalten wie Artikel, Menge, Einzelpreis, Artikelnummer bzw. Zeilen wie „3 x Lötzinn 0,5mm 9,90 €“. Danach prüfst du die Zuordnung.</p>
+  <label>Datei (CSV, PDF, TXT) <input type="file" name="file" accept=".csv,.pdf,.txt,text/csv,application/pdf,text/plain"></label>
+  <label>oder Text einfügen <textarea name="text" rows="6" placeholder="3 x Zylinderkopfschraube M3x10 0,08 € 0,24 €&#10;2 Stk. Lötzinn 0,5mm 9,90"></textarea></label>
+  <div class="row">
+    <input name="supplier" list="sup-names" placeholder="Lieferant, z. B. Reichelt" autocomplete="off">
+    <datalist id="sup-names">{% for n in suppliers %}<option value="{{ n }}">{% endfor %}</datalist>
+    <input name="bought_at" type="date" aria-label="Datum">
+  </div>
+  <button class="primary">{{ icon('action.upload', size='sm') }} Vorschau</button>
+</form>
+{% else %}
+<form method="post" action="/einkauf/import/uebernehmen" class="stack">
+  <input type="hidden" name="supplier" value="{{ supplier }}"><input type="hidden" name="bought_at" value="{{ bought_at }}">
+  <p class="meta">{{ rows|length }} Positionen erkannt{% if supplier %} · {{ supplier }}{% endif %}. Ziel je Zeile prüfen; Code von Hand eintippen geht vor.</p>
+  <label class="check"><input type="checkbox" name="book" value="1" checked> Mengen einbuchen (Bestand erhöhen)</label>
+  <ul class="list">
+    {% for r in rows %}{% set ln = r.line %}
+    <li class="card import-row">
+      <input type="hidden" name="line_{{ r.idx }}" value="{{ ln|tojson|forceescape }}">
+      <div class="title-row"><b>{{ ln.name }}</b><span class="meta">{% if ln.sku %}{{ ln.sku }} · {% endif %}{% if ln.price is not none %}{{ euro(ln.price) }}/Stk{% endif %}</span></div>
+      <div class="row">
+        <input name="qty_{{ r.idx }}" value="{{ ln.qty or '' }}" inputmode="numeric" class="short" aria-label="Menge">
+        <select name="target_{{ r.idx }}" aria-label="Ziel für {{ ln.name }}">
+          {% if r.item %}<option value="item:{{ r.item.id }}" selected>{{ r.item.name }} ({{ r.match.how }})</option>{% endif %}
+          {% for c in r.match.candidates %}<option value="item:{{ c.id }}">{{ c.name }} · {{ c.path }}</option>{% endfor %}
+          <option value="new" {% if not r.item %}selected{% endif %}>Neu anlegen (Zu sortieren)</option>
+          <option value="skip">Überspringen</option>
+        </select>
+        <input name="code_{{ r.idx }}" placeholder="oder Code" class="short" aria-label="Code von Hand">
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  <button class="primary">{{ icon('select.check', size='sm') }} Übernehmen</button>
+  <a href="/einkauf/import">Abbrechen</a>
+</form>
+{% endif %}
+{% endblock %}

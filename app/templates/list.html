@@ -4,7 +4,7 @@
 <h1>{{ title }}</h1>
 {% if kind == 'shopping' %}
 <p class="meta">{{ rows|length }} Positionen{% if total %} · geschätzt <b>{{ euro(total) }}</b>{% endif %} ·
-  <a href="/auswahl?src=einkauf">mehrere bearbeiten</a></p>
+  <a href="/auswahl?src=einkauf">mehrere bearbeiten</a> · <a href="/einkauf/import">Rechnung/CSV importieren</a></p>
 {% endif %}
 <ul class="list">
   {% for i in rows %}

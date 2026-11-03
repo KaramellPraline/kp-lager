@@ -17,6 +17,7 @@ from app import (
     catalog,
     codes,
     inventory,
+    invoice,
     kinds,
     materials,
     prefs,
@@ -94,6 +95,23 @@ class CardNew(BaseModel):
     kind: str = "note"  # note | pinout
 
 
+class ImportText(BaseModel):
+    text: str  # CSV oder Rechnungstext
+    supplier: str = ""
+
+
+class ImportRow(BaseModel):
+    line: dict[str, Any]  # wie aus /purchases/import/preview
+    target: str = "skip"  # "item:<id>" | "new" | "skip"
+
+
+class ImportApply(BaseModel):
+    rows: list[ImportRow]
+    supplier: str = ""
+    bought_at: str = ""
+    book: bool = True
+
+
 class Count(BaseModel):
     qty: int | None = None  # gezählte Menge (leer = nur bestätigen)
 
@@ -120,6 +138,8 @@ def register(
                 "order_url": i["order_url"], "lent_to": i["lent_to"], "expires": i["expires"],
                 "specs": materials.specs(i), "checked_at": i["checked_at"],
                 "ctype": i["ctype"], "fields": catalog.values_of(i),
+                "reserved": [{"project": r["name"], "project_id": r["id"], "qty": r["reserved"]}
+                             for r in projects.reservations(conn, i["id"])],
                 "last_supplier": purchases.last_supplier(conn, i["id"]),
                 "cards": [
                     {"id": c["id"], "kind": c["kind"], "title": c["title"], "body": c["body"]}
@@ -317,7 +337,8 @@ def register(
             "missing_cost_eur": round(bom["cost"], 2),
             "lines": [
                 {"id": r["id"], "item": r["code"], "name": r["name"], "qty": r["qty"],
-                 "stock": r["stock"], "status": r["status"], "short": r["short"],
+                 "stock": r["stock"], "free": r["free"], "reserved": r["reserved"],
+                 "status": r["status"], "short": r["short"],
                  "path": r["path"], "gathered": bool(r["gathered"])}
                 for r in bom["lines"]
             ],
@@ -362,6 +383,36 @@ def register(
             raise HTTPException(404, str(exc)) from None
         add_lines(conn, pid, lines)
         return project_json(conn, pid)
+
+    @router.post("/projects/{pid}/reserve", dependencies=[Write])
+    def project_reserve(conn: Conn, pid: int, release: bool = False) -> dict[str, Any]:
+        """Verfügbares für das Projekt reservieren (`release=true` hebt die Reservierung auf)."""
+        try:
+            projects.get(conn, pid)
+        except LagerError as exc:
+            raise HTTPException(404, str(exc)) from None
+        if release:
+            projects.release(conn, pid)
+        else:
+            projects.reserve(conn, pid)
+        return project_json(conn, pid)
+
+    @router.post("/purchases/import/preview")
+    def import_preview(conn: Conn, body: ImportText) -> list[dict[str, Any]]:
+        """Rechnungstext oder CSV -> erkannte Positionen mit Zuordnungsvorschlag (ändert nichts)."""
+        try:
+            return invoice.preview(conn, invoice.parse(body.text), body.supplier)
+        except LagerError as exc:
+            raise bad(exc) from None
+
+    @router.post("/purchases/import", dependencies=[Write])
+    def import_apply(conn: Conn, body: ImportApply) -> dict[str, int]:
+        """Positionen übernehmen: target je Zeile "item:<id>" | "new" | "skip"."""
+        try:
+            return invoice.apply(conn, [r.model_dump() for r in body.rows], body.supplier,
+                                 body.bought_at, body.book)  # fmt: skip
+        except LagerError as exc:
+            raise bad(exc) from None
 
     @router.post("/projects/{pid}/shopping", dependencies=[Write])
     def project_shopping(conn: Conn, pid: int) -> dict[str, Any]:
