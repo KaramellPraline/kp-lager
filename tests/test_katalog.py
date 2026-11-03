@@ -105,7 +105,7 @@ def test_tree_and_home(client: TestClient) -> None:
     leaf = client.get(f"/n/{shelf}/zweig").text
     assert "Sekundenkleber" in leaf
     assert "Übersicht" in client.get("/baum").text and "Werkstatt" in client.get("/baum").text
-    assert 'href="/neu"' in home
+    assert 'href="/neu/go"' in home
 
 
 def test_add_container_tab_like_catalog(client: TestClient) -> None:

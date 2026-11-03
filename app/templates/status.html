@@ -13,7 +13,12 @@
       {% for b in s.backups %}<li class="item"><span class="name">{{ b.name }}<small>{{ b.when }} · {{ b.size }}</small></span></li>
       {% else %}<li class="empty">Keine Sicherungen in data/backups.</li>{% endfor %}
     </ul>
-    <form method="post" action="/status/backup"><button class="primary">{{ icon('action.save', size='sm') }} Jetzt sichern</button></form>
+    <p>Extern: {% if s.extern_target %}<b>{{ s.extern_target }}</b>{% if s.extern_last %} · zuletzt {{ s.extern_last }}{% endif %}{% else %}<b>nicht eingestellt</b> – unter Einstellungen › Betrieb einen Zielordner eintragen{% endif %}</p>
+    {% if s.extern_error %}<p class="msg">Fehler beim externen Backup: {{ s.extern_error }}</p>{% endif %}
+    <div class="row">
+      <form method="post" action="/status/backup"><button class="primary">{{ icon('action.save', size='sm') }} Jetzt sichern</button></form>
+      {% if s.extern_target %}<form method="post" action="/status/backup/extern"><button>Jetzt extern sichern</button></form>{% endif %}
+    </div>
   </section>
 
   {% if s.expiring %}

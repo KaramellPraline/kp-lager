@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Inventur · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Inventur</h1>
+<p class="meta">Behälter, deren Inhalt noch nie oder seit über {{ days }} Tagen nicht geprüft wurde. Ein Behälter öffnen, Teile abhaken oder Mengen korrigieren, dann abschließen.</p>
+<ul class="list">
+  {% for r in rows %}
+  <li><a href="/inventur/{{ r.id }}"><span>{{ r.name }}{% if r.code %} · {{ r.code }}{% endif %}</span>
+    <small>{{ r.path }} · {{ r.n }} Teile · {% if r.checked_at %}zuletzt {{ r.checked_at[:10] }}{% else %}noch nie geprüft{% endif %}</small></a></li>
+  {% else %}<li class="empty">Alles geprüft.</li>{% endfor %}
+</ul>
+{% endblock %}

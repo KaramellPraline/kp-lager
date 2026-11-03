@@ -30,7 +30,7 @@
   <aside class="sidenav" aria-label="Navigation">
     <a class="brand" href="/">{{ APP_NAME }}</a>
     {{ nav_link('/', 'nav.home', 'Bestand') }}
-    {{ nav_link('/neu', 'action.add', 'Hinzufügen') }}
+    <a class="nav {% if cur.startswith('/neu') %}active{% endif %}" href="/neu/go">{{ icon('action.add') }}<span>Hinzufügen</span></a>
     {{ nav_link('/scan', 'action.scan', 'Scannen') }}
     {{ nav_link('/suche', 'nav.search', 'Suche') }}
     {{ nav_link('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
@@ -64,9 +64,9 @@
 </div>
 <nav class="bottomnav mobile-only" aria-label="Navigation">
   {{ navtab('/', 'nav.home', 'Bestand') }}
-  {{ navtab('/neu', 'action.add', 'Hinzufügen') }}
+  <a href="/neu/go" class="{% if cur.startswith('/neu') %}active{% endif %}">{{ icon('action.add') }}<span>Hinzufügen</span></a>
   {{ navtab('/scan', 'action.scan', 'Scannen', extra='scan') }}
-  {{ navtab('/einkauf', 'content.shopping', 'Einkauf') }}
+  {{ navtab('/suche', 'nav.search', 'Suche') }}
   {{ navtab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
 </nav>
 {% if msg %}

@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from app import codes, labels, repo, value
+from app import codes, labels, repo, scheduler, value
 
 STARTED = time.time()
 EXPIRY_WARN_DAYS = 30
@@ -74,6 +74,9 @@ def collect(conn: sqlite3.Connection, data_dir: Path) -> dict[str, Any]:
         "backups": backups(data_dir),
         "backup_last": codes.get_setting(conn, "backup_last", ""),
         "backup_error": codes.get_setting(conn, "backup_error", ""),
+        "extern_target": scheduler.extern_target(conn),
+        "extern_last": codes.get_setting(conn, "backup_extern_last", ""),
+        "extern_error": codes.get_setting(conn, "backup_extern_error", ""),
         "backup_days": codes.get_setting(conn, "backup_days", "30"),
         "n_items": one("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
         "n_containers": one("SELECT COUNT(*) FROM container").fetchone()[0],

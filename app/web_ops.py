@@ -20,6 +20,7 @@ from app import (
     kinds,
     prefs,
     repo,
+    scheduler,
     search,
     slicer,
     status,
@@ -45,6 +46,14 @@ def register(
     @app.get("/status", response_class=HTMLResponse)
     def status_page(request: Request, conn: Conn) -> HTMLResponse:
         return render(request, conn, "status.html", s=status.collect(conn, settings.data_dir))
+
+    @app.post("/status/backup/extern")
+    def status_backup_extern(conn: Conn) -> RedirectResponse:
+        files = backup.todays_files(settings.data_dir / "backups")
+        if not files:  # noch nichts gesichert: erst lokal sichern
+            backup.run(settings.data_dir, settings.data_dir / "backups",
+                       prefs.number(conn, "backup_days"))  # fmt: skip
+        return redirect("/status", scheduler.extern_tick(settings.data_dir, force=True))
 
     @app.post("/status/backup")
     def status_backup(conn: Conn) -> RedirectResponse:

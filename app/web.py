@@ -26,6 +26,7 @@ from app import (
     apikeys,
     backup,
     cables,
+    cards,
     choices,
     codes,
     d30,
@@ -33,6 +34,7 @@ from app import (
     dryer,
     icons,
     importer,
+    inventory,
     itemtypes,
     kasten,
     kinds,
@@ -43,11 +45,13 @@ from app import (
     prefs,
     projects,
     psus,
+    purchases,
     quick,
     repo,
     scheduler,
     value,
     web_katalog,
+    web_lab,
     web_ops,
     withdrawals,
 )
@@ -59,6 +63,7 @@ from app.repo import LagerError
 APP_DIR = Path(__file__).parent
 APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
+ADD_TABS = ("/neu", "/neu/behaelter", "/neu/material", "/neu/bin")
 KIND_LABELS = kinds.KIND_LABELS
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
@@ -266,6 +271,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     web_ops.register(app, Conn, render, redirect, settings)
     web_katalog.register(app, Conn, render, redirect, settings)
+    web_lab.register(app, Conn, render, redirect, settings)
 
     @app.middleware("http")
     async def force_https(request: Request, call_next: Any) -> Response:
@@ -274,6 +280,13 @@ def create_app(settings: Settings) -> FastAPI:
             target = request.url.replace(scheme="https", port=None)
             return RedirectResponse(str(target), status_code=308)
         resp: Response = await call_next(request)
+        return resp
+
+    @app.middleware("http")
+    async def remember_add_tab(request: Request, call_next: Any) -> Response:
+        resp: Response = await call_next(request)
+        if request.method == "GET" and request.url.path in ADD_TABS and resp.status_code == 200:
+            resp.set_cookie("add_tab", request.url.path, max_age=31_536_000, samesite="lax")
         return resp
 
     @app.get("/health")
@@ -294,16 +307,39 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request, conn: Conn) -> HTMLResponse:
         """Bestand durchstöbern – hinzufügen geschieht unter „Hinzufügen“ (/neu)."""
+        inbox_n = len(repo.items_in(conn, repo.inbox(conn)))
+        found = [
+            ("/zu-sortieren", "content.inbox", "Zu sortieren", inbox_n),
+            ("/einkauf", "content.shopping", "Nachkaufen", len(repo.shopping_list(conn))),
+            ("/inventur", "select.check", "Inventur fällig",
+             len(inventory.due(conn, prefs.number(conn, "inventory_days")))),
+            ("/labels", "content.tag", "Etiketten wartend", labels.queue_count(conn)),
+            ("/verliehen", "content.lent", "Verliehen", len(repo.lent_items(conn))),
+        ]  # fmt: skip
+        worth, _unpriced = value.total(conn)
+        last = codes.get_setting(conn, "backup_last", "")
+        err = codes.get_setting(conn, "backup_error", "")
         return render(
             request,
             conn,
             "index.html",
             roots=repo.children(conn, None),
             favorites=repo.favorites(conn),
-            n_lent=len(repo.lent_items(conn)),
-            n_shopping=len(repo.shopping_list(conn)),
-            n_queue=labels.queue_count(conn),
+            tasks=[t for t in found if t[3]],
+            stats={
+                "items": conn.execute("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
+                "containers": conn.execute("SELECT COUNT(*) FROM container").fetchone()[0],
+                "worth": value.euro(worth),
+                "backup": last[:10] if last else "–",
+                "backup_bad": bool(err),
+            },
         )
+
+    @app.get("/neu/go")
+    def add_last_tab(request: Request) -> RedirectResponse:
+        """Hinzufügen-Tab: zuletzt benutzten Reiter öffnen."""
+        tab = request.cookies.get("add_tab", "/neu")
+        return RedirectResponse(tab if tab in ADD_TABS else "/neu", status_code=303)
 
     @app.get("/neu/material", response_class=HTMLResponse)
     def add_material_page(request: Request, conn: Conn) -> HTMLResponse:
@@ -604,6 +640,7 @@ def create_app(settings: Settings) -> FastAPI:
             sizes=kasten.SIZES,
             divs=kasten.DIVS,
             cad=kasten.cad_command(node) if node["kind"] == "bin" else "",
+            cards=cards.for_container(conn, node_id),
         )
         recent = [node_id] + [i for i in recent_ids(request) if i != node_id]
         resp.set_cookie(
@@ -646,6 +683,9 @@ def create_app(settings: Settings) -> FastAPI:
             dry_history=dryer.history(conn, item_id, 8) if item["material"] == "fil" else [],
             individual=bool(item["code"]) and item["code"][:3] in repo.INDIVIDUAL,
             today=date.today().isoformat(),
+            cards=cards.for_item(conn, item_id),
+            buys=purchases.for_item(conn, item_id),
+            supplier_names=purchases.names(conn),
         )
 
     @app.post("/items/{item_id}/weigh")
@@ -1198,6 +1238,8 @@ def create_app(settings: Settings) -> FastAPI:
             "project.html",
             project=projects.get(conn, pid),
             lines=lines,
+            bom=(bom := projects.compare(conn, pid)),
+            bom_status={r["id"]: r for r in bom["lines"]},
             done=sum(1 for line in lines if line["gathered"]),
             found=found,
             pq=q,

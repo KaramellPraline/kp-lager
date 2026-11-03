@@ -55,6 +55,12 @@ PREFS = (
     Pref("backup_days", "Tägliche Backups aufbewahren (Tage)", "int", "30", "Betrieb",
          "Das Backup läuft automatisch einmal am Tag (Datenbank + Fotos) in data/backups.",
          min=3, max=365),
+    Pref("backup_extern", "Externes Backup: Zielordner", "text", "", "Betrieb",
+         "NAS-Freigabe, USB oder Sync-Ordner. Leer = aus. Die tägliche Sicherung wird zusätzlich "
+         "dorthin kopiert. Im Docker-Container den Ordner als Volume einbinden und den Pfad "
+         "im Container eintragen (oder LAGER_BACKUP_EXTERN setzen)."),
+    Pref("inventory_days", "Inventur fällig nach (Tagen)", "int", "180", "Betrieb",
+         min=7, max=3650),
     Pref("slicer_dir", "Ordner mit exportiertem G-Code (Creality Print)", "text", "", "Betrieb",
          "Unter Mehr › Slicer wird dieser Ordner eingelesen (Exportordner von Creality Print)."),
     Pref("typo_correction", "Tippfehler-Korrektur in der Suche", "bool", "1", "Suche"),

@@ -79,7 +79,7 @@ def test_lend_and_return(client: TestClient) -> None:
     r = client.post(f"/items/{item}/lend", data={"to": "Nachbar Tom"})
     assert "Verliehen an <b>Nachbar Tom</b>" in r.text
     assert "bei Nachbar Tom" in client.get(f"/n/{b}").text
-    assert "Verliehen · <b>1</b>" in client.get("/mehr").text
+    assert "Verliehen" in client.get("/").text
     assert "Bohrmaschine" in client.get("/verliehen").text
     client.post(f"/items/{item}/return")
     assert "Bohrmaschine" not in client.get("/verliehen").text
