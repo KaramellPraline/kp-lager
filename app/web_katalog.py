@@ -63,11 +63,19 @@ def register(
             conn,
             "katalog.html",
             groups=catalog.grouped(conn),
+            favs=catalog.favorite_keys(conn),
             ctype=current,
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
             recent=recent,
         )
+
+    @app.post("/neu/favorit")
+    def katalog_favorite(conn: Conn, form: Form) -> RedirectResponse:
+        key = form.get("typ", "")
+        if catalog.lookup(conn, key):
+            catalog.toggle_favorite(conn, key)
+        return RedirectResponse(f"/neu?typ={key}", status_code=303)
 
     @app.get("/neu/vorschau")
     def katalog_preview(request: Request, typ: str, conn: Conn) -> JSONResponse:

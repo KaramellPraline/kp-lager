@@ -6,17 +6,19 @@
   <aside class="neu-types" aria-label="Teile-Typen">
     <input type="search" id="type-filter" placeholder="Typ suchen … (z. B. Schraube)" aria-label="Typ suchen">
     {% for g, types in groups %}
-    <details class="grp" data-g="{{ g }}" {% if ctype in types %}open{% endif %}>
+    <details class="grp" id="g{{ loop.index }}" data-g="{{ g }}" {% if ctype in types or loop.first and g == 'Favoriten' %}open{% endif %}>
     <summary>{{ g }} <span class="meta">{{ types|length }}</span></summary>
     <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
     </details>
     {% endfor %}
     <p class="meta">Kabel, Netzteile, Filament und Harz: Reiter <a href="/neu/material">Kabel &amp; Material</a>.</p>
   </aside>
+  <nav class="jump-bar" aria-label="Zu Kategorie springen">{% for g, types in groups %}<a href="#g{{ loop.index }}" data-jump="g{{ loop.index }}" title="{{ g }}">{{ g[:2] }}</a>{% endfor %}</nav>
 
   <section class="neu-main">
     <form method="post" action="/neu" id="neu-form" class="card stack" data-typ="{{ ctype.key }}">
-      <h1 style="margin:0">{{ ctype.label }}</h1>
+      <div class="title-row"><h1 style="margin:0">{{ ctype.label }}</h1>
+        <button type="submit" class="star fav-star {% if ctype.key in favs %}on{% endif %}" formaction="/neu/favorit" formnovalidate aria-label="Typ als Favorit {{ 'lösen' if ctype.key in favs else 'markieren' }}" title="Favorit">{{ icon('content.star') }}</button></div>
       <input type="hidden" name="typ" value="{{ ctype.key }}">
       {% for f in ctype.fields %}
       <div class="nf">

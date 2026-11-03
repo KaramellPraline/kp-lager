@@ -629,3 +629,12 @@
     new IntersectionObserver(function (e) { mini.classList.toggle("show", !e[0].isIntersecting); }).observe(head);
   });
 })();
+
+// M46: Sprungleiste im Katalog öffnet die Kategorie und scrollt hin
+document.addEventListener("click", function (ev) {
+  var a = ev.target.closest("[data-jump]");
+  if (!a) return;
+  ev.preventDefault();
+  var d = document.getElementById(a.dataset.jump);
+  if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
+});
