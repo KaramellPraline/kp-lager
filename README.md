@@ -56,6 +56,7 @@ Kamera-Scan und Mikrofon funktionieren im Browser nur über HTTPS. Für LAN-Betr
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Datenmodell, Module, Routen |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Entscheidungen mit Datum und Begründung (nicht neu diskutieren) |
 | [docs/CONFIG.md](docs/CONFIG.md) | Umgebungsvariablen und Einstellungen |
+| [docs/CLOUD.md](docs/CLOUD.md) | Einrichtung für Claude Code im Web und Codespaces |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Windows-PC, Docker, Raspberry Pi, HTTPS, Backup |
 | [docs/FEATURES.md](docs/FEATURES.md) | Funktionen und Bedienung im Detail |
 | [docs/ETIKETTEN.md](docs/ETIKETTEN.md) | Code-Schema, XLSX/D30-Vorlage |
