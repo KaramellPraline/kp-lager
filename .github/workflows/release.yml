@@ -1,7 +1,8 @@
 name: Release
 
-# Veröffentlichen: Version hochzählen (tools/release.py bump), committen, Tag pushen:
+# Veröffentlichen: Version hochzählen (tools/release.py bump), committen, nach main mergen, dann
 #   git tag v0.3.0 && git push origin v0.3.0
+# oder auf GitHub › Releases › „Draft a new release“ mit neuem Tag v0.3.0 (Ziel: main) veröffentlichen.
 # Der Workflow prüft Tag == Version, testet, baut Windows-Installer, Android-APK und Docker-Image
 # und legt ein GitHub-Release mit Installern und APK an.
 on:
@@ -131,4 +132,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 tools/release.py notes "$TAG" > notes.md
-          gh release create "$TAG" dist/*.exe dist/*.apk --title "KP Lager ${TAG}" --notes-file notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # Release wurde schon über die GitHub-Oberfläche angelegt: Dateien und Text ergänzen
+            gh release upload "$TAG" dist/*.exe dist/*.apk --clobber
+            gh release edit "$TAG" --title "KP Lager ${TAG}" --notes-file notes.md
+          else
+            gh release create "$TAG" dist/*.exe dist/*.apk --title "KP Lager ${TAG}" --notes-file notes.md
+          fi

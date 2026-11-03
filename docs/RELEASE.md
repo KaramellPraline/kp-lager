@@ -13,6 +13,8 @@ git commit -am "Release 0.3.0"
 git push                                      # Pull Request/Merge nach main wie gewohnt
 git tag v0.3.0 && git push origin v0.3.0      # löst den Workflow „Release“ aus
 ```
+Ohne Kommandozeile: GitHub › Releases › „Draft a new release“ › Tag `v0.3.0` neu anlegen (Ziel `main`) ›
+„Publish release“. Der Workflow startet dann ebenso und hängt EXE und APK an dieses Release an.
 Der Workflow (`.github/workflows/release.yml`)
 1. prüft, dass Tag, `app/__init__.py` und `pyproject.toml` übereinstimmen und der Changelog-Text vorhanden ist,
 2. führt Lint, Typprüfung und Tests aus,
