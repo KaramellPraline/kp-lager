@@ -1,6 +1,7 @@
 """Einstellungen je Typ (Katalog, eigene Typen, Material-Profile `mat:fil` …):
 Standard-Mindestbestand, Haltbarkeit nach dem Öffnen, Etikettenvorlagen."""
 
+import json
 import sqlite3
 from typing import Any
 
@@ -49,6 +50,21 @@ def save(
             " shelf_months = excluded.shelf_months, label_main = excluded.label_main,"
             " label_extra = excluded.label_extra",
             (key, min_qty, shelf_months, label_main.strip(), label_extra.strip()),
+        )
+
+
+def save_layout(conn: sqlite3.Connection, key: str, layout: dict[str, Any] | None) -> None:
+    """Etiketten-Layout des Typs speichern (None = Standard wiederherstellen)."""
+    from app import labels
+
+    if not key:
+        raise LagerError("Typ fehlt")
+    raw = json.dumps(labels.parse_layout(layout), ensure_ascii=False) if layout else ""
+    with conn:
+        conn.execute(
+            "INSERT INTO type_setting (key, label_layout) VALUES (?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET label_layout = excluded.label_layout",
+            (key, raw),
         )
 
 

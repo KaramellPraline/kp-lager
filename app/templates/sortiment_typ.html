@@ -62,14 +62,13 @@
 </ul>
 {% endif %}
 <details id="einstellungen" class="card" style="margin-top:12px">
-  <summary><b>Einstellungen für diesen Typ</b> <span class="meta">{% if tset.min_qty is not none %}Mindestbestand {{ tset.min_qty }} · {% endif %}{% if tset.shelf_months %}{{ tset.shelf_months }} Monate haltbar · {% endif %}{% if tset.label_main %}Etikett „{{ tset.label_main }}“{% endif %}</span></summary>
+  <summary><b>Einstellungen für diesen Typ</b> <span class="meta">{% if tset.min_qty is not none %}Mindestbestand {{ tset.min_qty }} · {% endif %}{% if tset.shelf_months %}{{ tset.shelf_months }} Monate haltbar · {% endif %}{% if tset.label_layout %}eigenes Etiketten-Layout{% endif %}</span></summary>
   <form method="post" action="/sortiment/{{ kind.key }}/einstellungen" class="stack">
     <label>Standard-Mindestbestand je Teil <input name="min_qty" value="{{ tset.min_qty if tset.min_qty is not none else '' }}" inputmode="numeric" placeholder="leer = keiner"></label>
     <p class="meta" style="margin:0">Gilt für jedes Teil dieses Typs ohne eigenen Mindestbestand; ein Wert am Teil hat Vorrang.</p>
     <label>Haltbar nach dem Öffnen (Monate) <input name="shelf_months" value="{{ tset.shelf_months or '' }}" inputmode="numeric" placeholder="z. B. 12"></label>
-    <label>Etikett – große Zeile <input name="label_main" value="{{ tset.label_main }}" placeholder="{% for f, lb, u in kind.fields[:2] %}{{ '{' ~ f ~ '}' }}{% endfor %}"></label>
-    <label>Etikett – kleine Zeile <input name="label_extra" value="{{ tset.label_extra }}" placeholder="leer = Standard"></label>
-    <p class="meta" style="margin:0">Felder in geschweiften Klammern: {% for f, lb, u in kind.fields %}<code>{{ '{' ~ f ~ '}' }}</code> {{ lb }}{% if not loop.last %}, {% endif %}{% endfor %}. Leer = Name des Teils.</p>
+    <input type="hidden" name="label_main" value="{{ tset.label_main }}"><input type="hidden" name="label_extra" value="{{ tset.label_extra }}">
+    <a class="button" href="/etiketten/typ/{{ kind.key }}">{{ icon('content.tag', size='sm') }} Etiketten-Layout anordnen{% if tset.label_layout %} (eigenes Layout){% endif %}</a>
     <button class="primary">Speichern</button>
   </form>
 </details>

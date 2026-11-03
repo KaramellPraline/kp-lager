@@ -66,7 +66,60 @@ def _qr(content: str) -> Image.Image:
     return small.resize((small.width * scale, small.height * scale), Image.Resampling.NEAREST)
 
 
+PAD_Y = 3  # Luft oben/unten
+LINE_MAX = 64
+
+
+def fit_box(
+    draw: ImageDraw.ImageDraw, text: str, width: int, height: int, smallest: int = 9
+) -> Font:
+    """Größte Schrift, die in das Feld (Breite × Höhe) passt – automatische Skalierung."""
+    for size in range(min(LINE_MAX, height + 6), smallest - 1, -1):
+        font = _font(size)
+        try:
+            ascent, descent = font.getmetrics()  # type: ignore[union-attr]
+        except AttributeError:
+            ascent, descent = size, 0
+        if ascent + descent > height + 2:
+            continue
+        if draw.textlength(text, font=font) <= width:
+            return font
+    return _font(smallest)
+
+
+def render_layout(label: Label) -> Image.Image:
+    """Etikett nach Typ-Layout: QR links/rechts/ohne, Zeilen mit Höhenanteil und Ausrichtung;
+    jede Zeile bekommt die größte Schrift, die in ihr Feld passt (Kürzen mit „…“ nur am Ende)."""
+    img = Image.new("1", (W, H), 1)
+    draw = ImageDraw.Draw(img)
+    x0, x1 = MARGIN, W - MARGIN
+    if label.qr_pos != "none":
+        code = _qr(label.qr)
+        top = (H - code.height) // 2
+        if label.qr_pos == "right":
+            img.paste(code, (W - MARGIN - code.width, top))
+            x1 = W - MARGIN - code.width - GAP
+        else:
+            img.paste(code, (MARGIN, top))
+            x0 = MARGIN + code.width + GAP
+    room = x1 - x0 - 4
+    total = sum(w for _, w, _ in label.lines) or 1
+    avail = H - 2 * PAD_Y
+    y = float(PAD_Y)
+    for text, weight, align in label.lines:
+        box = avail * weight / total
+        font = fit_box(draw, text, room, int(box) - 2)
+        shown = clip(draw, text, font, room)
+        anchor = {"left": "lm", "center": "mm", "right": "rm"}[align]
+        px = {"left": x0 + 2, "center": (x0 + x1) // 2, "right": x1 - 2}[align]
+        draw.text((px, y + box / 2), shown, font=font, fill=0, anchor=anchor)
+        y += box
+    return img
+
+
 def render(label: Label) -> Image.Image:
+    if label.lines:
+        return render_layout(label)
     img = Image.new("1", (W, H), 1)
     draw = ImageDraw.Draw(img)
     code = _qr(label.qr)

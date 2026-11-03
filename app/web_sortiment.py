@@ -6,9 +6,9 @@ from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
-from app import catalog, kinds, repo, sortiment, typesettings
+from app import catalog, kinds, labelimg, labels, repo, sortiment, typesettings
 from app.config import Settings
 
 
@@ -117,6 +117,72 @@ def register(
             grid=grid, row_f=row_f, col_f=col_f, labels={f: lb for f, lb, _ in k.fields},
             custom=key.startswith("c_"), tset=typesettings.get(conn, key),
         )  # fmt: skip
+
+    # --- Etiketten-Layout je Typ -----------------------------------------------------------
+
+    def sample(conn: Any, k: sortiment.Kind) -> tuple[dict[str, str], str]:
+        """Beispielwerte für die Vorschau: ein echtes Teil dieses Typs, sonst Platzhalter."""
+        rows = sortiment.items(conn, k)
+        if rows:
+            item = repo.get_item(conn, rows[0]["id"])
+            return labels.item_values(conn, item), item["code"] or "ART-0001"
+        values = {key: label for key, label, _ in k.fields}
+        values.update({"name": k.label, "code": "ART-0001", "ort": "Kiste 1"})
+        return values, "ART-0001"
+
+    def layout_from(raw: dict[str, str] | Any) -> labels.Layout:
+        lines = []
+        for i in range(labels.MAX_LINES):
+            if raw.get(f"t_{i}", "").strip():
+                lines.append({"t": raw.get(f"t_{i}", ""), "w": raw.get(f"w_{i}", "1"),
+                              "a": raw.get(f"a_{i}", "center")})  # fmt: skip
+        return labels.parse_layout({"qr": raw.get("qr", "left"), "lines": lines})
+
+    @app.get("/etiketten/typ", response_class=HTMLResponse)
+    def label_types(request: Request, conn: Conn) -> HTMLResponse:
+        n = sortiment.counts(conn)
+        groups: dict[str, list[tuple[sortiment.Kind, int, bool]]] = {}
+        for k in sortiment.kinds(conn):
+            custom = bool(typesettings.get(conn, k.key).get("label_layout"))
+            groups.setdefault(k.group, []).append((k, n.get(k.key, 0), custom))
+        return render(request, conn, "etiketten_typen.html", groups=list(groups.items()))
+
+    @app.get("/etiketten/typ/{key}", response_class=HTMLResponse)
+    def label_designer(request: Request, key: str, conn: Conn) -> HTMLResponse:
+        k = sortiment.kind(conn, key)
+        stored = typesettings.get(conn, key).get("label_layout") or ""
+        layout = labels.parse_layout(stored)
+        values, code = sample(conn, k)
+        fields = [(f"{{{f}}}", lb) for f, lb, _ in k.fields]
+        fields += [("{name}", "Name"), ("{code}", "Code"), ("{ort}", "Ort")]
+        return render(
+            request, conn, "etiketten_layout.html", kind=k, layout=layout, custom=bool(stored),
+            fields=fields, max_lines=labels.MAX_LINES, sample_code=code,
+            preview=[(t, w, a) for t, w, a in labels.layout_lines(layout, values)],
+        )  # fmt: skip
+
+    @app.get("/etiketten/typ/{key}/vorschau.png")
+    def label_preview(request: Request, key: str, conn: Conn) -> Response:
+        k = sortiment.kind(conn, key)
+        layout = layout_from(request.query_params)
+        values, code = sample(conn, k)
+        label = labels.Label(
+            code, labels.qr_content(settings.base_url, code), values.get("name", ""), "",
+            labels.layout_lines(layout, values), str(layout["qr"]),
+        )  # fmt: skip
+        return Response(labelimg.png(label), media_type="image/png",
+                        headers={"Cache-Control": "no-store"})  # fmt: skip
+
+    @app.post("/etiketten/typ/{key}")
+    def label_layout_save(key: str, conn: Conn, form: Form) -> RedirectResponse:
+        sortiment.kind(conn, key)
+        if form.get("reset"):
+            typesettings.save_layout(conn, key, None)
+            return redirect(f"/etiketten/typ/{key}", "Standard-Layout wiederhergestellt")
+        typesettings.save_layout(conn, key, layout_from(form))
+        return redirect(
+            f"/etiketten/typ/{key}", "Layout gespeichert – gilt für neue Etiketten dieses Typs"
+        )
 
     # --- Typ am Teil ---------------------------------------------------------------------
 

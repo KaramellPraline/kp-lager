@@ -452,3 +452,12 @@ table.raster small { display: block; color: var(--sub); font-size: 11px; }
   background: var(--raised); border: 1px solid var(--accent); border-radius: var(--r-sm); padding: 10px 12px; font-size: 14px; }
 html.is-offline .topbar::after { content: "offline"; font: 12px var(--font-mono); color: var(--accent); margin-left: 8px; }
 @media (min-width: 900px) { .offline-bar { bottom: 16px; left: auto; max-width: 420px; } }
+
+/* Etiketten-Layout */
+.label-stage { display: flex; justify-content: center; padding: 14px; background: #fff; }
+.label-preview { image-rendering: pixelated; width: 100%; max-width: 480px; height: auto; border: 1px dashed #bbb; background: #fff; }
+.layout-line { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.layout-line .row { display: flex; gap: 6px; }
+.layout-line .row input { flex: 1 1 0; min-width: 0; }
+.layout-line .row select { flex: 1 1 0; min-width: 0; }
+.layout-line .row button { flex: 0 0 48px; }

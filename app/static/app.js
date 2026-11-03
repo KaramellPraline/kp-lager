@@ -562,3 +562,50 @@
   window.addEventListener("offline", function () { document.documentElement.classList.add("is-offline"); });
   if (!navigator.onLine) document.documentElement.classList.add("is-offline");
 })();
+
+/* Etiketten-Layout: Live-Vorschau, Felder einfügen, Zeilen verschieben */
+(function () {
+  var form = document.getElementById("layout-form");
+  if (!form) return;
+  var img = document.getElementById("label-preview"), timer = null, last = null;
+  function query() {
+    var p = new URLSearchParams(new FormData(form));
+    p.delete("reset");
+    return p.toString();
+  }
+  function refresh() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      img.src = "/etiketten/typ/" + form.dataset.key + "/vorschau.png?" + query() + "&_=" + Date.now();
+    }, 150);
+  }
+  form.addEventListener("input", refresh);
+  form.addEventListener("change", refresh);
+  form.addEventListener("focusin", function (ev) {
+    if (ev.target.matches("input[name^=t_]")) last = ev.target;
+  });
+  form.querySelectorAll(".field-chip").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var target = last || form.querySelector("input[name=t_0]");
+      var pos = target.selectionStart == null ? target.value.length : target.selectionStart;
+      var tok = b.dataset.token, v = target.value;
+      var sep = pos > 0 && v.charAt(pos - 1) !== " " && v.charAt(pos - 1) !== "" ? " " : "";
+      target.value = v.slice(0, pos) + sep + tok + v.slice(pos);
+      target.focus();
+      refresh();
+    });
+  });
+  // Zeile nach oben: Werte mit der Zeile darüber tauschen
+  form.querySelectorAll(".line-up").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var row = b.closest(".layout-line"), prev = row.previousElementSibling;
+      if (!prev) return;
+      ["t", "w", "a"].forEach(function (k) {
+        var a = row.querySelector("[name=" + k + "_" + row.dataset.i + "]");
+        var c = prev.querySelector("[name=" + k + "_" + prev.dataset.i + "]");
+        var tmp = a.value; a.value = c.value; c.value = tmp;
+      });
+      refresh();
+    });
+  });
+})();
