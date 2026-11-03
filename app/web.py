@@ -645,6 +645,8 @@ def create_app(settings: Settings) -> FastAPI:
         node = need_node(conn, node_id)
         cols = int(node["grid"].split("x")[0]) if node["grid"] else 0
         path = repo.container_path(conn, node_id)[:-1]
+        raw_rot = request.query_params.get("drehen") or request.cookies.get("tv_rot", "")
+        rot = int(raw_rot) if raw_rot in ("0", "90", "180", "270") else kasten.DEFAULT_ROT
         resp = render(
             request,
             conn,
@@ -654,7 +656,7 @@ def create_app(settings: Settings) -> FastAPI:
             kids=repo.children(conn, node_id),
             items=repo.items_in(conn, node_id),
             cols=cols,
-            topview=kasten.topview(conn, node),
+            topview=kasten.topview(conn, node, rot),
             targets=kasten.quick_targets(conn, node) if node["model"] else [],
             free=kasten.free_cells(conn, node),
             place=request.query_params.get("place", ""),
@@ -663,6 +665,8 @@ def create_app(settings: Settings) -> FastAPI:
             cad=kasten.cad_command(node) if node["kind"] == "bin" else "",
             cards=cards.for_container(conn, node_id),
         )
+        if request.query_params.get("drehen") in ("0", "90", "180", "270"):
+            resp.set_cookie("tv_rot", str(rot), max_age=31_536_000, samesite="lax")
         recent = [node_id] + [i for i in recent_ids(request) if i != node_id]
         resp.set_cookie(
             RECENT_COOKIE, ",".join(map(str, recent[:20])), max_age=31_536_000, samesite="lax"

@@ -15,6 +15,7 @@ from app import catalog, codes, labels, repo
 from app.importer import Report
 
 TABLES = ("container", "item", "event")
+SETTING_TABLES = ("type_setting", "custom_type", "settings")
 
 
 def parse_dump(text: str) -> dict[str, list[dict[str, Any]]] | None:
@@ -29,7 +30,9 @@ def parse_dump(text: str) -> dict[str, list[dict[str, Any]]] | None:
     if not (isinstance(obj, dict) and isinstance(obj.get("container"), list)
             and isinstance(obj.get("item"), list)):  # fmt: skip
         return None
-    return {t: [r for r in obj.get(t, []) if isinstance(r, dict)] for t in TABLES}
+    return {
+        t: [r for r in obj.get(t, []) if isinstance(r, dict)] for t in (*TABLES, *SETTING_TABLES)
+    }
 
 
 def _columns(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -133,6 +136,31 @@ def merge(conn: sqlite3.Connection, dump: dict[str, list[dict[str, Any]]], repor
         report.events_added += 1
 
 
+def merge_settings(conn: sqlite3.Connection, dump: dict[str, list[dict[str, Any]]]) -> None:
+    """Etiketten-Layouts, Typ-Einstellungen, eigene Typen, Optionen übernehmen (nur Fehlendes)."""
+    for table, pk in (("type_setting", "key"), ("custom_type", "key")):
+        cols = _columns(conn, table)
+        for row in dump.get(table, []):
+            data = {k: v for k, v in row.items() if k in cols}
+            if (
+                not data.get(pk)
+                or conn.execute(f"SELECT 1 FROM {table} WHERE {pk} = ?", (data[pk],)).fetchone()
+            ):
+                continue
+            names = ", ".join(data)
+            conn.execute(
+                f"INSERT INTO {table} ({names}) VALUES ({', '.join('?' * len(data))})",
+                tuple(data.values()),
+            )
+    for row in dump.get("settings", []):
+        key = str(row.get("key", ""))
+        if (
+            key.startswith("setting:")
+            and not conn.execute("SELECT 1 FROM meta WHERE key = ?", (key,)).fetchone()
+        ):
+            conn.execute("INSERT INTO meta (key, value) VALUES (?, ?)", (key, row.get("value")))
+
+
 def assign_missing_codes(conn: sqlite3.Connection, report: Report) -> None:
     """Behälter ohne Code bekommen einen aus dem Präfix ihrer Art, Teile einen ART-Code.
 
@@ -195,6 +223,7 @@ def normalize(conn: sqlite3.Connection, report: Report) -> None:
 def restore(conn: sqlite3.Connection, dump: dict[str, list[dict[str, Any]]]) -> Report:
     report = Report()
     merge(conn, dump, report)
+    merge_settings(conn, dump)
     normalize(conn, report)
     report.restored = True
     return report

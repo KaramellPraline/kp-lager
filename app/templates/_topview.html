@@ -30,6 +30,8 @@
     {% endfor %}
   </svg>
   <p class="meta">Freie Zelle antippen → Einsatz einsetzen · Fach antippen → Inhalt</p>
+  <p class="row"><a class="button" href="/n/{{ node.id }}?drehen={{ (topview.rot + 90) % 360 }}#" rel="nofollow">{{ icon('action.refresh', size='sm') }} Kiste drehen</a>
+    <span class="meta">Ansicht {{ topview.rot }}° · Griff {{ {0: 'links', 90: 'oben', 180: 'rechts', 270: 'unten'}[topview.rot] }} · Größe „LxK“: x = lange Seite</span></p>
 </section>
 
 {% if targets %}
@@ -56,7 +58,7 @@
       <label>Zelle (oben links)
         <select name="position">{% for c in free %}<option {% if c == place %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
       </label>
-      <label>Größe B×T
+      <label>Größe L×K (x = lange Seite)
         <select name="size">{% for s in sizes %}<option>{{ s }}</option>{% endfor %}</select>
       </label>
       <label>Fächer

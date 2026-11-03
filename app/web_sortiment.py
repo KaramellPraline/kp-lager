@@ -128,6 +128,8 @@ def register(
             return labels.item_values(conn, item), item["code"] or "ART-0001"
         values = {key: label for key, label, _ in k.fields}
         values.update({"name": k.label, "code": "ART-0001", "ort": "Kiste 1"})
+        for f, lb in labels.EXTRA_FIELDS:
+            values.setdefault(f, lb)
         return values, "ART-0001"
 
     def layout_from(raw: dict[str, str] | Any) -> labels.Layout:
@@ -154,7 +156,8 @@ def register(
         layout = labels.parse_layout(stored)
         values, code = sample(conn, k)
         fields = [(f"{{{f}}}", lb) for f, lb, _ in k.fields]
-        fields += [("{name}", "Name"), ("{code}", "Code"), ("{ort}", "Ort")]
+        have = {f for f, _, _ in k.fields}
+        fields += [(f"{{{f}}}", lb) for f, lb in labels.EXTRA_FIELDS if f not in have]
         return render(
             request, conn, "etiketten_layout.html", kind=k, layout=layout, custom=bool(stored),
             fields=fields, max_lines=labels.MAX_LINES, sample_code=code,
@@ -164,7 +167,11 @@ def register(
     @app.get("/etiketten/typ/{key}/vorschau.png")
     def label_preview(request: Request, key: str, conn: Conn) -> Response:
         k = sortiment.kind(conn, key)
-        layout = layout_from(request.query_params)
+        params = request.query_params
+        if "qr" in params or any(p.startswith("t_") for p in params):
+            layout = layout_from(params)
+        else:  # Seite frisch geladen (z. B. nach dem Speichern): gespeichertes Layout zeigen
+            layout = labels.parse_layout(typesettings.get(conn, key).get("label_layout") or "")
         values, code = sample(conn, k)
         label = labels.Label(
             code, labels.qr_content(settings.base_url, code), values.get("name", ""), "",
