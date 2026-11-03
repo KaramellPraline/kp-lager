@@ -14,8 +14,8 @@
 {% endif %}
 
 <dl class="kpis" aria-label="Lager in Zahlen">
-  <div><dt>Teile</dt><dd>{{ stats.items }}</dd></div>
-  <div><dt>Behälter</dt><dd>{{ stats.containers }}</dd></div>
+  <div><dt>Teile</dt><dd>{{ stats.n_items }}</dd></div>
+  <div><dt>Behälter</dt><dd>{{ stats.n_containers }}</dd></div>
   <div><dt>Lagerwert</dt><dd>{{ stats.worth }}</dd></div>
   <div><dt>Backup</dt><dd class="{{ 'bad' if stats.backup_bad }}">{{ stats.backup }}</dd></div>
 </dl>

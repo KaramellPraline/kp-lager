@@ -129,6 +129,7 @@ def test_home_is_task_overview_and_more_is_grouped(client: TestClient) -> None:
     box = _box(client)
     _item(client, box, "Lötzinn", "CNS")
     home = client.get("/").text
+    assert "built-in method" not in home and "<dt>Teile</dt><dd>1</dd>" in home
     assert 'class="task-cards"' in home and "Inventur fällig" in home and 'class="kpis"' in home
     more = client.get("/mehr").text
     for head in (">Lager<", ">Werkstatt<", ">Einkauf<", ">System<"):

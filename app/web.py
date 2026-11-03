@@ -332,8 +332,10 @@ def create_app(settings: Settings) -> FastAPI:
             favorites=repo.favorites(conn),
             tasks=[t for t in found if t[3]],
             stats={
-                "items": conn.execute("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
-                "containers": conn.execute("SELECT COUNT(*) FROM container").fetchone()[0],
+                "n_items": conn.execute("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[
+                    0
+                ],
+                "n_containers": conn.execute("SELECT COUNT(*) FROM container").fetchone()[0],
                 "worth": value.euro(worth),
                 "backup": last[:10] if last else "–",
                 "backup_bad": bool(err),
