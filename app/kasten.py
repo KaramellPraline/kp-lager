@@ -1,7 +1,8 @@
 """Sortierkasten-Modelle mit Einsätzen (Bins): Belegung, Platzprüfung, Draufsicht-Daten.
 
 Zellen: Zeile als Buchstabe, Spalte als Zahl (A1 oben links).
-Einsatz-Größe 'BxT' = Spalten x Zeilen.
+Einsatz-Größe 'LxK': die erste Zahl (x) zählt entlang der langen Seite des Kastens (= Zeilen,
+A-G beim NORB16), die zweite entlang der kurzen Seite (= Spalten).
 """
 
 import sqlite3
@@ -45,13 +46,14 @@ def cell_name(row: int, col: int) -> str:
 
 
 def parse_size(size: str) -> tuple[int, int]:
+    """(Spalten, Zeilen) aus 'LxK' (x = lange Seite = Zeilenrichtung)."""
     try:
-        w, d = (int(p) for p in size.lower().split("x"))
+        long_, short = (int(p) for p in size.lower().split("x"))
     except ValueError:
         raise LagerError(f"Größe '{size}' ungültig, z. B. 2x1") from None
-    if w < 1 or d < 1:
+    if long_ < 1 or short < 1:
         raise LagerError("Größe mindestens 1x1")
-    return w, d
+    return short, long_
 
 
 def cells_of(pos: str, size: str) -> set[str]:
@@ -106,7 +108,7 @@ def place_bin(
         code=code,
         position=pos,
         grid=div if div and div != "1x1" else None,
-        size=f"{w}x{d}",
+        size=f"{d}x{w}",  # lange Seite zuerst
     )
 
 
@@ -146,11 +148,29 @@ def _short(text: str, n: int) -> str:
     return text if len(text) <= n else text[: n - 1] + "…"
 
 
-def topview(conn: sqlite3.Connection, kasten: Row) -> dict[str, Any] | None:
-    """Zeichendaten für die SVG-Draufsicht (Koordinaten in CELL-Einheiten)."""
+DEFAULT_ROT = 270  # Griff (Spalte 1) unten, lange Seite waagerecht
+
+
+def _rot(
+    x: float, y: float, w: float, h: float, W: float, H: float, rot: int
+) -> tuple[float, float, float, float]:
+    """Rechteck im Kasten (Breite W, Höhe H) um rot Grad im Uhrzeigersinn drehen."""
+    if rot == 90:
+        return H - y - h, x, h, w
+    if rot == 180:
+        return W - x - w, H - y - h, w, h
+    if rot == 270:
+        return y, W - x - w, h, w
+    return x, y, w, h
+
+
+def topview(conn: sqlite3.Connection, kasten: Row, rot: int = 0) -> dict[str, Any] | None:
+    """Zeichendaten für die SVG-Draufsicht (Koordinaten in CELL-Einheiten), um rot Grad gedreht."""
     model = model_of(kasten)
     if model is None:
         return None
+    rot = rot if rot in (0, 90, 180, 270) else 0
+    W, H = model.cols * CELL, model.rows * CELL
     drawn_bins = []
     for b in bins(conn, kasten["id"]):
         row, col = parse_cell(b["position"])
@@ -164,32 +184,38 @@ def topview(conn: sqlite3.Connection, kasten: Row) -> dict[str, Any] | None:
                 frow, fcol = parse_cell(f["position"])
                 cw, chh = bw / fc, bh / fr
                 names = f["item_names"].split(", ") if f["item_names"] else []
-                comps.append(
-                    {"id": f["id"], "x": x + fcol * cw, "y": y + frow * chh, "w": cw, "h": chh,
-                     "names": names}
-                )  # fmt: skip
+                rx, ry, rw, rh = _rot(x + fcol * cw, y + frow * chh, cw, chh, W, H, rot)
+                comps.append({"id": f["id"], "x": rx, "y": ry, "w": rw, "h": rh, "names": names})
         else:
             items = [i["name"] for i in repo.items_in(conn, b["id"])]
-            comps.append({"id": b["id"], "x": x, "y": y, "w": bw, "h": bh, "names": items})
+            rx, ry, rw, rh = _rot(x, y, bw, bh, W, H, rot)
+            comps.append({"id": b["id"], "x": rx, "y": ry, "w": rw, "h": rh, "names": items})
         for c in comps:
             per_line = max(4, int(c["w"] / 9))
             c["lines"] = [_short(n, per_line) for n in c["names"][: max(1, int(c["h"] / 22) - 1)]]
+        bx, by, bw2, bh2 = _rot(x, y, bw, bh, W, H, rot)
         drawn_bins.append(
             {"id": b["id"], "code": b["code"], "pos": b["position"], "size": b["size"],
-             "x": x, "y": y, "w": bw, "h": bh, "comps": comps}
+             "x": bx, "y": by, "w": bw2, "h": bh2, "comps": comps}
         )  # fmt: skip
     blocked = sorted(model.blocked)
     rows = [parse_cell(c) for c in blocked]
+
+    def cell_xy(r: int, c: int) -> tuple[float, float]:
+        x, y, _, _ = _rot(c * CELL, r * CELL, CELL, CELL, W, H, rot)
+        return x, y
+
     return {
         "model": model,
-        "width": model.cols * CELL,
-        "height": model.rows * CELL,
+        "rot": rot,
+        "width": H if rot in (90, 270) else W,
+        "height": W if rot in (90, 270) else H,
         "bins": drawn_bins,
         "free": [
-            {"cell": c, "x": parse_cell(c)[1] * CELL, "y": parse_cell(c)[0] * CELL}
+            {"cell": c, "x": cell_xy(*parse_cell(c))[0], "y": cell_xy(*parse_cell(c))[1]}
             for c in free_cells(conn, kasten)
         ],
-        "blocked": [{"x": c * CELL, "y": r * CELL} for r, c in rows],
+        "blocked": [{"x": cell_xy(r, c)[0], "y": cell_xy(r, c)[1]} for r, c in rows],
     }
 
 

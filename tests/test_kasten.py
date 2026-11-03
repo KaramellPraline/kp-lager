@@ -22,14 +22,14 @@ def norb(client: TestClient) -> str:
 
 def test_cells_and_place_checks() -> None:
     m = kasten.MODELS["norb16"]
-    assert kasten.cells_of("B2", "2x1") == {"B2", "B3"}
-    assert kasten.cells_of("A1", "1x2") == {"A1", "B1"}
+    assert kasten.cells_of("B2", "2x1") == {"B2", "C2"}  # x = lange Seite (Zeilenrichtung)
+    assert kasten.cells_of("A1", "1x2") == {"A1", "A2"}
     kasten.check_place(m, {}, "A4", "2x2")
-    for pos, size, msg in [("A5", "2x1", "passt"), ("B1", "1x2", "Griff"), ("G1", "1x2", "passt")]:
+    for pos, size, msg in [("A5", "1x2", "passt"), ("B1", "2x1", "Griff"), ("G1", "2x1", "passt")]:
         with pytest.raises(LagerError, match=msg):
             kasten.check_place(m, {}, pos, size)
     with pytest.raises(LagerError, match="belegt"):
-        kasten.check_place(m, {"A2": 1}, "A1", "2x1")
+        kasten.check_place(m, {"A2": 1}, "A1", "1x2")
 
 
 def test_norb16_topview_place_and_fill(client: TestClient) -> None:
@@ -43,7 +43,7 @@ def test_norb16_topview_place_and_fill(client: TestClient) -> None:
     assert r.text.count('class="tv-free') == 30
     assert r.text.count('class="tv-comp') == 3
     r = client.post(
-        f"/n/{k}/bins", data={"position": "A2", "size": "1x1"}, headers={"referer": f"/n/{k}"}
+        f"/n/{k}/bins", data={"position": "B1", "size": "1x1"}, headers={"referer": f"/n/{k}"}
     )
     assert "schon belegt" in r.text
     r = client.post(f"/n/{k}/fill")
@@ -96,12 +96,12 @@ def test_queue_export_formats_and_clear(client: TestClient) -> None:
 
 def test_bin_page_shows_cad_command_and_items_queue(client: TestClient) -> None:
     k = norb(client)
-    r = client.post(f"/n/{k}/bins", data={"position": "C3", "size": "1x2", "div": "1x2"})
+    r = client.post(f"/n/{k}/bins", data={"position": "C3", "size": "2x1", "div": "1x2"})
     m = re.search(r'<a href="/n/(\d+)">\s*<rect[^>]*class="tv-bin"', r.text)
     assert m
     bin_id = m.group(1)
     page = client.get(f"/n/{bin_id}").text
-    assert "cad/norb_bins.py 1x2 --div 1x2" in page
+    assert "cad/norb_bins.py 2x1 --div 1x2" in page
     item = client.post(f"/n/{bin_id}/items", data={"name": "Zange"})
     item_id = re.findall(r'id="item-(\d+)"', item.text)[0]
     assert "in Warteschlange" in client.post(f"/labels/queue/item/{item_id}").text

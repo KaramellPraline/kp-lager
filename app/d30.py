@@ -12,7 +12,7 @@ import time
 
 from PIL import Image
 
-from app import labelimg, labels
+from app import labelimg, labels, printmq
 from app.repo import LagerError
 
 WRITE = "0000ff02-0000-1000-8000-00805f9b34fb"
@@ -38,6 +38,8 @@ async def _scan(timeout: float) -> bool:
 def status(force: bool = False) -> tuple[bool, str]:
     """(erreichbar, Hinweis)."""
     global _cache
+    if printmq.configured():  # Druck läuft über den MQTT-Druck-Agenten auf dem PC
+        return printmq.agent_status()
     if _lock.locked():
         return True, "druckt gerade"
     at, ok, msg = _cache
@@ -126,6 +128,9 @@ def _transmit(images: list[Image.Image]) -> None:
 def send(images: list[Image.Image]) -> None:
     """Bilder (320×96) nacheinander drucken; immer nur ein Druckauftrag gleichzeitig."""
     global _cache
+    if printmq.configured():
+        printmq.submit(images)
+        return
     if not _lock.acquire(blocking=False):
         raise LagerError("Der D30 druckt gerade – gleich nochmal versuchen")
     try:

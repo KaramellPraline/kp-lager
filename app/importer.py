@@ -267,7 +267,17 @@ def run(
 
 def export(conn: sqlite3.Connection) -> dict[str, list[dict[str, Any]]]:
     """Vollständiger Dump aller Tabellen (Backup/Portierung)."""
-    return {
+    dump: dict[str, list[dict[str, Any]]] = {
         table: [dict(r) for r in conn.execute(f"SELECT * FROM {table} ORDER BY id")]
         for table in ("container", "item", "event")
     }
+    # Einstellungen gehören dazu: Etiketten-Layouts je Typ, eigene Typen, Optionen (meta setting:*)
+    dump["type_setting"] = [
+        dict(r) for r in conn.execute("SELECT * FROM type_setting ORDER BY key")
+    ]
+    dump["custom_type"] = [dict(r) for r in conn.execute("SELECT * FROM custom_type ORDER BY key")]
+    dump["settings"] = [
+        dict(r)
+        for r in conn.execute("SELECT key, value FROM meta WHERE key LIKE 'setting:%' ORDER BY key")
+    ]
+    return dump

@@ -129,6 +129,14 @@ def blank(conn: sqlite3.Connection, base_url: str, prefix: str, count: int) -> l
     ]
 
 
+# Felder, die bei jedem Teil im Etikett verwendbar sind ({key} in der Zeile)
+EXTRA_FIELDS: tuple[tuple[str, str], ...] = (
+    ("name", "Name"), ("full_name", "Voller Name"), ("code", "Code"), ("ort", "Ort"),
+    ("qty", "Menge"), ("unit", "Einheit"), ("model", "Modell"), ("notes", "Notiz"),
+    ("tags", "Tags"), ("price", "Preis"), ("expires", "Haltbar bis"),
+)  # fmt: skip
+
+
 def fill(template: str, values: dict[str, str]) -> str:
     """„{thread}x{length} {head}“ -> „M3x10 Zylinderkopfschraube“; leere Felder fallen weg
     (samt direkt angehängter Zeichen wie „x“ oder „mm“, wenn sie dadurch allein stünden)."""
@@ -143,19 +151,14 @@ def fill(template: str, values: dict[str, str]) -> str:
 
 def item_texts(conn: sqlite3.Connection, item: sqlite3.Row) -> tuple[str, str]:
     """(Text, Zusatz) fürs Teile-Etikett: Vorlage des Typs, sonst Name und Ort."""
-    from app import catalog, materials, typesettings  # spät: Zyklen vermeiden
+    from app import typesettings  # spät: Zyklen vermeiden
 
-    holder = conn.execute(
-        "SELECT kind, name, position FROM container WHERE id = ?", (item["container_id"],)
-    ).fetchone()
-    place = (holder["position"] if holder["kind"] == "compartment" else holder["name"]) or ""
-    text, extra = item["name"], place
+    values = item_values(conn, item)
+    text, extra = item["name"], values["ort"]
     key = typesettings.key_of(item)
     if key:
         ts = typesettings.get(conn, key)
         if ts["label_main"] or ts["label_extra"]:
-            values = {**materials.specs(item), **catalog.values_of(item)}
-            values.update({"name": item["name"], "code": item["code"] or "", "ort": place})
             text = fill(ts["label_main"], values) or item["name"] if ts["label_main"] else text
             extra = fill(ts["label_extra"], values) if ts["label_extra"] else extra
     return text, extra
@@ -171,6 +174,15 @@ def item_values(conn: sqlite3.Connection, item: sqlite3.Row) -> dict[str, str]:
     place = (holder["position"] if holder["kind"] == "compartment" else holder["name"]) or ""
     values = {**materials.specs(item), **catalog.values_of(item)}
     values.update({"name": item["name"], "code": item["code"] or "", "ort": place})
+    for key, _label in EXTRA_FIELDS:  # allgemeine Teile-Felder (überschreiben Typ-Felder nicht)
+        if key in ("name", "code", "ort"):
+            continue
+        raw = item[key] if key in item.keys() else None  # noqa: SIM118 (sqlite3.Row)
+        if key == "qty":
+            raw = item["qty"] if item["qty"] is not None else item["qty_hint"]
+        values.setdefault(
+            key, "" if raw is None else f"{raw:g}" if isinstance(raw, float) else str(raw)
+        )
     return values
 
 

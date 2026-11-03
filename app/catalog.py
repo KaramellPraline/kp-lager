@@ -46,7 +46,8 @@ LENGTH = "4|5|6|8|10|12|16|20|25|30|35|40|50|60"
 
 GROUPS = (
     "Schrauben & Befestigung", "Klebstoff & Verbrauch", "Mechanik & Pneumatik",
-    "Kabel & Elektrik", "Elektronik", "Werkzeug", "3D-Druck & Laser", "Material & Holz",
+    "Kabel & Elektrik", "Elektronik", "Werkzeug", "Druckerteile & Laser", "Material & Holz",
+    "Netzwerk",
 )  # fmt: skip
 
 TYPES: tuple[Type, ...] = (
@@ -100,8 +101,9 @@ TYPES: tuple[Type, ...] = (
             F("kind", "Art", "Heat-Set Insert|Holzinsert|Aluinsert|Einpressmutter|Gewindeeinsatz"),
             F("thread", "Gewinde", THREAD),
             F("length", "Länge", "3|4|5|6|8|10|12", "mm"),
+            F("od", "Außendurchmesser", "4|4.6|5|5.6|6|7|8|9|10|12", "mm"),
         ),
-        (("{kind}",), ("{thread}",), ("L{length}",)),
+        (("{kind}",), ("{thread}",), ("L{length}",), ("Ø{od}",)),
     ),
     Type(
         "scheibe",
@@ -116,9 +118,11 @@ TYPES: tuple[Type, ...] = (
                 "Sicherungsscheibe",
             ),
             F("thread", "Für Gewinde", THREAD),
+            F("od", "Außendurchmesser", "5|6|7|8|9|10|12|16|20|24", "mm"),
+            F("thickness", "Dicke", "0.5|0.8|1|1.6|2|2.5|3", "mm"),
             F("finish", "Material", "Edelstahl|Verzinkt|Nylon|Messing"),
         ),
-        (("{kind}",), ("{thread}",)),
+        (("{kind}",), ("{thread}",), ("Ø{od}",), ("{thickness}mm",)),
     ),
     Type(
         "holzschraube",
@@ -745,6 +749,25 @@ TYPES: tuple[Type, ...] = (
         True,
     ),
     Type(
+        "netzteil",
+        GROUPS[6],
+        "Netzteil",
+        "CMP",
+        (
+            F("kind", "Art", "Netzteil|Steckernetzteil|Schaltnetzteil|Labornetzteil|Ladegerät"),
+            F("volt", "Spannung", "5|9|12|19|24|48", "V"),
+            F("amp", "Strom", "0.5|1|2|3|5|10|15|20", "A"),
+            F(
+                "plug",
+                "Stecker (Ausgang)",
+                "DC 5,5x2,1|DC 5,5x2,5|DC 3,5x1,35|USB-C|Schraubklemmen|XT60",
+            ),
+            F("model", "Passend für", "", hint="z. B. Ender 3, Bambu, LED-Streifen"),
+        ),
+        (("{kind}",), ("{volt}V",), ("{amp}A",), ("{plug}",), ("{model}",)),
+        True,
+    ),
+    Type(
         "laser",
         GROUPS[6],
         "Laser-Zubehör",
@@ -776,6 +799,51 @@ TYPES: tuple[Type, ...] = (
         (("{kind}",), ("{size}",)),
     ),
     # --- Material & Holz -----------------------------------------------------------------
+    # --- Netzwerk -----------------------------------------------------------------------
+    Type(
+        "netzwerkkabel",
+        GROUPS[8],
+        "Netzwerkkabel (Patchkabel)",
+        "CMP",
+        (
+            F("kind", "Kategorie", "Cat5e|Cat6|Cat6a|Cat7|Cat8|Koax|LWL"),
+            F("length", "Länge", "0.25|0.5|1|2|3|5|10|15|20|25|50", "m"),
+            F("color", "Farbe", "Grau|Blau|Gelb|Rot|Grün|Schwarz|Weiß|Orange"),
+            F("shield", "Schirmung", "UTP|F/UTP|S/FTP"),
+        ),
+        (("Netzwerkkabel",), ("{kind}",), ("{length}m",), ("{color}",)),
+    ),
+    Type(
+        "rj45",
+        GROUPS[8],
+        "RJ45 / Keystone / Dose",
+        "CMP",
+        (
+            F(
+                "kind",
+                "Art",
+                "RJ45-Stecker|Keystone|Netzwerkdose|Kupplung|Tülle|Crimpzange|Patchpanel|Winkeladapter",
+            ),
+            F("cat", "Kategorie", "Cat5e|Cat6|Cat6a|Cat7"),
+        ),
+        (("{kind}",), ("{cat}",)),
+    ),
+    Type(
+        "netzwerkgeraet",
+        GROUPS[8],
+        "Netzwerkgerät (Switch, Router, Adapter)",
+        "CMP",
+        (
+            F(
+                "kind",
+                "Art",
+                "Switch|Router|Access Point|Powerline|Medienkonverter|USB-LAN-Adapter|PoE-Injektor|PoE-Splitter",
+            ),
+            F("model", "Modell / Ports", "", hint="z. B. 8 Port Gigabit"),
+        ),
+        (("{kind}",), ("{model}",)),
+        True,
+    ),
     Type(
         "holz",
         GROUPS[7],
