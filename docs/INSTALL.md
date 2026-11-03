@@ -6,7 +6,7 @@ Drei Teile, getrennt nutzbar: **Server** (Docker, Dauerbetrieb) · **Windows-Cli
 ## 1. Server (Docker, empfohlen)
 Voraussetzung: Docker mit Compose auf dem Server (Raspberry Pi, NAS, Mini-PC).
 ```bash
-git clone https://github.com/KaramellPraline/sortiersystem.git && cd sortiersystem/deploy
+git clone https://github.com/KaramellPraline/kp-lager.git && cd kp-lager/deploy
 docker compose up -d --build          # baut das Image selbst
 ```
 **Mit Release-Version statt Selbstbauen** (schneller, nachvollziehbar):

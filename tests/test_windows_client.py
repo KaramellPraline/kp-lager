@@ -43,5 +43,9 @@ def test_server_configure(tmp_path: Path, monkeypatch) -> None:  # type: ignore[
     assert (
         os.environ["LAGER_BASE_URL"] == "http://localhost:8123" and os.environ["LAGER_D30"] == "0"
     )
+    args = ls.parse(["--data", str(tmp_path / "d"), "--cert", "c.crt", "--key", "k.key"])
+    monkeypatch.delenv("LAGER_BASE_URL")
+    ls.configure(args)
+    assert os.environ["LAGER_BASE_URL"].startswith("https://localhost:")
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     assert ls.default_data_dir() == tmp_path / "KP Lager Server" / "data"

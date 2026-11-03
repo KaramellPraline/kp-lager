@@ -23,6 +23,7 @@ Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "Verknüpfung auf dem Desktop"; Flags: unchecked
+Name: "autostart"; Description: "Server bei der Anmeldung automatisch starten (minimiert)"; Flags: unchecked
 Name: "lan"; Description: "Im LAN erreichbar machen (--host 0.0.0.0, Windows fragt nach der Firewall)"; Flags: unchecked
 
 [Files]
@@ -31,6 +32,7 @@ Source: "..\..\dist\lager-server\*"; DestDir: "{app}"; Flags: recursesubdirs ign
 [Icons]
 Name: "{group}\KP Lager Server (Debug-Konsole)"; Filename: "{app}\lager-server.exe"; Parameters: "{code:Args}"
 Name: "{group}\KP Lager Datenordner"; Filename: "{localappdata}\KP Lager Server\data"
+Name: "{userstartup}\KP Lager Server"; Filename: "{app}\lager-server.exe"; Parameters: "--no-browser {code:Args}"; Tasks: autostart; Flags: runminimized
 Name: "{autodesktop}\KP Lager Server"; Filename: "{app}\lager-server.exe"; Parameters: "{code:Args}"; Tasks: desktopicon
 
 [Code]

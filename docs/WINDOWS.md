@@ -28,6 +28,15 @@ Oder als Programm: **KP-Lager-Server-Setup.exe** (Start-Menü „KP Lager Server
 - Die CA des Servers (`http://lager.home.lan/ca.crt`) einmal in Windows installieren (Zertifikat → „Vertrauenswürdige
   Stammzertifizierungsstellen“), oder `--ca <Datei>` für die Bridge angeben.
 
+## 2b. Windows-Server im Dauerbetrieb (mit HTTPS)
+Der Server-Installer taugt auch für den Dauerbetrieb am PC (Alternative zu Docker): Option „automatisch starten“ im Installer,
+HTTPS mit eigenem Zertifikat:
+```powershell
+uv run python tools/devcert.py lager.home.lan localhost --ip <IP>      # erzeugt data\certs\server.crt/.key + ca.crt
+lager-server.exe --host 0.0.0.0 --port 443 --cert data\certs\server.crt --key data\certs\server.key --no-browser
+```
+`LAGER_BASE_URL=https://lager.home.lan` setzen, wenn der Name in den QR-Codes stehen soll. Die Variante mit Skript (`tools\serve.ps1`, Port 80+443) bleibt möglich.
+
 ## 3. D30-Bridge – so funktioniert der Druck mit Docker-Server
 1. Server mit `LAGER_D30_BRIDGE=1` (in `deploy/compose.yaml` Standard) und `LAGER_D30=0` (kein Bluetooth im Container).
 2. In der Oberfläche erscheinen die D30-Schalter/Knöpfe wie bisher; ihr Status kommt von der Bridge am PC.
@@ -38,7 +47,14 @@ Oder als Programm: **KP-Lager-Server-Setup.exe** (Start-Menü „KP Lager Server
 
 Läuft der Server selbst auf dem Windows-PC (Debug-Server mit `LAGER_D30=1`), druckt er direkt – keine Bridge nötig.
 
-## 4. Installer bauen
+## 4. Wo liegen die .exe?
+Im Repository liegen **keine** fertigen Programme, sie werden gebaut:
+- **Testbau:** GitHub › Actions › „Windows-Installer“ › gewünschten Lauf öffnen › unten **Artifacts** › `kp-lager-windows`
+  (ZIP mit beiden Setup-Dateien). Läuft automatisch bei Änderungen in `windows/` und per „Run workflow“.
+- **Release:** GitHub › Releases › Version › Assets (siehe `docs/RELEASE.md`).
+- **Lokal:** `windows\build.ps1` → `dist\installer\`.
+
+## 5. Installer bauen
 ```powershell
 powershell -File windows\build.ps1             # beide; Inno Setup 6 (iscc.exe) für die Installer nötig
 powershell -File windows\build.ps1 -Only client
