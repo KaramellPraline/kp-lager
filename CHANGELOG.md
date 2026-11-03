@@ -3,11 +3,12 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
-## [Unveröffentlicht]
+## [0.4.0] – 2026-11-04
 
 ### Neu
 - QR-Codes enthalten immer `https://lager.home.lan` (nie localhost oder eine IP).
 - Windows nur noch als Client – der Server läuft ausschließlich als Docker-Container.
+- Docker-Übergabe `deploy/handoff/`: drei Dateien und eine Kurzanleitung genügen für den Betrieb.
 - Etiketten-Layout je Typ: Felder auf dem D30-Etikett anordnen (QR-Position, bis 4 Zeilen, Höhe, Ausrichtung), Schrift skaliert automatisch in jedes Feld, Live-Vorschau.
 - Vollexport (Mehr › Export) lässt sich unter Mehr › Import als Datei wiederherstellen: Behälter/Teile werden über Codes zusammengeführt, fehlende Codes und die Zähler dynamisch gesetzt, Teile automatisch typisiert.
 

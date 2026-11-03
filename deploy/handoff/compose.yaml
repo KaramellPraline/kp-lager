@@ -1,0 +1,27 @@
+# KP Lager – minimaler Betrieb: App + Caddy (HTTPS). Start: docker compose up -d
+name: kp-lager
+
+services:
+  app:
+    image: ghcr.io/karamellpraline/kp-lager:${LAGER_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      LAGER_BASE_URL: https://${LAGER_HOST:-lager.home.lan}
+      LAGER_D30: "0"       # Etikettendruck läuft über den Windows-Client (D30-Bridge)
+      LAGER_D30_BRIDGE: "1"
+    volumes:
+      - ./data:/data       # Datenbank, Fotos, Backups – diesen Ordner sichern
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports: ["80:80", "443:443"]
+    environment:
+      LAGER_HOST: ${LAGER_HOST:-lager.home.lan}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+
+volumes:
+  caddy_data:

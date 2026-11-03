@@ -1,5 +1,7 @@
 # Deployment mit Docker
 
+> **Minimal-Übergabe:** der Ordner `deploy/handoff/` (3 Dateien + Kurzanleitung) genügt für den Betrieb – ohne den Rest des Repos.
+
 > **Status:** Dateien fertig, **noch auf keinem Server gebaut/getestet**. Zielhost noch offen (kp-pi3 verworfen).
 > Hostname in den QR-Codes: `lager.home.lan` (`LAGER_HOST`). Später ändern = Etiketten neu drucken.
 

@@ -24,6 +24,7 @@ Stand: 2026-11-03
 - 2026-11-04 (0.3.0): Android-App als APK (`android/`, WebView ohne Fremdbibliotheken, Kamera, Upload, Downloads, Nutzer-CA), Release-Workflow baut EXE + APK; Version 0.3.0.
 - 2026-11-04 (M44a–c): QR-Adresse fest `https://lager.home.lan` (localhost/IP werden ersetzt), Windows nur noch Client (Server-Installer, serve/dev-Skripte entfernt), Wiederherstellung aus Vollexport (`app/restore.py`, `/import` mit Datei): Zusammenführen über Codes, fehlende Codes und Zähler dynamisch, Typen automatisch.
 - 2026-11-04 (M44d): Etiketten-Layout je Typ (`/etiketten/typ`): QR links/rechts/ohne, bis 4 Zeilen mit Feldern, Höhenanteil und Ausrichtung, automatische Schriftgröße je Feld, Live-Vorschau; gilt für D30-Bild und Warteschlange (Migration 022).
+- 2026-11-04 (0.4.0, M44e): Minimale Docker-Übergabe `deploy/handoff/` (compose.yaml, Caddyfile, .env.example, README).
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.

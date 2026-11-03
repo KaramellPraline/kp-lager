@@ -3,7 +3,10 @@
 Drei Teile, getrennt nutzbar: **Server** (Docker, Dauerbetrieb) · **Windows-Client** (Fenster + D30-Bridge am PC) ·
 **Handy** (Android-App oder Browser). Aktuelle Version und Downloads: GitHub › Releases.
 
-## 1. Server (Docker, empfohlen)
+## 1. Server (Docker)
+**Minimal:** den Ordner `deploy/handoff/` auf den Docker-Host kopieren und dort `docker compose up -d` – siehe dessen `README.md`.
+
+Ausführlich:
 Voraussetzung: Docker mit Compose auf dem Server (Raspberry Pi, NAS, Mini-PC).
 ```bash
 git clone https://github.com/KaramellPraline/kp-lager.git && cd kp-lager/deploy
