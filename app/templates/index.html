@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
+{% include "_browse_tabs.html" %}
 <form action="/suche" method="get" class="card add-item browse-search" role="search">
   <input type="search" name="q" placeholder="Teil, Box oder Code suchen" aria-label="Suchen" enterkeyhint="search">
   <button class="primary" aria-label="Suchen">{{ icon('nav.search', size='sm') }}</button>

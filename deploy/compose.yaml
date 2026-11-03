@@ -4,6 +4,7 @@ name: kp-lager
 services:
   app:
     build: ..
+    image: ghcr.io/karamellpraline/sortiersystem:${LAGER_VERSION:-latest}
     restart: unless-stopped
     environment:
       LAGER_BASE_URL: https://${LAGER_HOST:-lager.home.lan}

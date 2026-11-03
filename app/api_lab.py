@@ -12,6 +12,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import (
+    __version__,
     cards,
     codes,
     inventory,
@@ -133,6 +134,7 @@ def register(
         amount, unpriced = value.total(conn)
         one = conn.execute
         return {
+            "version": __version__,
             "items": one("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
             "containers": one("SELECT COUNT(*) FROM container").fetchone()[0],
             "value_eur": round(amount, 2),

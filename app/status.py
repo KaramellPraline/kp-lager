@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from app import codes, labels, repo, scheduler, value
+from app import __version__, codes, labels, repo, scheduler, value
 
 STARTED = time.time()
 EXPIRY_WARN_DAYS = 30
@@ -89,5 +89,6 @@ def collect(conn: sqlite3.Connection, data_dir: Path) -> dict[str, Any]:
         "expiring": expiring(conn),
         "uptime": f"{up // 86400} d {up % 86400 // 3600} h {up % 3600 // 60} min",
         "python": sys.version.split()[0],
+        "version": __version__,
         "now": datetime.now().strftime("%d.%m.%Y %H:%M"),
     }

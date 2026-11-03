@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import (
+    __version__,
     api,
     apikeys,
     backup,
@@ -49,6 +50,7 @@ from app import (
     quick,
     repo,
     scheduler,
+    status,
     value,
     web_katalog,
     web_lab,
@@ -296,7 +298,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {"status": "ok", "version": __version__}
 
     @app.get("/ca.crt")
     def ca_cert() -> Response:
@@ -319,6 +321,10 @@ def create_app(settings: Settings) -> FastAPI:
             ("/inventur", "select.check", "Inventur fällig",
              len(inventory.due(conn, prefs.number(conn, "inventory_days")))),
             ("/labels", "content.tag", "Etiketten wartend", labels.queue_count(conn)),
+            ("/entnahmen", "action.take", "Entnahmen offen", withdrawals.open_count(conn)),
+            ("/status", "status.attention", "Läuft ab", len(status.expiring(conn))),
+            ("/projekte", "content.project", "Offene Projekte",
+             conn.execute("SELECT COUNT(*) FROM project WHERE done = 0").fetchone()[0]),
             ("/verliehen", "content.lent", "Verliehen", len(repo.lent_items(conn))),
         ]  # fmt: skip
         worth, _unpriced = value.total(conn)

@@ -1,6 +1,8 @@
 ; Inno Setup 6 – Installer „KP Lager Server“ (Debug/Entwicklung auf dem PC)
 #define AppName "KP Lager Server"
-#define AppVersion "0.1.0"
+#ifndef AppVersion
+  #define AppVersion "0.0.0"
+#endif
 
 [Setup]
 AppId={{6F0C3C2E-7B7A-4B0E-9A53-2D6F6E8C1A01}
@@ -9,7 +11,7 @@ AppVersion={#AppVersion}
 DefaultDirName={autopf}\KP Lager Server
 DefaultGroupName=KP Lager
 OutputDir=..\..\dist\installer
-OutputBaseFilename=KP-Lager-Server-Setup
+OutputBaseFilename=KP-Lager-Server-Setup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible

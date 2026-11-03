@@ -37,10 +37,20 @@
     {% endfor %}
   </div>
   {% endif %}
-  <form method="post" action="/items/{{ item.id }}/take" class="add-item card">
-    {% if item.qty is not none %}<input name="qty" value="1" inputmode="numeric" class="short" aria-label="Menge">{% endif %}
+  <form method="post" action="/items/{{ item.id }}/take" class="card stack">
+    {% if item.qty is not none %}
+    <div class="add-item" style="margin:0">
+      <input id="take-qty" name="qty" value="1" inputmode="numeric" class="short" aria-label="Menge">
+      <button class="primary">{{ icon('action.take', size='sm') }} Entnehmen</button>
+    </div>
+    <div class="chips" aria-label="Schnellauswahl Menge">
+      {% for q in (1, 5, 10, 25, 50) if q < item.qty %}<button type="button" class="chip" data-for="take-qty">{{ q }}</button>{% endfor %}
+      {% if item.qty > 0 %}<button type="button" class="chip" data-for="take-qty">{{ item.qty }}</button>{% endif %}
+    </div>
+    {% else %}
     <button class="primary">{{ icon('action.take', size='sm') }} Entnehmen</button>
-    <span class="meta">nach 7 Tagen bestätigt, bis dahin stornierbar</span>
+    {% endif %}
+    <span class="meta">nach 7 Tagen bestätigt, bis dahin stornierbar · oder per <a href="/scan">Scannen</a></span>
   </form>
 
   {% if item.lent_to %}

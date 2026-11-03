@@ -1,10 +1,8 @@
 name: Windows-Installer
 
-# Baut KP-Lager-Server-Setup.exe und KP-Lager-Client-Setup.exe (manuell oder bei Tag v*).
+# Testbau der Windows-Installer (manuell). Offizielle Releases: release.yml.
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
 
 jobs:
   build:

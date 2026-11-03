@@ -17,6 +17,8 @@ import threading
 import webbrowser
 from pathlib import Path
 
+from app import __version__
+
 
 def default_data_dir() -> Path:
     base = os.environ.get("LOCALAPPDATA") or str(Path.home() / ".local" / "share")
@@ -29,6 +31,7 @@ def parse(argv: list[str] | None = None) -> argparse.Namespace:
     p.add_argument("--port", type=int, default=8000)
     p.add_argument("--data", type=Path, default=None, help="Datenordner (SQLite, Fotos, Backups)")
     p.add_argument("--no-browser", action="store_true", help="Browser nicht automatisch öffnen")
+    p.add_argument("--version", action="version", version=f"KP Lager Server {__version__}")
     p.add_argument("--no-d30", action="store_true", help="D30-Direktdruck (Bluetooth) abschalten")
     return p.parse_args(argv)
 

@@ -3,9 +3,11 @@
 #   powershell -File windows\build.ps1 -Only server|client
 # Ergebnis: dist\lager-server\, dist\lager-client\ und Installer in dist\installer\
 # Voraussetzung: uv (https://docs.astral.sh/uv/), optional Inno Setup 6 (iscc.exe) für die Installer.
-param([ValidateSet("all", "server", "client")][string]$Only = "all")
+param([ValidateSet("all", "server", "client")][string]$Only = "all", [string]$Version = "")
 $ErrorActionPreference = "Stop"
 Set-Location (Join-Path $PSScriptRoot "..")
+if (-not $Version) { $Version = (Select-String -Path app\__init__.py -Pattern '__version__ = "([^"]+)"').Matches[0].Groups[1].Value }
+"KP Lager Version $Version"
 
 $data = @(
     "--add-data", "app\templates;app\templates",
@@ -39,8 +41,8 @@ if (-not $iscc) {
 }
 if ($iscc) {
     New-Item -ItemType Directory -Force dist\installer | Out-Null
-    if ($Only -in "all", "server") { & $iscc windows\installer\server.iss }
-    if ($Only -in "all", "client") { & $iscc windows\installer\client.iss }
+    if ($Only -in "all", "server") { & $iscc "/DAppVersion=$Version" windows\installer\server.iss }
+    if ($Only -in "all", "client") { & $iscc "/DAppVersion=$Version" windows\installer\client.iss }
     "Installer: dist\installer\"
 } else {
     "Inno Setup (iscc.exe) nicht gefunden - nur die Ordner in dist\ wurden gebaut."

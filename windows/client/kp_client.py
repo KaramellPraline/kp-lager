@@ -22,6 +22,8 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
+from app import __version__
+
 DEFAULT_SERVER = "https://lager.home.lan"
 
 
@@ -57,6 +59,7 @@ def save_config(cfg: dict[str, Any], path: Path | None = None) -> None:
 
 def parse(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="lager-client", description=__doc__.split("\n")[0])
+    p.add_argument("--version", action="version", version=f"KP Lager Client {__version__}")
     p.add_argument("--server", default="", help=f"Adresse des Lagers, z. B. {DEFAULT_SERVER}")
     p.add_argument("--ca", default="", help="Datei mit der eigenen CA des Servers (ca.crt)")
     p.add_argument("--port", type=int, default=8765, help="Port der D30-Bridge")
