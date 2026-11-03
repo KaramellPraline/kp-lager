@@ -42,6 +42,8 @@
   </aside>
   <div class="main-col">
     <header class="topbar">
+      <form method="post" action="/undo-last" class="undo-form"><button class="icon-btn" aria-label="Rückgängig" title="Letzte Aktion rückgängig">{{ icon('action.undo') }}</button></form>
+      <form method="post" action="/redo-last" class="undo-form"><button class="icon-btn" aria-label="Wiederholen" title="Wiederholen">{{ icon('action.redo') }}</button></form>
       <a class="brand" href="/">{{ APP_NAME }}</a>
       <form action="/suche" method="get" class="search" role="search" id="top-search">
         <button type="button" class="search-toggle" aria-label="Suche öffnen">{{ icon('nav.search', size='sm') }}</button>

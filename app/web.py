@@ -792,6 +792,35 @@ def create_app(settings: Settings) -> FastAPI:
         done = commit and not report.errors
         return render(request, conn, "import.html", report=report, text=text, done=done)
 
+    @app.get("/export.zip")
+    def export_archive(conn: Conn) -> Response:
+        """Gesamtarchiv: JSON-Export, Datenbank-Kopie (inkl. Einstellungen) und Fotos."""
+        import io
+        import json
+        import tempfile
+        import zipfile
+
+        buf = io.BytesIO()
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z,
+        ):
+            copy = Path(tmp) / "lager.db"
+            dst = sqlite3.connect(copy)
+            with dst:
+                conn.backup(dst)
+            dst.close()
+            z.write(copy, "lager.db")
+            z.writestr("lager-export.json", json.dumps(importer.export(conn), ensure_ascii=False))
+            for folder in ("photos", "datasheets"):
+                for f in (settings.data_dir / folder).glob("**/*"):
+                    if f.is_file():
+                        z.write(f, f"{folder}/{f.relative_to(settings.data_dir / folder)}")
+        return Response(
+            buf.getvalue(), media_type="application/zip",
+            headers={"Content-Disposition": 'attachment; filename="lager-archiv.zip"'},
+        )  # fmt: skip
+
     @app.get("/export.json")
     def export(conn: Conn) -> JSONResponse:
         return JSONResponse(
@@ -1149,6 +1178,16 @@ def create_app(settings: Settings) -> FastAPI:
         msg = repo.undo(conn, event_id)
         back = request.headers.get("referer", "/").split("?")[0]
         return redirect(back, msg)
+
+    @app.post("/undo-last")
+    def undo_last(request: Request, conn: Conn) -> RedirectResponse:
+        back = request.headers.get("referer", "/").split("?")[0]
+        return redirect(back, repo.undo_last(conn))
+
+    @app.post("/redo-last")
+    def redo_last(request: Request, conn: Conn) -> RedirectResponse:
+        back = request.headers.get("referer", "/").split("?")[0]
+        return redirect(back, repo.redo_last(conn))
 
     @app.get("/verlauf", response_class=HTMLResponse)
     def history_page(request: Request, conn: Conn, tab: str = "aktionen") -> HTMLResponse:

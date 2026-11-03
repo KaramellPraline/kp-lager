@@ -500,6 +500,41 @@ def undo(conn: sqlite3.Connection, event_id: int) -> str:
     return msg
 
 
+def undo_last(conn: sqlite3.Connection) -> str:
+    """Letzte rückgängig-fähige Aktion zurücknehmen."""
+    ev = conn.execute(
+        "SELECT id FROM event WHERE undone = 0 AND action IN ('take','put','move','add')"
+        " ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    if ev is None:
+        raise LagerError("Nichts zum Rückgängigmachen")
+    return undo(conn, ev["id"])
+
+
+def redo_last(conn: sqlite3.Connection) -> str:
+    """Zuletzt zurückgenommene Aktion wiederholen (Hinzufügen lässt sich nicht wiederholen)."""
+    ev = conn.execute(
+        "SELECT * FROM event WHERE undone = 1 AND action IN ('take','put','move')"
+        " ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+    if ev is None:
+        raise LagerError("Nichts zum Wiederholen")
+    if ev["action"] == "move":
+        if ev["container_id"] is None:
+            raise LagerError("Ziel existiert nicht mehr")
+        if ev["item_id"] is not None:
+            move_item(conn, ev["item_id"], ev["container_id"])
+        else:
+            raise LagerError("Nur Teile lassen sich wiederholen")
+    elif ev["item_id"] is None:
+        raise LagerError("Teil existiert nicht mehr")
+    elif ev["delta"]:
+        change_qty(conn, ev["item_id"], ev["delta"], note="wiederholt")
+    with conn:
+        conn.execute("UPDATE event SET undone = 0 WHERE id = ?", (ev["id"],))
+    return f"„{ev['item_name']}“ erneut ausgeführt"
+
+
 def recent_events(conn: sqlite3.Connection, limit: int = 50) -> list[Row]:
     return conn.execute(
         "SELECT e.*, c.name AS container_name FROM event e"
