@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Behälter anlegen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+{% include "_add_tabs.html" %}
+<div class="neu">
+  <aside class="neu-types" aria-label="Behälter-Arten">
+    {% for g, ks in groups %}
+    <details class="grp" {% if art in ks %}open{% endif %}>
+    <summary>{{ g }} <span class="meta">{{ ks|length }}</span></summary>
+    <ul>{% for k in ks %}<li><a href="/neu/behaelter?art={{ k }}" class="{% if k == art %}on{% endif %}">{{ KIND_LABELS[k] }} <span class="meta">{{ KIND_PREFIX.get(k, '') }}</span></a></li>{% endfor %}</ul>
+    </details>
+    {% endfor %}
+    <ul><li><a href="/neu/behaelter?art=neu" class="{% if art == 'neu' %}on{% endif %}">+ Neue Art …</a></li></ul>
+  </aside>
+
+  <section class="neu-main">
+    <form method="post" action="/containers" id="container-form" class="card stack">
+      <h1 style="margin:0">{% if art == 'neu' %}Neue Art von Behälter{% else %}{{ KIND_LABELS[art] }}{% endif %}</h1>
+      <input type="hidden" name="back" value="/neu/behaelter">
+      {% if art == 'neu' %}
+      <input type="hidden" name="kind" value="neu">
+      <div class="nf">
+        <label for="new_kind">Name der Art</label>
+        <input id="new_kind" name="new_kind" placeholder="z. B. Schublade" required autocomplete="off">
+      </div>
+      <div class="nf">
+        <label for="new_prefix">Präfix für den Code <span class="meta">(3 Buchstaben)</span></label>
+        <input id="new_prefix" name="new_prefix" placeholder="SCH" maxlength="3" required autocomplete="off" class="short" style="text-transform:uppercase">
+      </div>
+      {% else %}
+      <input type="hidden" name="kind" value="{{ art }}">
+      {% endif %}
+      <div class="nf">
+        <label for="name">Name</label>
+        <input id="name" name="name" placeholder="{% if art == 'room' %}z. B. Werkstatt{% elif art == 'shelf' %}z. B. Regal links{% else %}z. B. Werkzeugkiste blau{% endif %}" required autocomplete="off">
+      </div>
+      {% set dims_for = dims_kinds %}
+      {% include "_dims.html" %}
+      {% if art == 'sortingbox' %}
+      <div class="nf">{% include "_model_select.html" %}</div>
+      {% endif %}
+      <div class="nf">
+        <label for="parent_id">Wohin?</label>
+        <select id="parent_id" name="parent_id">
+          <option value="">Oberste Ebene (eigener Ort)</option>
+          {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" name="queue" value="1" {% if P.queue_on_place == '1' %}checked{% endif %}> Etikett in die Warteschlange</label>
+      {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+        <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
+      <div class="row"><button class="primary">{{ icon('action.add', size='sm') }} Anlegen</button>
+        <span class="meta">Enter legt an · danach bleibt diese Art mit leerem Namen offen</span></div>
+    </form>
+
+    {% if recent %}
+    <h2>Zuletzt angelegt</h2>
+    <ul class="list">{% for r in recent %}<li><a href="/n/{{ r.id }}"><span class="name">{{ r.name }}</span><span class="meta">{{ r.code or '' }} · {{ KIND_LABELS.get(r.kind, r.kind) }}</span></a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

@@ -13,17 +13,21 @@ powershell -File tools\serve.ps1 -Stop    # beenden
 - Startet zwei Prozesse: Port 443 (App mit HTTPS) und Port 80 (`/ca.crt` für das Handy, sonst Umleitung auf HTTPS).
 - Zertifikat: `uv run python tools/devcert.py lager.home.lan localhost --ip <IP>` (lokale CA, wird beim ersten Start erzeugt, liegt in `data/certs/`).
 - Logs: `data/logs/https.log`, `data/logs/http.log`.
-- Umgebung: `LAGER_DATA_DIR=data`, `LAGER_BASE_URL=https://lager.home.lan`, `LAGER_WHISPER_URL=http://127.0.0.1:8766`.
+- Umgebung: `LAGER_DATA_DIR=data`, `LAGER_BASE_URL=https://lager.home.lan`.
 - `tools/serve.ps1` muss als UTF-8 **mit BOM** gespeichert sein (Windows PowerShell 5.1).
 - Autostart nach Neustart ist **nicht** eingerichtet (nur mit ausdrücklichem OK; geplanter Task).
 - DNS: `lager.home.lan` → IP des Servers (AdGuard Home, DNS-Umschreibung).
 - D30-Direktdruck: Bluetooth des Server-PCs, Drucker eingeschaltet und gekoppelt, Handy-App geschlossen (siehe `docs/DIREKTDRUCK.md`).
 
+## Windows-Programme (Server und Client getrennt)
+
+Siehe `docs/WINDOWS.md`: zwei Installer (Server zum Debuggen, Client mit D30-Bridge) und `tools/dev.ps1`.
+
 ## Handy einrichten (einmalig)
 
 1. `http://lager.home.lan/ca.crt` öffnen und das Zertifikat installieren (Android: Einstellungen → Sicherheit → Zertifikat installieren → CA; iPhone: Profil + Zertifikatsvertrauen).
 2. `https://lager.home.lan` öffnen → „Zum Home-Bildschirm“.
-3. Kamera-Scan (`/scan`) und Mikrofon brauchen HTTPS.
+3. Kamera-Scan (`/scan`) braucht HTTPS.
 
 ## Docker (Raspberry Pi oder anderer Host)
 

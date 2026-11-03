@@ -7,27 +7,35 @@
   <button name="lang" value="de" class="{{ 'active' if P.lang != 'en' }}">Deutsch</button>
   <button name="lang" value="en" class="{{ 'active' if P.lang == 'en' }}">English</button>
 </form>
+<h2 class="menu-h">Lager</h2>
 <ul class="list menu">
-  <li><a href="/sprache">{{ icon('media.dictate') }}<span>Sprache &amp; Aufnahmen</span></a></li>
   <li><a href="/zu-sortieren">{{ icon('content.inbox') }}<span>Zu sortieren</span></a></li>
-  <li><a href="/ki">{{ icon('action.ai') }}<span>KI-Support</span></a></li>
-  <li><a href="/freigaben">{{ icon('action.approve') }}<span>Freigaben{% if NREVIEW %} · <b>{{ NREVIEW }}</b>{% endif %}</span></a></li>
-  <li><a href="/projekte">{{ icon('content.project') }}<span>Projekte</span></a></li>
-  <li><a href="/entnahmen">{{ icon('action.take') }}<span>Entnahmen</span></a></li>
-  <li><a href="/status">{{ icon('status.attention') }}<span>Status &amp; Backup</span></a></li>
+  <li><a href="/inventur">{{ icon('select.check') }}<span>Inventur</span></a></li>
+  <li><a href="/platz">{{ icon('content.space') }}<span>Freie Plätze</span></a></li>
   <li><a href="/auswahl">{{ icon('action.edit') }}<span>Mehrere bearbeiten / verschieben</span></a></li>
-  <li><a href="/slicer">{{ icon('action.upload') }}<span>Slicer (Creality Print)</span></a></li>
-  <li><a href="/trockner">{{ icon('content.box') }}<span>Filament-Trockner</span></a></li>
-  <li><a href="/material">{{ icon('content.box') }}<span>Filament &amp; Harz</span></a></li>
-  <li><a href="/codes">{{ icon('content.tag') }}<span>Codes</span></a></li>
+  <li><a href="/verlauf">{{ icon('action.undo') }}<span>Verlauf &amp; Rückgängig</span></a></li>
   <li><a href="/typen">{{ icon('content.type') }}<span>Tags</span></a></li>
-  <li><a href="/verliehen"><span>{{ icon('content.lent') }} Verliehen{% if n_lent %} · <b>{{ n_lent }}</b>{% endif %}</span></a></li>
-  <li><a href="/einkauf"><span>{{ icon('content.shopping') }} Einkaufsliste{% if n_shopping %} · <b>{{ n_shopping }}</b>{% endif %}</span></a></li>
-  <li><a href="/platz"><span>{{ icon('content.space') }} Freie Plätze</span></a></li>
-  <li><a href="/verlauf"><span>{{ icon('action.undo') }} Verlauf &amp; Rückgängig</span></a></li>
-  <li><a href="/import"><span>{{ icon('action.upload') }} Import (Inventur-Chat)</span></a></li>
-  <li><a href="/export.json"><span>{{ icon('action.download') }} Export (JSON)</span></a></li>
-  <li><a href="/settings"><span>{{ icon('nav.settings') }} Einstellungen</span></a></li>
+  <li><a href="/codes">{{ icon('content.tag') }}<span>Codes</span></a></li>
 </ul>
-
+<h2 class="menu-h">Werkstatt</h2>
+<ul class="list menu">
+  <li><a href="/projekte">{{ icon('content.project') }}<span>Projekte &amp; Stücklisten</span></a></li>
+  <li><a href="/entnahmen">{{ icon('action.take') }}<span>Entnahmen</span></a></li>
+  <li><a href="/verliehen">{{ icon('content.lent') }}<span>Verliehen</span></a></li>
+  <li><a href="/material">{{ icon('content.box') }}<span>Filament &amp; Harz</span></a></li>
+  <li><a href="/trockner">{{ icon('content.box') }}<span>Filament-Trockner</span></a></li>
+  <li><a href="/slicer">{{ icon('action.upload') }}<span>Slicer (Creality Print)</span></a></li>
+</ul>
+<h2 class="menu-h">Einkauf</h2>
+<ul class="list menu">
+  <li><a href="/einkauf">{{ icon('content.shopping') }}<span>Einkaufsliste</span></a></li>
+  <li><a href="/lieferanten">{{ icon('content.shopping') }}<span>Lieferanten &amp; Bestellhistorie</span></a></li>
+</ul>
+<h2 class="menu-h">System</h2>
+<ul class="list menu">
+  <li><a href="/status">{{ icon('status.attention') }}<span>Status &amp; Backup</span></a></li>
+  <li><a href="/import">{{ icon('action.upload') }}<span>Import (JSON)</span></a></li>
+  <li><a href="/export.json">{{ icon('action.download') }}<span>Export (JSON)</span></a></li>
+  <li><a href="/settings">{{ icon('nav.settings') }}<span>Einstellungen</span></a></li>
+</ul>
 {% endblock %}

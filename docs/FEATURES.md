@@ -12,8 +12,7 @@
 - **Einsatz-Assistent (`/neu/bin`):** Sortierkasten wählen → freie Zelle, Breite X × Tiefe Y, Anzahl Fächer → je Fach Art,
   Variante, Menge. Optional Inhalts- und QR-Etikett vormerken bzw. direkt drucken.
 - **Behälter:** Art als Kachel (inkl. Maschine `MAS`, Filamenttrockner `TRO`), Größe aus vorhandenen Boxen/Euro-Normen, „Luftdicht“.
-- **Spracheingabe, Foto, Import:** Diktat (Audio wird zuerst gespeichert, Transkription getrennt), Foto-Erkennung mit lokaler KI,
-  JSON-Import (Erst-Inventur per Chat, `docs/HAIKU_PROMPT.md`). Per API/MCP angelegte Teile tragen den Tag „ki“ und landen in „Freigaben“.
+- **Foto, Import:** Foto per Handykamera am Teil/Behälter, JSON-Import/-Export. Keine KI-Funktionen.
 
 ## Übersicht und Suche
 

@@ -1,4 +1,4 @@
-"""Import der Inventur-JSONs aus dem Haiku-Chat (Format: docs/HAIKU_PROMPT.md) und JSON-Export.
+"""Import von Inventur-JSON-Dateien und JSON-Export.
 
 Vorschau = Import gegen eine In-Memory-Kopie der Datenbank, echte DB bleibt unberührt.
 """

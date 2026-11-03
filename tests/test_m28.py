@@ -71,7 +71,7 @@ def test_import_cable_from_specs_or_name(client: TestClient, tmp_path) -> None: 
 
 
 def test_start_cable_fields(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     assert 'data-cat="CBL"' in page and '<select name="plug_a" data-reveal="plug-a-new">' in page
     assert page.index('class="cats-grid"') < page.index(
         'id="free-row"'
@@ -114,7 +114,7 @@ def test_psu_parse_and_name(text: str, name: str) -> None:
 
 
 def test_start_psu_fields_and_free_text(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     assert 'data-cat="PSU"' in page and 'name="volt"' in page and 'name="psu_plug"' in page
     assert "<option>DC 5,5x2,1</option>" in page
     box = _shelf(client)
@@ -133,7 +133,7 @@ def test_start_psu_fields_and_free_text(client: TestClient) -> None:
 
 
 def test_other_plug_camera_and_asset_version(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     assert 'class="mic photo-trigger"' not in page and 'class="photo-trigger"' in page
     assert "/static/app.js?v=" in page and "/static/style.css?v=" in page
     box = _shelf(client)
@@ -176,7 +176,7 @@ def test_psu_input_recognised(text: str, inp: str) -> None:
 
 
 def test_start_psu_input_select_and_datasheet(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     sel = page.split('name="psu_input"')[1].split("</select>")[0]
     for label in ("Kaltgerät C14", "Euro-Stecker (ohne Erdung)", "Schuko (geerdet)", "Direkt in Steckdose",
                   "Hutschiene", "Festes Netzkabel", "Anderer …"):  # fmt: skip

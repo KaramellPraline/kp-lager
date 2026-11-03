@@ -106,8 +106,74 @@ class LagerClient:
     def move(self, ref: str, container: str) -> dict[str, Any]:
         return dict(self._call("POST", f"/items/{ref}/move", json={"container": container}))
 
-    def import_json(self, text: str, review: bool = True) -> dict[str, Any]:
+    def import_json(self, text: str, review: bool = False) -> dict[str, Any]:
         return dict(self._call("POST", "/import", json={"text": text, "review": review}))
+
+    # Erweiterung (M36): Überblick, Bearbeiten, Projekte, Einkäufe, Karten, Inventur
+    def overview(self) -> dict[str, Any]:
+        return dict(self._call("GET", "/overview"))
+
+    def tree(self, depth: int = 4) -> list[dict[str, Any]]:
+        return list(self._call("GET", "/tree", params={"depth": depth}))
+
+    def items(self, container: str = "", limit: int = 200, offset: int = 0,
+              low: bool = False) -> dict[str, Any]:  # fmt: skip
+        params: dict[str, Any] = {"limit": limit, "offset": offset, "low": low}
+        if container:
+            params["container"] = container
+        return dict(self._call("GET", "/items", params=params))
+
+    def patch_item(self, ref: str, **fields: Any) -> dict[str, Any]:
+        return dict(self._call("PATCH", f"/items/{ref}", json=fields))
+
+    def delete_item(self, ref: str, hard: bool = False) -> dict[str, Any]:
+        return dict(self._call("DELETE", f"/items/{ref}", params={"hard": hard}))
+
+    def create_container(self, name: str, kind: str = "box", parent: str = "", notes: str = "",
+                         dims: str = "") -> dict[str, Any]:  # fmt: skip
+        body = {"name": name, "kind": kind, "parent": parent, "notes": notes, "dims": dims}
+        return dict(self._call("POST", "/containers", json=body))
+
+    def patch_container(self, ref: str, **fields: Any) -> dict[str, Any]:
+        return dict(self._call("PATCH", f"/containers/{ref}", json=fields))
+
+    def projects(self) -> list[dict[str, Any]]:
+        return list(self._call("GET", "/projects"))
+
+    def project(self, pid: int) -> dict[str, Any]:
+        return dict(self._call("GET", f"/projects/{pid}"))
+
+    def create_project(
+        self, name: str, lines: list[dict[str, Any]], notes: str = ""
+    ) -> dict[str, Any]:
+        body = {"name": name, "notes": notes, "lines": lines}
+        return dict(self._call("POST", "/projects", json=body))
+
+    def project_add_lines(self, pid: int, lines: list[dict[str, Any]]) -> dict[str, Any]:
+        return dict(self._call("POST", f"/projects/{pid}/lines", json=lines))
+
+    def project_to_shopping(self, pid: int) -> dict[str, Any]:
+        return dict(self._call("POST", f"/projects/{pid}/shopping"))
+
+    def suppliers(self) -> list[dict[str, Any]]:
+        return list(self._call("GET", "/suppliers"))
+
+    def add_purchase(self, ref: str, **fields: Any) -> dict[str, Any]:
+        return dict(self._call("POST", f"/items/{ref}/purchases", json=fields))
+
+    def add_card(self, ref: str, title: str, body: str = "", kind: str = "note",
+                 container: bool = False) -> dict[str, Any]:  # fmt: skip
+        path = f"/containers/{ref}/cards" if container else f"/items/{ref}/cards"
+        return dict(self._call("POST", path, json={"title": title, "body": body, "kind": kind}))
+
+    def inventory_due(self) -> list[dict[str, Any]]:
+        return list(self._call("GET", "/inventory/due"))
+
+    def inventory_confirm(self, ref: str, qty: int | None = None) -> dict[str, Any]:
+        return dict(self._call("POST", f"/inventory/items/{ref}", json={"qty": qty}))
+
+    def inventory_done(self, container: str) -> dict[str, Any]:
+        return dict(self._call("POST", f"/inventory/containers/{container}/done"))
 
 
 def fmt_item(i: dict[str, Any]) -> str:

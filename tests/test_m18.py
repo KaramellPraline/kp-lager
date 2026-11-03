@@ -18,7 +18,7 @@ def test_new_kind_from_start(client: TestClient) -> None:
     assert codes.KIND_PREFIX["schublade"] == "SCH" and codes.normalize("sch1") == "SCH-001"
     page = client.get("/codes").text
     assert "SCH</b>-001 · Schublade" in page
-    assert "Schublade · SCH" in client.get("/").text
+    assert "art=schublade" in client.get("/neu/behaelter").text
     # Code vergeben über die neue Art
     node_id = int(r.url.path.rsplit("/", 1)[1])
     assert "SCH-001" in client.post(f"/n/{node_id}/code").text
@@ -59,14 +59,14 @@ def test_new_schema_groups_and_language(client: TestClient) -> None:
     assert "<b>STA</b>" not in page and "<b>EIN</b>" not in page
     assert "Verbrauch &amp; Rohmaterial" in page and "Werkzeugbox, z. B. Kistenberg Pro" in page
     assert "<b>TBX</b>" not in client.get("/labels").text
-    start = client.get("/").text
+    start = client.get("/neu/behaelter").text
     assert (
-        "Werkzeugbox · TBX" in start and "Kistenberg" not in start
-    )  # Beschreibung nicht im Dropdown
+        'Werkzeugbox <span class="meta">TBX</span>' in start and "Kistenberg" not in start
+    )  # Beschreibung nicht in der Auswahl
     assert all("/" not in k.de and "/" not in k.en for k in kinds.BUILTIN)
     r = client.post("/lang", data={"lang": "en", "back": "/codes"})
     assert "Consumables &amp; Materials" in r.text and "Safety glasses" in r.text
-    assert "Machine Case · MCF" in client.get("/").text
+    assert "Machine Case" in client.get("/neu/behaelter").text
     assert 'value="en" class="active"' in client.get("/mehr").text
     assert client.post("/lang", data={"lang": "de", "back": "//evil"}).url.path == "/mehr"
 

@@ -15,7 +15,6 @@
     </select>
     <button class="primary">{{ icon('action.move', size='sm') }} Einsortieren</button>
   </form>
-  {% if AI %}<form method="post" action="/items/{{ i.id }}/ai" data-busy="KI arbeitet …"><button>{{ icon('action.ai', size='sm') }} Mit lokaler KI ergänzen</button></form>{% endif %}
 </section>
 {% else %}<p class="empty">Alles einsortiert.</p>{% endfor %}
 {% endblock %}

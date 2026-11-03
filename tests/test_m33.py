@@ -1,14 +1,13 @@
 """M33: Backup täglich, Status, Wert, Nachkaufliste, Trockner, Slicer, Massenbearbeitung, Foto."""
 
 import io
-import json
 import zipfile
 from datetime import date, timedelta
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from app import scheduler, slicer, vision
+from app import scheduler, slicer
 from app.db import connect
 
 
@@ -39,7 +38,7 @@ def test_daily_backup_once(tmp_path: Path) -> None:
 
 def test_status_page(client: TestClient) -> None:
     page = client.get("/status").text
-    assert "Backup" in page and "Lagerwert" in page and "KI-Gateway" in page
+    assert "Backup" in page and "Lagerwert" in page
     r = client.post("/status/backup")
     assert "lager-" in r.text
     assert "/status" in client.get("/mehr").text
@@ -123,7 +122,9 @@ def test_cables_and_psus_are_individual(client: TestClient) -> None:
 
 
 def test_eurobox_dims(client: TestClient) -> None:
-    assert "600x400x170" in client.get("/").text  # Auswahlliste (JSON), Anzeige per JS
+    assert (
+        "600x400x170" in client.get("/neu/behaelter?art=eurobox").text
+    )  # Auswahlliste (JSON), Anzeige per JS
     box = _box(client, "Eurobox groß", "eurobox", dims="600x400x170")
     assert "600 × 400 × 170 mm" in client.get(f"/n/{box}").text
     other = _box(client, "Kiste eigene", "crate", dims_other="45 x 35 x 20")
@@ -228,20 +229,3 @@ def test_slicer_upload_and_book(client: TestClient) -> None:
         "Keinen Filamentverbrauch"
         in client.post("/slicer/upload", files={"files": ("a.gcode", b"G1 X1")}).text
     )
-
-
-# --- Foto-Erfassung -------------------------------------------------------------------------
-
-
-def test_vision_parse() -> None:
-    answer = 'Hier: {"items":[{"name":"M3x10 Schraube","cat":"cns","qty":50,"specs":{"a":1}},' \
-             '{"name":"","cat":"ART"},{"name":"Lötzinn","cat":"XXX","qty":"viele"}]}'  # fmt: skip
-    items = vision.parse(answer)
-    assert [i["name"] for i in items] == ["M3x10 Schraube", "Lötzinn"]
-    assert items[0]["cat"] == "CNS" and items[0]["qty"] == 50 and items[1]["cat"] == "ART"
-    assert items[1]["qty"] is None
-
-
-def test_photo_endpoint_without_ai(client: TestClient) -> None:
-    r = client.post("/api/foto-erkennen", files={"photo": ("a.jpg", b"\xff\xd8\xff")})
-    assert r.status_code == 502 and "KI" in json.loads(r.text)["msg"]

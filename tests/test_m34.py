@@ -112,31 +112,3 @@ def test_import_spreads_single_pieces(setup: tuple[TestClient, str]) -> None:
     assert nym["qty"] == 10
     queue = c.get("/labels").text
     assert all(i["code"] in queue for i in usb)
-
-
-def test_api_adds_land_in_approvals_with_ki_tag(setup: tuple[TestClient, str]) -> None:
-    c, key = setup
-    w = LagerClient(url="http://testserver", api_key=key, http=c)
-    added = w.add("EUR-001", "3 Rollen Lötzinn")
-    assert added[0]["type"] == "ki" and added[0]["review"] is True
-    typed = w.add_typed("EUR-001", "M3 Muttern", "CNS", qty=5)
-    assert typed[0]["type"] == "ki" and typed[0]["review"] is True
-    w.import_json(
-        '[{"code":"EUR-002","name":"Ziel","items":[{"name":"Kabelbinder","tag":"mechanic"}]}]'
-    )
-    ziel = c.get("/api/v1/containers/EUR-002").json()["items"][0]
-    assert ziel["review"] is True and ziel["type"] == "mechanic" and "ki" in ziel["tags"]
-    page = c.get("/freigaben").text
-    assert "Lötzinn" in page and "Muttern" in page and "Kabelbinder" in page
-
-
-def test_note_audio_saved_first_then_transcribed_separately(client: TestClient) -> None:
-    r = client.post("/api/notes", files={"audio": ("d.webm", b"RIFFxxxx", "audio/webm")},
-                    data={"duration": "18", "transcribe": "0"})  # fmt: skip
-    assert r.json()["ok"] and r.json()["id"] == 1
-    page = client.get("/sprache").text
-    assert "/notes/1/audio" in page and "Transkribieren" in page and "Audio laden" in page
-    audio = client.get("/notes/1/audio")
-    assert audio.status_code == 200 and audio.content == b"RIFFxxxx"
-    assert "diktat_" in audio.headers["content-disposition"]
-    assert client.get("/notes/1/text.txt").status_code == 200

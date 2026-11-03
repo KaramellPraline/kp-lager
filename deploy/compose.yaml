@@ -7,9 +7,13 @@ services:
     restart: unless-stopped
     environment:
       LAGER_BASE_URL: https://${LAGER_HOST:-lager.home.lan}
-      LAGER_WHISPER_URL: ${LAGER_WHISPER_URL:-}
+      LAGER_D30: "0"            # kein Bluetooth im Container
+      LAGER_D30_BRIDGE: "${LAGER_D30_BRIDGE:-1}"  # Etiketten über den Windows-Client (PC-Bridge) drucken
+      LAGER_BACKUP_EXTERN: ${LAGER_BACKUP_EXTERN:-}  # Ziel im Container, z. B. /backup-extern
     volumes:
       - ./data:/data
+      # Externes Backup (NAS/USB): Host-Ordner einbinden und LAGER_BACKUP_EXTERN=/backup-extern setzen
+      - ${LAGER_BACKUP_HOST_DIR:-./data/backup-extern}:/backup-extern
 
   caddy:
     image: caddy:2.10-alpine

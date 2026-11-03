@@ -30,7 +30,6 @@
   {% if not node.model %}
   <form method="post" action="/n/{{ node.id }}/items" class="add-item card" aria-label="Teil eintragen">
     <input name="name" placeholder="Teil eintragen, z. B. 3 Rollen Lötzinn" required id="add-name" autocomplete="off">
-    {% if voice %}<button type="button" class="mic" data-target="add-name" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
     <input name="qty" placeholder="Anz." inputmode="numeric" class="short" aria-label="Anzahl">
     <button class="primary" aria-label="Eintragen">{{ icon('action.add') }}</button>
   </form>
@@ -42,7 +41,7 @@
   <h2>Inhalt</h2>
   <ul class="list items" data-collapse="9">{% for i in items %}{% include "_item.html" %}{% endfor %}</ul>
   {% elif not node.model and not kids %}
-  <p class="empty">Noch leer – oben eintragen, scannen oder per Chat-Inventur importieren.</p>
+  <p class="empty">Noch leer – oben eintragen, scannen oder per JSON importieren.</p>
   {% endif %}
 
   {% if kids and not topview %}
@@ -112,19 +111,7 @@
   </details>
   {% endif %}
 
-  <details>
-    <summary>Inventur per Chat (Haiku)</summary>
-    <p class="meta">Prompt kopieren, im Chat einfügen, Foto dazu → Antwort unter <a href="/import">Import</a> einfügen.</p>
-    <textarea id="chat-prompt" rows="6" readonly>{{ chat_prompt }}</textarea>
-    <button type="button" class="copy" data-target="chat-prompt">Prompt kopieren</button>
-      {% if AI %}
-    <form method="post" action="/ai/node/{{ node.id }}" class="stack" data-busy="KI arbeitet …">
-      <label>Oder direkt an die lokale KI: Inhalt beschreiben
-        <textarea name="text" rows="3" placeholder="z. B. zwei Rollen Lötzinn, ein Multimeter, viele Kabelbinder" required></textarea></label>
-      <button class="primary">{{ icon('action.ai', size='sm') }} An lokale KI senden</button>
-    </form>
-    {% endif %}
-  </details>
 </aside>
 </div>
+{% with card_action='/n/' ~ node.id ~ '/cards' %}{% include "_cards.html" %}{% endwith %}
 {% endblock %}

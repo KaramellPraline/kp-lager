@@ -20,10 +20,10 @@ from app import (
     kinds,
     prefs,
     repo,
+    scheduler,
     search,
     slicer,
     status,
-    vision,
 )
 from app.config import Settings
 from app.repo import LagerError
@@ -37,7 +37,6 @@ def register(
     render: Callable[..., HTMLResponse],
     redirect: Callable[..., RedirectResponse],
     settings: Settings,
-    ai_url: str,
 ) -> None:
     def safe_back(url: str, default: str) -> str:
         return url if url.startswith("/") and not url.startswith("//") else default
@@ -46,9 +45,15 @@ def register(
 
     @app.get("/status", response_class=HTMLResponse)
     def status_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(
-            request, conn, "status.html", s=status.collect(conn, settings.data_dir, ai_url)
-        )
+        return render(request, conn, "status.html", s=status.collect(conn, settings.data_dir))
+
+    @app.post("/status/backup/extern")
+    def status_backup_extern(conn: Conn) -> RedirectResponse:
+        files = backup.todays_files(settings.data_dir / "backups")
+        if not files:  # noch nichts gesichert: erst lokal sichern
+            backup.run(settings.data_dir, settings.data_dir / "backups",
+                       prefs.number(conn, "backup_days"))  # fmt: skip
+        return redirect("/status", scheduler.extern_tick(settings.data_dir, force=True))
 
     @app.post("/status/backup")
     def status_backup(conn: Conn) -> RedirectResponse:
@@ -61,7 +66,9 @@ def register(
     @app.get("/d30/status")
     def d30_status() -> JSONResponse:
         if not settings.d30:
-            return JSONResponse({"enabled": False, "available": False, "msg": "aus"})
+            return JSONResponse(
+                {"enabled": False, "available": False, "msg": "aus", "bridge": settings.d30_bridge}
+            )
         ok, msg = d30.status()
         return JSONResponse({"enabled": True, "available": ok, "msg": msg})
 
@@ -69,10 +76,30 @@ def register(
     def d30_print(
         conn: Conn, code: Annotated[list[str], Form()], back: Annotated[str, Form()] = "/"
     ) -> RedirectResponse:
+        if settings.d30_bridge and not settings.d30:
+            marker = f"\u27e6d30:{','.join(dict.fromkeys(code))}\u27e7"
+            return redirect(safe_back(back, "/"), "Druck über PC-Bridge" + marker)
         if not settings.d30:
             raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
         n = d30.print_codes(conn, settings.base_url, code)
         return redirect(safe_back(back, "/"), f"{n} Etikett{'en' if n != 1 else ''} gedruckt")
+
+    @app.post("/d30/printed")
+    def d30_printed(conn: Conn, code: Annotated[list[str], Form()]) -> JSONResponse:
+        """Die PC-Bridge meldet gedruckte Etiketten: als gedruckt buchen, Warteschlange leeren."""
+        from app import codes as code_schema
+        from app import labels
+
+        norm = [c for raw in code if (c := code_schema.normalize(raw))]
+        with conn:
+            conn.executemany(
+                "UPDATE container SET label_printed = 1 WHERE code = ?", [(c,) for c in norm]
+            )
+            conn.executemany(
+                "UPDATE item SET label_printed = 1 WHERE code = ?", [(c,) for c in norm]
+            )
+        labels.dequeue(conn, norm)
+        return JSONResponse({"ok": True, "count": len(norm)})
 
     # --- Trockner: Etikett scannen, dann Filament-Etiketten = getrocknet ---------------
 
@@ -294,22 +321,6 @@ def register(
 
         repo.update_item(conn, item_id, min_qty=num(min_qty), order_qty=num(order_qty))
         return redirect(safe_back(back, "/einkauf"), "Gespeichert")
-
-    # --- Foto-Erfassung ---------------------------------------------------------------
-
-    @app.post("/api/foto-erkennen")
-    async def identify_photo(conn: Conn, photo: Annotated[UploadFile, File()]) -> JSONResponse:
-        data = await photo.read()
-        if not data or len(data) > MAX_PHOTO:
-            return JSONResponse({"ok": False, "msg": "Foto leer oder zu groß"}, 400)
-        try:
-            items = vision.identify(
-                ai_url, settings.whisper_token, prefs.raw(conn, "ai_model_vision"), data,
-                photo.content_type or "image/jpeg",
-            )  # fmt: skip
-        except LagerError as exc:
-            return JSONResponse({"ok": False, "msg": str(exc)}, 502)
-        return JSONResponse({"ok": True, "items": items})
 
 
 def _today() -> str:

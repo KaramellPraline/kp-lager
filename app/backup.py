@@ -3,6 +3,7 @@
 Aufruf: python -m app.backup [ZIELORDNER] [TAGE]  (Standard: $LAGER_DATA_DIR/backups, 30)
 """
 
+import shutil
 import sqlite3
 import sys
 import tarfile
@@ -38,6 +39,36 @@ def run(data_dir: Path, target: Path, keep_days: int = 30, day: date | None = No
         if old.stat().st_mtime < cutoff:
             old.unlink()
     return written
+
+
+def mirror(files: list[Path], target: Path, keep_days: int = 30) -> list[Path]:
+    """Sicherungsdateien zusätzlich in einen externen Ordner kopieren (NAS-Freigabe, USB, Sync).
+
+    Schreibt erst unter `.tmp`-Namen und benennt danach um, damit nie halbe Dateien liegen.
+    """
+    target.mkdir(parents=True, exist_ok=True)
+    copied = []
+    for src in files:
+        tmp = target / f".{src.name}.tmp"
+        shutil.copy2(src, tmp)
+        if tmp.stat().st_size != src.stat().st_size:
+            tmp.unlink(missing_ok=True)
+            raise RuntimeError(f"Kopie von {src.name} unvollständig")
+        final = target / src.name
+        tmp.replace(final)
+        copied.append(final)
+    cutoff = time.time() - keep_days * 86400
+    for old in [*target.glob("lager-*.db"), *target.glob("photos-*.tar.gz")]:
+        if old.stat().st_mtime < cutoff:
+            old.unlink()
+    return copied
+
+
+def todays_files(source: Path, day: date | None = None) -> list[Path]:
+    stamp = (day or date.today()).isoformat()
+    return [
+        p for p in (source / f"lager-{stamp}.db", source / f"photos-{stamp}.tar.gz") if p.exists()
+    ]
 
 
 if __name__ == "__main__":

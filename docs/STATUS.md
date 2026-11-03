@@ -1,6 +1,6 @@
 # Status
 
-Stand: 2026-10-26
+Stand: 2026-11-03
 
 ## Aktuell
 - App „KP Lager“ läuft auf dem Windows-PC unter **https://lager.home.lan** (DNS in AdGuard auf 192.168.74.6 → 192.168.74.5). Start: `tools/serve.ps1` (443 HTTPS + 80 für `/ca.crt`).
@@ -8,6 +8,13 @@ Stand: 2026-10-26
 - Bin-Generator `cad/norb_bins.py`: Rillen (Spitzbogen), Greifmulde R15, Innenrundungen, Etikettenablage. **Testdruck steht aus** (Passung, Rippenrichtung).
 - 2026-10-27: Backlog M10–M17 umgesetzt und live (DB-Version 9). API `/api/v1` + CLI + MCP; Schlüssel in Einstellungen → Admin.
 - Offen: Handy-Test (CA installieren), Probedruck D30 + QR-Scan, Bin-Testdruck, Autostart nach Neustart (nur mit OK), Docker-Host für Dauerbetrieb.
+
+- 2026-11-03: **KI-frei + Hinzufügen-Tab**: alle KI-Bausteine entfernt; Start nur noch Bestandsbrowser; Hinzufügen (`/neu`) mit Reitern Teile · Behälter · Kabel & Material · Einsatz, untere Leiste: Bestand · Hinzufügen · Scannen · Einkauf · Etiketten.
+
+- 2026-11-03 (M35): Einkäufe/Lieferanten, Notiz- & Pinout-Karten, Inventur, Stücklisten-Abgleich (Fehlmengen → Einkaufsliste), externes Backup (Ordner/NAS), Startseite mit Aufgaben-Karten und Kennzahlen, Mehr-Menü gruppiert, Hinzufügen merkt letzten Reiter. Migration 019.
+- 2026-11-03 (M36): API mit Lese-/Schreib-Schlüsseln, `PATCH/DELETE` für Teile, Behälter anlegen/ändern, Projekte, Einkäufe, Karten, Inventur, `/overview`, `/tree`; MCP/Client erweitert (`docs/API.md`).
+- 2026-11-03 (M37): Windows: Client (Fenster + D30-PC-Bridge `app/d30_bridge.py`) und Server (Debug) als getrennte Installer (`windows/`, `docs/WINDOWS.md`), `tools/dev.ps1`, Docker-Compose mit Bridge-Modus (`LAGER_D30_BRIDGE`) und externem Backup-Volume. **Offen: .exe-Build und Bluetooth-Druck auf Windows testen.**
+- Offen (Oberfläche): Detail-Feinschliff nach Rückmeldung (Tabs, Menügruppen, Startseite sind umgesetzt).
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.

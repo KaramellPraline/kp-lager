@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ sup.name }} · Lieferant{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/lieferanten">Lieferanten</a> › {{ sup.name }}</nav>
+<h1>{{ sup.name }}</h1>
+<form method="post" action="/lieferanten/{{ sup.id }}" class="card stack">
+  <label>Webseite <input name="url" value="{{ sup.url }}" placeholder="https://…"></label>
+  {% if sup.url %}<a href="{{ sup.url }}" target="_blank" rel="noopener">Shop öffnen</a>{% endif %}
+  <label>Notiz <textarea name="note" rows="2">{{ sup.note }}</textarea></label>
+  <button class="primary">Speichern</button>
+</form>
+<h2>Einkäufe <span class="meta">gesamt {{ euro(total) }}</span></h2>
+<ul class="list">
+  {% for r in rows %}
+  <li class="item"><a class="name" href="/items/{{ r.item_id }}">{{ r.item_name }}
+    <small>{{ r.bought_at }}{% if r.qty %} · {{ r.qty }}×{% endif %}{% if r.price is not none %} · {{ euro(r.price) }}{% endif %}{% if r.note %} · {{ r.note }}{% endif %}</small></a>
+    <form method="post" action="/purchases/{{ r.id }}/delete"><input type="hidden" name="to" value="/lieferanten/{{ sup.id }}"><button aria-label="Löschen">{{ icon('nav.close', size='sm') }}</button></form></li>
+  {% else %}<li class="empty">Keine Einkäufe.</li>{% endfor %}
+</ul>
+{% endblock %}

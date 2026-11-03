@@ -96,7 +96,6 @@
     <h3>{{ group }}</h3>
     <dl class="specs">{% for label, value in rows %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
     {% endfor %}
-    {% if AI %}<form method="post" action="/items/{{ item.id }}/ai" data-busy="KI füllt aus …"><button>{{ icon('action.ai', size='sm') }} Mit KI ausfüllen</button></form>{% endif %}
     {% if item.material %}
     <details {% if not spec_sheet %}open{% endif %}>
       <summary>{{ icon('action.edit', size='sm') }} Eigenschaften bearbeiten</summary>
@@ -125,6 +124,26 @@
 
   {% if item.notes %}<div class="card notes">{{ item.notes }}</div>{% endif %}
 
+  <section id="einkaeufe">
+    <h2>Einkäufe</h2>
+    <ul class="history">
+      {% for b in buys %}<li>{{ b.bought_at }} · {{ b.supplier or 'ohne Lieferant' }}{% if b.qty %} · {{ b.qty }}×{% endif %}{% if b.price is not none %} · {{ euro(b.price) }}{% endif %}{% if b.url %} · <a href="{{ b.url }}" target="_blank" rel="noopener">Link</a>{% endif %}{% if b.note %} · {{ b.note }}{% endif %}
+        <form method="post" action="/purchases/{{ b.id }}/delete" style="display:inline"><input type="hidden" name="to" value="/items/{{ item.id }}#einkaeufe"><button class="link" aria-label="Löschen">{{ icon('nav.close', size='xs') }}</button></form></li>
+      {% else %}<li>Noch kein Einkauf erfasst.</li>{% endfor %}
+    </ul>
+    <details><summary>{{ icon('action.add', size='sm') }} Einkauf erfassen</summary>
+      <form method="post" action="/items/{{ item.id }}/purchases" class="stack card">
+        <input name="supplier" list="supplier-names" placeholder="Lieferant, z. B. Reichelt" autocomplete="off">
+        <datalist id="supplier-names">{% for n in supplier_names %}<option value="{{ n }}">{% endfor %}</datalist>
+        <div class="row"><input name="qty" placeholder="Menge" inputmode="numeric" class="short"><input name="price" placeholder="Stückpreis €" inputmode="decimal" class="short"><input name="bought_at" type="date" aria-label="Datum"></div>
+        <input name="url" placeholder="Link zur Bestellung / zum Artikel">
+        <input name="note" placeholder="Notiz (Bestellnummer …)">
+        <button class="primary">Speichern</button>
+      </form>
+    </details>
+  </section>
+  {% with card_action='/items/' ~ item.id ~ '/cards' %}{% include "_cards.html" %}{% endwith %}
+
   <h2>Verlauf</h2>
   <ul class="history">
     {% for e in events %}<li>{{ e.ts }} · {{ e.action }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %}</li>{% endfor %}
@@ -144,7 +163,6 @@
       {% else %}
       <form method="post" action="/items/{{ item.id }}/code"><button>{{ icon('content.tag') }} Etikett vergeben</button></form>
       {% endif %}
-      {% if AI %}<form method="post" action="/items/{{ item.id }}/ai" data-busy="KI arbeitet …"><button>{{ icon('action.ai') }} Mit lokaler KI ergänzen</button></form>{% endif %}
       <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
         <label class="file-btn">{{ icon('media.camera') }} Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
       </form>

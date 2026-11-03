@@ -111,3 +111,39 @@ def gather_by_code(conn: sqlite3.Connection, pid: int, code: str) -> str:
 def set_done(conn: sqlite3.Connection, pid: int, done: bool) -> None:
     with conn:
         conn.execute("UPDATE project SET done = ? WHERE id = ?", (int(done), pid))
+
+
+def compare(conn: sqlite3.Connection, pid: int) -> dict[str, Any]:
+    """Stückliste gegen den Bestand: je Zeile ok / teil (zu wenig) / fehlt (nicht im Lager)."""
+    out = []
+    cost = 0.0
+    for line in lines(conn, pid):
+        if line["gathered"]:
+            status, short = "geholt", 0
+        elif line["item_id"] is None:
+            status, short = "fehlt", int(line["qty"] or 1)
+        else:
+            need, stock = int(line["qty"] or 1), line["stock"]
+            short = max(0, need - stock) if stock is not None else 0
+            status = "ok" if short == 0 else ("teil" if stock else "fehlt")
+        price = conn.execute("SELECT price FROM item WHERE id = ?", (line["item_id"],)).fetchone()
+        if short and price and price["price"] is not None:
+            cost += float(price["price"]) * short
+        out.append({**line, "status": status, "short": short})
+    counts = {s: sum(1 for r in out if r["status"] == s) for s in ("ok", "teil", "fehlt", "geholt")}
+    return {
+        "lines": out,
+        "counts": counts,
+        "cost": cost,
+        "complete": not (counts["teil"] + counts["fehlt"]),
+    }
+
+
+def to_shopping(conn: sqlite3.Connection, pid: int) -> int:
+    """Fehlmengen bekannter Teile auf die Einkaufsliste (Wunschmenge = Fehlmenge)."""
+    n = 0
+    for line in compare(conn, pid)["lines"]:
+        if line["item_id"] is not None and line["short"]:
+            repo.update_item(conn, line["item_id"], on_list=1, order_qty=line["short"])
+            n += 1
+    return n

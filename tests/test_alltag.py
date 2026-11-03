@@ -1,14 +1,11 @@
 import re
 from pathlib import Path
-from typing import Any
 
 import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from app import quick, web
-from app.config import Settings
-from app.web import create_app
+from app import quick
 
 
 def node_of(r: httpx.Response) -> str:
@@ -82,7 +79,7 @@ def test_lend_and_return(client: TestClient) -> None:
     r = client.post(f"/items/{item}/lend", data={"to": "Nachbar Tom"})
     assert "Verliehen an <b>Nachbar Tom</b>" in r.text
     assert "bei Nachbar Tom" in client.get(f"/n/{b}").text
-    assert "Verliehen · <b>1</b>" in client.get("/mehr").text
+    assert "Verliehen" in client.get("/").text
     assert "Bohrmaschine" in client.get("/verliehen").text
     client.post(f"/items/{item}/return")
     assert "Bohrmaschine" not in client.get("/verliehen").text
@@ -160,44 +157,10 @@ def test_scan_api(client: TestClient) -> None:
     assert "Scannen" in client.get("/scan").text
 
 
-def test_manifest_icons_and_chat_prompt(client: TestClient) -> None:
+def test_manifest_icons(client: TestClient) -> None:
     m = client.get("/manifest.webmanifest").json()
     assert m["name"] == "KP Lager" and m["display"] == "standalone"
     assert client.get("/static/icon-192.png").headers["content-type"] == "image/png"
-    b = box(client, "Elektronik", code="KIS-002")
-    page = client.get(f"/n/{b}").text
-    assert "Behälter: code=KIS-002, kind=crate, name=Elektronik" in page
-    assert 'class="mic"' not in page  # ohne Whisper kein Mikrofon-Knopf
-
-
-def test_transcribe_without_and_with_whisper(
-    client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    assert (
-        client.post("/api/transcribe", files={"audio": ("a.webm", b"x", "audio/webm")}).status_code
-        == 503
-    )
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/v1/audio/transcriptions"
-        return httpx.Response(200, json={"text": " 3 Rollen Lötzinn "})
-
-    real = httpx.AsyncClient
-
-    def fake_client(**kw: Any) -> httpx.AsyncClient:
-        return real(transport=httpx.MockTransport(handler), **kw)
-
-    monkeypatch.setattr(web.httpx, "AsyncClient", fake_client)
-    settings = Settings(
-        data_dir=tmp_path / "w", base_url="https://lager.test", whisper_url="http://whisper"
-    )
-    with TestClient(create_app(settings)) as c:
-        r = c.post("/api/transcribe", files={"audio": ("a.webm", b"x", "audio/webm")})
-        assert r.json() == {"text": "3 Rollen Lötzinn"}
-        b = node_of(
-            c.post("/containers", data={"name": "B", "kind": "kiste"}, follow_redirects=True)
-        )
-        assert 'class="mic"' in c.get(f"/n/{b}").text
 
 
 def test_backup_copies_db_and_photos(tmp_path: Path) -> None:
@@ -241,42 +204,15 @@ def test_dictation_adds_several_items(client: TestClient) -> None:
     assert len(item_ids(r.text)) == 2
 
 
-def test_transcribe_uses_model_pref_and_token(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    seen: dict[str, str] = {}
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        seen["auth"] = request.headers["authorization"]
-        seen["body"] = request.content.decode(errors="ignore")
-        return httpx.Response(200, json={"text": "50 M3 Muttern"})
-
-    real = httpx.AsyncClient
-    monkeypatch.setattr(
-        web.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw)
-    )
-    s = Settings(
-        data_dir=tmp_path,
-        base_url="https://lager.test",
-        whisper_url="http://gw",
-        whisper_token="t0k",
-    )
-    with TestClient(create_app(s)) as c:
-        assert c.post(
-            "/api/transcribe", files={"audio": ("a.webm", b"x", "audio/webm")}
-        ).json() == {"text": "50 M3 Muttern"}
-    assert seen["auth"] == "Bearer t0k" and 'name="model"\r\n\r\nparakeet' in seen["body"]
-
-
 def test_home_quick_add_remembers_target(client: TestClient) -> None:
     keller = box(client, "Keller")
     werk = box(client, "Werkstatt")
-    page = client.get("/").text
-    assert (
-        'action="/quickadd"' in page
-        and ">Verliehen" not in page.split("</nav>")[1].split("schnell")[0]
+    assert 'action="/quickadd"' in client.get("/neu/material").text
+    assert 'action="/quickadd"' not in client.get("/").text  # Start = nur Bestand
+    r = client.post(
+        "/quickadd",
+        data={"target": keller, "text": "2 Zangen und 5 m Kabel", "back": "/neu/material"},
     )
-    r = client.post("/quickadd", data={"target": keller, "text": "2 Zangen und 5 m Kabel"})
     assert "„Zangen“, „Kabel“ → Keller" in r.text and "Rückgängig" in r.text
     assert re.search(rf'<option value="{keller}" selected>', r.text)  # Ziel gemerkt
     assert (
@@ -293,7 +229,7 @@ def test_home_where_favorites_and_last_three(client: TestClient) -> None:
         client.post(f"/n/{i}/favorite")
     for i in ids[:4]:
         client.post("/quickadd", data={"target": i, "text": "Teil"})
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     favs = re.findall(r'class="pick fav" data-id="(\d+)"', page)
     assert len(favs) == 10  # max. 10 Favoriten zum Wischen
     recent = re.findall(r'class="pick" data-id="(\d+)"', page)

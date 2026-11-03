@@ -36,7 +36,7 @@ def test_every_type_is_usable() -> None:
 
 def test_catalog_page_and_create_resets_form(client: TestClient) -> None:
     page = client.get("/neu?typ=schraube").text
-    assert "Zylinderkopfschraube" in page and "Einsatz in Sortierkasten" in page
+    assert "Zylinderkopfschraube" in page and 'href="/neu/bin"' in page
     assert 'id="type-filter"' in page and "Elektronik" in page
     box = _box(client)
     r = client.post("/neu", data={"typ": "schraube", "f_head": "Zylinderkopfschraube",
@@ -105,4 +105,27 @@ def test_tree_and_home(client: TestClient) -> None:
     leaf = client.get(f"/n/{shelf}/zweig").text
     assert "Sekundenkleber" in leaf
     assert "Übersicht" in client.get("/baum").text and "Werkstatt" in client.get("/baum").text
-    assert 'href="/neu"' in home
+    assert 'href="/neu/go"' in home
+
+
+def test_add_container_tab_like_catalog(client: TestClient) -> None:
+    page = client.get("/neu/behaelter?art=toolbox").text
+    assert 'href="/neu/behaelter"' in page and 'name="kind" value="toolbox"' in page
+    assert 'name="back" value="/neu/behaelter"' in page and "Wohin?" in page
+    room = _box(client, "Werkstatt", "room")
+    r = client.post(
+        "/containers",
+        data={"name": "Kiste blau", "kind": "toolbox", "parent_id": room, "queue": "1",
+              "back": "/neu/behaelter"},
+    )  # fmt: skip
+    assert r.url.path == "/neu/behaelter"  # bleibt im Reiter, nächster Behälter
+    assert "„Kiste blau“ angelegt (TBX-001)" in r.text
+    assert "TBX-001" in client.get("/labels").text  # Etikett in der Warteschlange
+    assert f'<option value="{room}" selected>' in r.text  # Ziel gemerkt
+    r = client.post(
+        "/containers",
+        data={"name": "Fach", "kind": "neu", "new_kind": "Schublade", "new_prefix": "sch",
+              "back": "/neu/behaelter"},
+    )  # fmt: skip
+    assert "„Fach“ angelegt" in r.text and "art=schublade" in r.text
+    assert 'action="/quickadd"' not in client.get("/").text  # Start = nur Bestand

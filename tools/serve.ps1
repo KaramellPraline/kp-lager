@@ -1,4 +1,4 @@
-﻿# KP Lager auf diesem Windows-PC starten – läuft unabhängig im Hintergrund weiter.
+﻿﻿# KP Lager auf diesem Windows-PC starten – läuft unabhängig im Hintergrund weiter.
 #   powershell -File tools\serve.ps1          starten (bzw. neu starten)
 #   powershell -File tools\serve.ps1 -Stop    beenden
 # Port 443: App mit HTTPS (https://lager.home.lan); Port 80: /ca.crt fürs Handy, sonst Umleitung.
@@ -23,8 +23,6 @@ New-Item -ItemType Directory -Force data\logs | Out-Null
 $py = (Resolve-Path ".venv\Scripts\python.exe").Path
 $env:LAGER_DATA_DIR = "data"
 $env:LAGER_BASE_URL = "https://lager.home.lan"
-# Spracheingabe über das KI-Gateway auf diesem PC (localhost -> kein Token nötig)
-$env:LAGER_WHISPER_URL = "http://127.0.0.1:8766"
 
 $env:LAGER_HTTPS_REDIRECT = ""
 Start-Process -FilePath $py -WindowStyle Hidden -WorkingDirectory (Get-Location) `

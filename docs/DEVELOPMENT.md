@@ -50,7 +50,7 @@ dürfen nicht `cur` heißen.
 - `uv run python -m pytest -q --ignore=tests/test_cad.py` (~260 Tests, ~30 s). `tests/conftest.py` liefert den Fixture `client`
   mit temporärem Datenverzeichnis; Auto-Backup ist in Tests aus.
 - CAD-Tests: `uv sync --group cad` und `uv run --group cad python -m pytest tests/test_cad.py`.
-- Hardware wird gemockt: D30 (`app.d30.send/status` per monkeypatch), KI-Gateway (`LAGER_WHISPER_URL` leer = aus).
+- Hardware wird gemockt: D30 (`app.d30.send/status` per monkeypatch).
 - Neue Funktion → Test in `tests/test_<thema>.py`.
 
 ## Arbeiten in der Cloud (Claude Code, GitHub Codespaces o. ä.)
@@ -60,7 +60,7 @@ Einrichtung Schritt für Schritt: [CLOUD.md](CLOUD.md) (Hook `.claude/hooks/sess
 Funktioniert vollständig für alles außer Hardware:
 
 - Läuft in der Cloud: App, API, Tests, Lint, Typecheck, Katalog, Baum, Etiketten als Bild (`/labels/img/<CODE>.png`), XLSX-Export.
-- Läuft nur am Server-PC: D30-Druck (Bluetooth), lokale KI/Whisper, Windows-Skripte (`tools/serve.ps1`).
+- Läuft nur am Server-PC: D30-Druck (Bluetooth), Windows-Skripte (`tools/serve.ps1`).
 - Eine Test-Instanz für die Oberfläche: `LAGER_DATA_DIR=/tmp/lager LAGER_AUTO_BACKUP=0 LAGER_D30=0 uv run uvicorn app.main:app --port 8000`.
 - CI (`.github/workflows/ci.yml`) führt Lint, Typecheck und Tests bei jedem Push und PR aus.
 - Geheimnisse gehören nicht ins Repository: `.env`, API-Schlüssel (`LAGER_API_KEY`), Zertifikate, `data/`.
@@ -79,4 +79,4 @@ Funktioniert vollständig für alles außer Hardware:
 - Windows PowerShell 5.1 braucht für `tools/serve.ps1` eine UTF-8-BOM.
 - Kleine HTMX-Swaps ersetzen Zeilen (`outerHTML`); Listen mit `data-collapse` bauen den „Mehr“-Knopf nach dem Laden auf.
 - Ausgeblendete Formularfelder werden per JS `disabled`, damit sie nicht mitgeschickt werden (sonst überschreiben gleichnamige Felder).
-- Tags werden kleingeschrieben gespeichert (KI-Tag erscheint als „ki“).
+- Tags werden kleingeschrieben gespeichert.

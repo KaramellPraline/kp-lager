@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Lieferanten · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Lieferanten</h1>
+<p class="meta">Entstehen automatisch, wenn du am Teil unter „Einkäufe“ einen Lieferanten einträgst.</p>
+<ul class="list">
+  {% for s in suppliers %}
+  <li><a href="/lieferanten/{{ s.id }}"><span>{{ s.name }}</span>
+    <small>{{ s.n }} Einkäufe{% if s.total %} · {{ euro(s.total) }}{% endif %}{% if s.last %} · zuletzt {{ s.last }}{% endif %}</small></a></li>
+  {% else %}<li class="empty">Noch keine Einkäufe erfasst.</li>{% endfor %}
+</ul>
+{% endblock %}

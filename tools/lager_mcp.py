@@ -154,5 +154,132 @@ def move_item(ref: str, container: str) -> dict[str, Any]:
     return client().move(ref, container)
 
 
+# --- Planung und Pflege (M36) -------------------------------------------------------------
+
+
+@mcp.tool()
+def overview() -> dict[str, Any]:
+    """Lager auf einen Blick: Teile, Behälter, Wert, Nachkauf, Inventur fällig, offene Projekte."""
+    return client().overview()
+
+
+@mcp.tool()
+def container_tree(depth: int = 4) -> list[dict[str, Any]]:
+    """Behälterbaum (Räume, Regale, Boxen) mit Teilezahl – zum Orientieren vor dem Planen."""
+    return client().tree(depth)
+
+
+@mcp.tool()
+def list_items(container: str = "", limit: int = 200, offset: int = 0,
+               low_stock: bool = False) -> dict[str, Any]:  # fmt: skip
+    """Teile seitenweise mit Menge, Preis, Specs, Karten, Einkäufen. container = Code/ID
+    (inkl. Unterbehälter); low_stock = nur unter Mindestbestand."""
+    return client().items(container, limit, offset, low_stock)
+
+
+@mcp.tool()
+def update_item(ref: str, fields: dict[str, Any]) -> dict[str, Any]:
+    """Teil ändern (Schlüssel nötig). Felder: name, full_name, unit, notes, model, tags,
+    order_url, qty (absolut), qty_delta (relativ), min_qty, order_qty, price (€/Stück),
+    on_list (Einkaufsliste), archived."""
+    return client().patch_item(ref, **fields)
+
+
+@mcp.tool()
+def remove_item(ref: str, hard: bool = False) -> dict[str, Any]:
+    """Teil archivieren (rückholbar) oder mit hard=true endgültig löschen (Schlüssel nötig)."""
+    return client().delete_item(ref, hard)
+
+
+@mcp.tool()
+def create_container(name: str, kind: str = "box", parent: str = "", notes: str = "",
+                     dims: str = "") -> dict[str, Any]:  # fmt: skip
+    """Behälter anlegen (Schlüssel nötig); kind = Art (siehe get_schema), parent = Code/ID."""
+    return client().create_container(name, kind, parent, notes, dims)
+
+
+@mcp.tool()
+def update_container(ref: str, name: str | None = None, notes: str | None = None,
+                     parent: str | None = None) -> dict[str, Any]:  # fmt: skip
+    """Behälter umbenennen, Notiz ändern oder umlagern (parent = neuer Code/ID, '' = oben)."""
+    fields = {
+        k: v for k, v in {"name": name, "notes": notes, "parent": parent}.items() if v is not None
+    }
+    return client().patch_container(ref, **fields)
+
+
+@mcp.tool()
+def list_projects() -> list[dict[str, Any]]:
+    """Projekte mit Zahl der Stücklistenzeilen."""
+    return client().projects()
+
+
+@mcp.tool()
+def get_project(project_id: int) -> dict[str, Any]:
+    """Projekt mit Stückliste, Bestandsabgleich (ok/teil/fehlt), Fehlmengen und Kosten."""
+    return client().project(project_id)
+
+
+@mcp.tool()
+def plan_project(name: str, lines: list[dict[str, Any]], notes: str = "") -> dict[str, Any]:
+    """Projekt mit Stückliste anlegen (Schlüssel nötig). lines: [{"item": "ART-0007", "qty": 5}]
+    für vorhandene Teile oder [{"name": "BME280 Sensor", "qty": 1}] für Neues. Die Antwort zeigt
+    sofort, was verfügbar ist und was fehlt."""
+    return client().create_project(name, lines, notes)
+
+
+@mcp.tool()
+def add_project_lines(project_id: int, lines: list[dict[str, Any]]) -> dict[str, Any]:
+    """Zeilen zu einem Projekt ergänzen (Schlüssel nötig), Format wie bei plan_project."""
+    return client().project_add_lines(project_id, lines)
+
+
+@mcp.tool()
+def project_missing_to_shopping(project_id: int) -> dict[str, Any]:
+    """Fehlmengen bekannter Teile des Projekts auf die Einkaufsliste setzen (Schlüssel nötig)."""
+    return client().project_to_shopping(project_id)
+
+
+@mcp.tool()
+def list_suppliers() -> list[dict[str, Any]]:
+    """Lieferanten mit Zahl der Einkäufe und Summe."""
+    return client().suppliers()
+
+
+@mcp.tool()
+def record_purchase(ref: str, supplier: str = "", qty: int | None = None,
+                    price: float | None = None, url: str = "", note: str = "",
+                    bought_at: str = "") -> dict[str, Any]:  # fmt: skip
+    """Einkauf zu einem Teil erfassen (Schlüssel nötig); price = Stückpreis in Euro."""
+    return client().add_purchase(ref, supplier=supplier, qty=qty, price=price, url=url,
+                                 note=note, bought_at=bought_at)  # fmt: skip
+
+
+@mcp.tool()
+def add_card(ref: str, title: str, body: str = "", kind: str = "note",
+             container: bool = False) -> dict[str, Any]:  # fmt: skip
+    """Notiz- oder Pinout-Karte an ein Teil (oder mit container=true an einen Behälter) hängen.
+    kind 'pinout': eine Zeile je Pin, 'Pin; Funktion; Hinweis'."""
+    return client().add_card(ref, title, body, kind, container)
+
+
+@mcp.tool()
+def inventory_due() -> list[dict[str, Any]]:
+    """Behälter, deren Inventur fällig ist."""
+    return client().inventory_due()
+
+
+@mcp.tool()
+def inventory_confirm(ref: str, counted_qty: int | None = None) -> dict[str, Any]:
+    """Teil per Inventur bestätigen (Schlüssel nötig); counted_qty korrigiert die Menge."""
+    return client().inventory_confirm(ref, counted_qty)
+
+
+@mcp.tool()
+def inventory_finish(container: str) -> dict[str, Any]:
+    """Inventur eines Behälters abschließen (Schlüssel nötig)."""
+    return client().inventory_done(container)
+
+
 if __name__ == "__main__":
     mcp.run()

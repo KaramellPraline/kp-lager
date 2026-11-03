@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Inventur {{ node.name }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/inventur">Inventur</a> › {{ node.name }}</nav>
+<div class="title-row"><h1>{{ node.name }}</h1><span class="chip">{{ rows|length - open_n }} von {{ rows|length }} geprüft</span></div>
+<p class="meta">{{ path }}{% if node.checked_at %} · letzte Inventur {{ node.checked_at[:10] }}{% endif %}</p>
+<form method="post" action="/inventur/{{ node.id }}/scan" class="add-item card">
+  <input name="code" placeholder="Etikett scannen oder Code tippen" autocomplete="off" aria-label="Code">
+  <button class="primary" aria-label="Bestätigen">{{ icon('select.check', size='sm') }}</button>
+</form>
+<ul class="list">
+  {% for i in rows %}
+  <li class="item {% if i.checked %}undone{% endif %}">
+    <a class="name" href="/items/{{ i.id }}">{{ i.name }}<small>{{ i.code or '' }}{% if i.qty is none %} · ungezählt{% endif %}</small></a>
+    <form method="post" action="/inventur/item/{{ i.id }}" class="add-item" style="margin:0">
+      {% if i.qty is not none %}<input name="qty" value="{{ i.qty }}" inputmode="numeric" class="short" aria-label="Menge {{ i.name }}">{% endif %}
+      <button {% if i.checked %}disabled{% endif %} aria-label="Stimmt">{{ icon('select.check', size='sm') }}</button>
+    </form>
+  </li>
+  {% else %}<li class="empty">Keine Teile.</li>{% endfor %}
+</ul>
+<form method="post" action="/inventur/{{ node.id }}/done"><button class="primary" style="width:100%">{{ icon('status.ok', size='sm') }} Inventur abschließen{% if open_n %} ({{ open_n }} offen){% endif %}</button></form>
+{% endblock %}

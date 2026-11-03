@@ -400,3 +400,25 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
   text-transform: uppercase; color: var(--sub); display: flex; justify-content: space-between; }
 .neu-types details.grp > summary:hover { color: var(--fg); }
 .neu-types details.grp[open] > summary { color: var(--fg); }
+
+/* Hinzufügen: Reiter Teile · Behälter · Kabel & Material · Einsatz */
+.add-tabs { margin: 0 0 14px; }
+.add-tabs a { padding: 9px 4px; font-size: 14px; white-space: nowrap; text-decoration: none; align-self: stretch; }
+
+/* Mehr: Gruppen · Start: Aufgaben-Karten, Kennzahlen · Stückliste · Karten */
+.menu-h { margin: 18px 0 4px; font: 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sub); }
+.task-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 12px 0; }
+.task-card { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-md, 14px); background: var(--surface); text-decoration: none; color: var(--fg); }
+.task-card .ic { grid-row: span 2; color: var(--accent); }
+.task-card b { font-size: 22px; line-height: 1; }
+.task-card span:last-child { font-size: 13px; color: var(--sub); }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+.kpis div { padding: 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); }
+.kpis dt { font: 11px var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--sub); }
+.kpis dd { margin: 2px 0 0; font-size: 17px; }
+.kpis dd.bad, .bom b.bad { color: var(--critical); }
+.bom { display: flex; flex-direction: column; gap: 6px; }
+.bom b.ok, .bom-ok b { color: var(--ok, #3fa66b); }
+table.pinout { width: 100%; border-collapse: collapse; font: 14px var(--font-mono); }
+table.pinout th, table.pinout td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+@media (max-width: 420px) { .kpis { grid-template-columns: repeat(2, 1fr); } }

@@ -11,7 +11,7 @@ def _jpeg() -> bytes:
 
 
 def test_start_form_matrix_and_labels(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     form = page.split('id="schnell"')[1].split("</form>")[0]
     assert 'class="cats-grid"' in form and "pick-scroll cats" not in form
     cats = form.split('aria-label="Kategorie"')[1].split("</div>")[0]
@@ -22,11 +22,9 @@ def test_start_form_matrix_and_labels(client: TestClient) -> None:
         "Was?",
         "Kategorie",
         "Wohin?",
-        "Teil hinzufügen",
         "Zu sortieren (später einräumen)",
     ):
         assert text in form
-    assert 'data-submit="Behälter anlegen"' in form
 
 
 def test_add_items_with_photo_and_default_inbox(client: TestClient, tmp_path) -> None:  # type: ignore[no-untyped-def]

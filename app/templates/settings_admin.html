@@ -46,8 +46,8 @@ Nummern (z. B. gedruckte Vorrats-Etiketten) wieder frei – diese Etiketten kön
 </section>
 {% endfor %}
 <section class="card" id="api">
-  <h2 style="margin-top:0">API-Schlüssel (CLI, MCP)</h2>
-  <p class="meta">Suchen und Lesen über <code>/api/v1</code> geht ohne Schlüssel. Schreiben (Teile anlegen, entnehmen, umlagern, importieren) nur mit Schlüssel im Header <code>X-API-Key</code>.</p>
+  <h2 style="margin-top:0">API-Schlüssel (CLI, MCP, externe Werkzeuge)</h2>
+  <p class="meta">Schlüssel gehören in den Header <code>X-API-Key</code>. <b>Lesen</b>-Schlüssel dürfen nur abfragen (z. B. für eine KI, die Projekte plant), <b>Schreiben</b>-Schlüssel dürfen auch Teile anlegen, ändern, entnehmen und umlagern. Ohne Schlüssel ist das Lesen im LAN offen – abschaltbar unter Einstellungen › Betrieb („API: auch Lesen nur mit Schlüssel“). Beschreibung aller Endpunkte: <code>/docs</code>.</p>
   {% if new_key %}
   <div class="msg"><b>Neuer Schlüssel – jetzt kopieren, er wird nicht wieder angezeigt:</b>
     <textarea id="new-key" readonly rows="2" style="margin-top:6px">{{ new_key }}</textarea>
@@ -55,12 +55,13 @@ Nummern (z. B. gedruckte Vorrats-Etiketten) wieder frei – diese Etiketten kön
   {% endif %}
   <ul class="list" style="margin:8px 0">
     {% for k in keys %}
-    <li class="item"><span class="name">{{ k.name }}<small style="display:block">angelegt {{ k.created_at[:16] }}{% if k.last_used %} · zuletzt {{ k.last_used[:16] }}{% else %} · nie benutzt{% endif %}</small></span>
+    <li class="item"><span class="name">{{ k.name }} <span class="chip">{{ 'Schreiben' if k.scope == 'write' else 'Lesen' }}</span><small style="display:block">angelegt {{ k.created_at[:16] }}{% if k.last_used %} · zuletzt {{ k.last_used[:16] }}{% else %} · nie benutzt{% endif %}</small></span>
       <form method="post" action="/settings/admin/keys/{{ k.id }}/delete" onsubmit="return confirm('Schlüssel {{ k.name }} löschen?')"><button class="danger">{{ icon('action.delete', size='sm') }} Löschen</button></form></li>
     {% else %}<li class="empty">Noch keine Schlüssel.</li>{% endfor %}
   </ul>
   <form method="post" action="/settings/admin/keys" class="add-item">
-    <input name="name" placeholder="Name, z. B. Claude Code" required>
+    <input name="name" placeholder="Name, z. B. Projekt-Planer" required>
+    <select name="scope" aria-label="Rechte"><option value="read">Nur lesen</option><option value="write">Lesen und schreiben</option></select>
     <button class="primary">{{ icon('system.lock', size='sm') }} Schlüssel erzeugen</button>
   </form>
 </section>

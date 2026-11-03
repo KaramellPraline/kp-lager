@@ -9,14 +9,13 @@ def _shelf(client: TestClient) -> int:
 
 
 def test_item_categories_on_start(client: TestClient) -> None:
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     for p in ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE"):
         assert f'name="cat" value="{p}"' in page
-    seg = page.split('class="seg"')[1].split("</div>")[0]
-    assert "Typ" not in seg and "Projekt" not in seg and 'data-mode="all"' in seg
-    kind_tiles = page.split('aria-label="Art des Behälters"')[1].split("</div>")[0]
-    assert 'value="toolbox"' in kind_tiles and 'value="machine"' in kind_tiles
-    assert 'value="room"' not in kind_tiles and 'value="workbench"' not in kind_tiles
+    assert "Projekt" not in page
+    kind_page = client.get("/neu/behaelter").text
+    assert "art=toolbox" in kind_page and "art=machine" in kind_page
+    assert "art=compartment" not in kind_page and "art=bin" not in kind_page
     shelf = _shelf(client)
     client.post(
         "/quickadd", data={"mode": "item", "text": "5 m NYM-J Kabel", "target": shelf, "cat": "CBL"}
