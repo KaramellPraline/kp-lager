@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Anlegen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<div class="neu">
+  <aside class="neu-types" aria-label="Teile-Typen">
+    <input type="search" id="type-filter" placeholder="Typ suchen … (z. B. Schraube)" aria-label="Typ suchen">
+    <a class="button neu-bin" href="/neu/bin">{{ icon('content.tag', size='sm') }} Einsatz in Sortierkasten …</a>
+    {% for g, types in groups %}
+    <h3>{{ g }}</h3>
+    <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
+    {% endfor %}
+    <p class="meta">Kabel, Netzteile, Filament und Harz legst du auf der <a href="/">Startseite</a> an.</p>
+  </aside>
+
+  <section class="neu-main">
+    <form method="post" action="/neu" id="neu-form" class="card stack" data-typ="{{ ctype.key }}">
+      <h1 style="margin:0">{{ ctype.label }}</h1>
+      <input type="hidden" name="typ" value="{{ ctype.key }}">
+      {% for f in ctype.fields %}
+      <div class="nf">
+        <label for="f_{{ f.key }}">{{ f.label }}{% if f.unit %} <span class="meta">({{ f.unit }})</span>{% endif %}</label>
+        <input id="f_{{ f.key }}" name="f_{{ f.key }}" {% if f.options %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" autocomplete="off" {% if loop.first %}autofocus{% endif %}>
+        {% if f.options %}
+        <datalist id="dl_{{ f.key }}">{% for o in f.options %}<option value="{{ o }}">{% endfor %}</datalist>
+        <div class="chips">{% for o in f.options[:18] %}<button type="button" class="chip" data-for="f_{{ f.key }}">{{ o }}</button>{% endfor %}</div>
+        {% endif %}
+      </div>
+      {% endfor %}
+      <div class="name-preview">Name: <b id="np">–</b></div>
+      <div class="nf">
+        <label for="qty">Menge <span class="meta">(leer = ungezählt)</span></label>
+        <input id="qty" name="qty" inputmode="numeric" class="short" autocomplete="off">
+        <div class="chips">{% for q in ('1', '5', '10', '25', '50', '100', '200', '500') %}<button type="button" class="chip" data-for="qty">{{ q }}</button>{% endfor %}</div>
+      </div>
+      <div class="nf">
+        <label for="target">Wohin?</label>
+        <select id="target" name="target">
+          <option value="">Zu sortieren (später einräumen)</option>
+          {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+        </select>
+      </div>
+      {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+        <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
+      <div class="row"><button class="primary" id="neu-submit">{{ icon('action.add', size='sm') }} Anlegen</button>
+        <span class="meta">Enter legt an · danach bleibt dieser Typ mit leeren Feldern offen</span></div>
+    </form>
+
+    {% if recent %}
+    <h2>Zuletzt angelegt</h2>
+    <ul class="list">{% for r in recent %}<li><a href="/items/{{ r.id }}"><span class="name">{{ r.name }}</span><span class="meta">{{ r.code }} · {{ r.place }}{% if r.qty is not none %} · {{ r.qty }}×{% endif %}</span></a></li>{% endfor %}</ul>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

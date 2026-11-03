@@ -81,3 +81,8 @@ Stand: 2026-10-26
 - Trockner-Scan: Trockner-Etikett scannen → 10 min Modus (Cookie), dann Filament-Etikett(en) = getrocknet mit Datum/Uhrzeit (dry_log, Seite /trockner/scan/<id>).
 - Inhalt unter „Wohin?“ (/n/<id>/inhalt) und Behälterliste: ab dem 10. Eintrag „Mehr anzeigen“.
 - Fix: ausgeblendete Kategorie-Felder werden nicht mehr mitgeschickt (Anzahl ging verloren).
+
+## Katalog, Einsatz-Assistent, Baum (2026-11-03)
+- `/neu` (Nav „Anlegen“, Tab „Katalog“ im Hinzufügen-Formular): ~55 Teile-Typen in 8 Gruppen (app/catalog.py) aus den Sortierkasten-Fotos + Heimwerken/3D-Druck/Laser/Elektronik. Felder als Chips + Datalist, Live-Namensvorschau, danach gleicher Typ mit leeren Feldern (Ziel bleibt). Elektronik bekommt das Datenblatt-Profil „Elektronikbauteil“.
+- `/neu/bin`: Einsatz-Assistent (Kasten, freie Zelle, X×Y, Fächeranzahl, je Fach Art+Variante+Menge, Etiketten). 
+- Übersicht: Baum mit lazy Zweigen (`/n/<id>/zweig`, `/baum`), auf der Startseite statt Raumkarten; ab 10. Eintrag „Mehr anzeigen“.

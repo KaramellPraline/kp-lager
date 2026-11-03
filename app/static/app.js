@@ -68,6 +68,7 @@
     });
   }
   document.addEventListener("DOMContentLoaded", function () { collapse(document); });
+  window.lagerCollapse = collapse;
   document.addEventListener("click", function (ev) {
     var pick = ev.target.closest("button.pick");
     if (!pick) return;
@@ -483,4 +484,102 @@
   poll();
   setInterval(poll, 20000);
   document.addEventListener("visibilitychange", poll);
+})();
+
+
+/* Anlegen (Katalog): Chips, Namensvorschau, Typ-Suche; Einsatz-Assistent; Baum */
+(function () {
+  // Chips füllen das zugehörige Feld; Klick auf den gleichen Chip leert es wieder
+  document.addEventListener("click", function (ev) {
+    var chip = ev.target.closest("button.chip");
+    if (!chip) return;
+    var input = document.getElementById(chip.dataset.for);
+    if (!input) return;
+    input.value = input.value === chip.textContent ? "" : chip.textContent;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  });
+  function markChips(form) {
+    form.querySelectorAll("button.chip").forEach(function (c) {
+      var input = document.getElementById(c.dataset.for);
+      c.classList.toggle("on", !!input && input.value === c.textContent);
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function () {
+    var form = document.getElementById("neu-form");
+    if (!form) return;
+    var np = document.getElementById("np"), timer = null;
+    function preview() {
+      markChips(form);
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        var q = new URLSearchParams({ typ: form.dataset.typ });
+        form.querySelectorAll("input[name^=f_]").forEach(function (i) { q.set(i.name, i.value); });
+        fetch("/neu/vorschau?" + q.toString()).then(function (r) { return r.json(); })
+          .then(function (d) { np.textContent = d.name || "–"; }).catch(function () {});
+      }, 120);
+    }
+    form.addEventListener("input", preview);
+    preview();
+    var filter = document.getElementById("type-filter");
+    if (filter) filter.addEventListener("input", function () {
+      var q = filter.value.trim().toLowerCase();
+      document.querySelectorAll(".neu-types li a").forEach(function (a) {
+        a.parentElement.hidden = !!q && a.dataset.name.indexOf(q) < 0;
+      });
+      document.querySelectorAll(".neu-types h3").forEach(function (h) {
+        var ul = h.nextElementSibling;
+        h.hidden = !!q && !ul.querySelector("li:not([hidden])");
+      });
+    });
+  });
+
+  // Einsatz-Assistent: freie Zellen je Kasten, Zeilen je Fach
+  document.addEventListener("DOMContentLoaded", function () {
+    var form = document.getElementById("bin-form");
+    if (!form) return;
+    var info = JSON.parse(form.dataset.info), sugg = JSON.parse(form.dataset.sugg);
+    var kasten = document.getElementById("bin-kasten"), pos = document.getElementById("bin-pos");
+    var div = document.getElementById("bin-div"), rows = document.getElementById("bin-rows");
+    var tpl = document.getElementById("bin-row-tpl");
+    function cells() {
+      var free = (info[kasten.value] || {}).free || [];
+      pos.innerHTML = "";
+      free.forEach(function (c) { var o = document.createElement("option"); o.value = c; o.textContent = c; pos.appendChild(o); });
+    }
+    function slots() {
+      var n = parseInt(div.selectedOptions[0].dataset.n, 10), parts = div.value.split("x");
+      var cols = parseInt(parts[0], 10);
+      rows.innerHTML = "";
+      for (var i = 0; i < n; i++) {
+        var node = tpl.content.cloneNode(true), row = node.querySelector(".bin-row");
+        var label = n === 1 ? "Einsatz" : "Fach " + String.fromCharCode(65 + Math.floor(i / cols)) + (i % cols + 1);
+        row.querySelector(".slot").textContent = label;
+        var typ = row.querySelector(".r-typ"), v = row.querySelector(".r-var"), q = row.querySelector(".r-qty");
+        typ.name = "r" + i + "_typ"; v.name = "r" + i + "_var"; q.name = "r" + i + "_qty";
+        var dl = document.createElement("datalist"); dl.id = "dl-r" + i; v.setAttribute("list", dl.id);
+        typ.addEventListener("change", function (dlist, sel) { return function () {
+          var key = sel.value.split("|")[0]; dlist.innerHTML = "";
+          (sugg[key] || []).forEach(function (s) { var o = document.createElement("option"); o.value = s; dlist.appendChild(o); });
+        }; }(dl, typ));
+        row.appendChild(dl);
+        rows.appendChild(node);
+      }
+    }
+    kasten.addEventListener("change", cells);
+    div.addEventListener("change", slots);
+    cells(); slots();
+  });
+
+  // Baum: Zweige beim ersten Aufklappen nachladen
+  document.addEventListener("toggle", function (ev) {
+    var d = ev.target;
+    if (!d.matches || !d.matches("details.twig") || !d.open || d.dataset.loaded) return;
+    d.dataset.loaded = "1";
+    fetch(d.dataset.src).then(function (r) { return r.text(); }).then(function (html) {
+      var box = d.querySelector(".branch");
+      box.innerHTML = html;
+      if (window.lagerCollapse) window.lagerCollapse(box);
+    }).catch(function () { d.dataset.loaded = ""; });
+  }, true);
 })();

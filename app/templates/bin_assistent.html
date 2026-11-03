@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Einsatz anlegen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/neu">Anlegen</a> › Einsatz in Sortierkasten</nav>
+<h1>Einsatz in Sortierkasten</h1>
+{% if not boxes %}
+<div class="card"><p>Es gibt noch keinen Sortierkasten mit Modell. Auf der <a href="/">Startseite</a> unter „Behälter“ einen
+<b>Sortierkasten</b> anlegen und auf der Kasten-Seite das Modell (Kistenberg NORB16) wählen.</p></div>
+{% else %}
+<form method="post" action="/neu/bin" id="bin-form" class="card stack bin-form" data-info='{{ info|tojson }}' data-sugg='{{ sugg|tojson }}'>
+  <div class="bin-grid">
+    <label>Sortierkasten
+      <select name="kasten" id="bin-kasten">{% for b in boxes %}<option value="{{ b.id }}" {% if b.id == kcur %}selected{% endif %}>{{ b.code or '' }} {{ b.name }}</option>{% endfor %}</select></label>
+    <label>Position (freie Zelle)<select name="pos" id="bin-pos"></select></label>
+    <label>Breite X (Zellen)<select name="x">{% for n in range(1, 6) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select></label>
+    <label>Tiefe Y (Zellen)<select name="y">{% for n in range(1, 8) %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select></label>
+    <label>Fächer im Einsatz
+      <select name="div" id="bin-div">{% for d in divs %}{% set p = d.split('x') %}<option value="{{ d }}" data-n="{{ p[0]|int * p[1]|int }}">{{ p[0]|int * p[1]|int }} {{ 'Fach' if p[0]|int * p[1]|int == 1 else 'Fächer' }} ({{ p[0] }}×{{ p[1] }})</option>{% endfor %}</select></label>
+  </div>
+  <h2 style="margin-bottom:0">Inhalt je Fach <span class="meta">(optional)</span></h2>
+  <div id="bin-rows" class="bin-rows"></div>
+  <template id="bin-row-tpl">
+    <div class="bin-row">
+      <b class="slot"></b>
+      <select class="r-typ" aria-label="Art"><option value="">– leer –</option>
+        {% for g, opts in quick %}<optgroup label="{{ g }}">{% for v, label in opts %}<option value="{{ v }}">{{ label }}</option>{% endfor %}</optgroup>{% endfor %}
+      </select>
+      <input class="r-var" placeholder="Variante, z. B. M3x10" autocomplete="off">
+      <select class="r-qty" aria-label="Menge"><option value="">Menge ungezählt</option>{% for q in qtys %}<option value="{{ q }}">{{ q }} Stück</option>{% endfor %}</select>
+    </div>
+  </template>
+  <label class="check"><input type="checkbox" name="content" value="1" checked> Inhaltsetikett vormerken (Text zum Beschriften)</label>
+  <label class="check"><input type="checkbox" name="queue" value="1" checked> Code-Etikett (QR) in die Warteschlange</label>
+  {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+    <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">QR-Etikett direkt auf D30 drucken</span></label>{% endif %}
+  <div class="row"><button class="primary">{{ icon('action.add', size='sm') }} Einsatz anlegen</button>
+    <span class="meta">Danach bleibt dieser Assistent mit leeren Feldern offen.</span></div>
+</form>
+{% endif %}
+{% endblock %}

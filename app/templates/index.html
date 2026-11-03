@@ -12,6 +12,7 @@
     <button type="button" data-mode="all" data-ph="z. B. Werkbank links"
       data-hint="Alle Kategorien: Orte, Behälter und Teile" data-submit="Hinzufügen"
       data-empty="Oberste Ebene / Zu sortieren">Alle</button>
+    <a class="seg-link" href="/neu">Katalog</a>
   </div>
 
   <div data-for="item">
@@ -125,7 +126,7 @@
 {% if P.home_rooms == '1' or not roots %}
 <h2>Räume und Orte</h2>
 {% if roots %}
-{% with kids=roots, cols=0 %}{% include "_kids.html" %}{% endwith %}
+<div class="card tree-root">{% with kids=roots, items=[] %}{% include "_branch.html" %}{% endwith %}</div>
 {% else %}
 <div class="card">
   <p><b>Los geht's.</b> Oben „Behälter“ wählen und einen Raum anlegen, z. B. „Werkstatt“. Darin Regale, Boxen
