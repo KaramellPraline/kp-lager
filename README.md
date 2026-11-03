@@ -89,5 +89,5 @@ Diese Funktionen brauchen den Server-PC mit Bluetooth bzw. lokale KI und sind in
 
 ## Lizenz und Daten
 
-Es ist keine Lizenz festgelegt (alle Rechte vorbehalten), bis eine gewählt wird. Das Repository
-enthält keine Nutzdaten: `data/`, Fotos, Datenbanken und Zertifikate sind per `.gitignore` ausgeschlossen.
+MIT-Lizenz, siehe [LICENSE](LICENSE). Das Repository ist privat und enthält keine Nutzdaten: `data/`, Fotos,
+Datenbanken und Zertifikate sind per `.gitignore` ausgeschlossen.
