@@ -6,8 +6,10 @@
     <input type="search" id="type-filter" placeholder="Typ suchen … (z. B. Schraube)" aria-label="Typ suchen">
     <a class="button neu-bin" href="/neu/bin">{{ icon('content.tag', size='sm') }} Einsatz in Sortierkasten …</a>
     {% for g, types in groups %}
-    <h3>{{ g }}</h3>
+    <details class="grp" data-g="{{ g }}" {% if ctype in types %}open{% endif %}>
+    <summary>{{ g }} <span class="meta">{{ types|length }}</span></summary>
     <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
+    </details>
     {% endfor %}
     <p class="meta">Kabel, Netzteile, Filament und Harz legst du auf der <a href="/">Startseite</a> an.</p>
   </aside>

@@ -394,3 +394,9 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
 .tree-items li { display: flex; justify-content: space-between; gap: 12px; padding: 3px 4px; }
 .tree-items li a { text-decoration: none; color: var(--fg); }
 .tree-items li a:hover { color: var(--glow); }
+
+.neu-types details.grp { border-bottom: 1px solid var(--divider); }
+.neu-types details.grp > summary { cursor: pointer; padding: 9px 4px; font: 12px var(--font-mono); letter-spacing: .1em;
+  text-transform: uppercase; color: var(--sub); display: flex; justify-content: space-between; }
+.neu-types details.grp > summary:hover { color: var(--fg); }
+.neu-types details.grp[open] > summary { color: var(--fg); }

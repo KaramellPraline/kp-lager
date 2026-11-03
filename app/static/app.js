@@ -527,9 +527,10 @@
       document.querySelectorAll(".neu-types li a").forEach(function (a) {
         a.parentElement.hidden = !!q && a.dataset.name.indexOf(q) < 0;
       });
-      document.querySelectorAll(".neu-types h3").forEach(function (h) {
-        var ul = h.nextElementSibling;
-        h.hidden = !!q && !ul.querySelector("li:not([hidden])");
+      document.querySelectorAll(".neu-types details.grp").forEach(function (g) {
+        var hit = !!g.querySelector("li:not([hidden])");
+        g.hidden = !!q && !hit;
+        if (q && hit) g.open = true;
       });
     });
   });
@@ -582,4 +583,34 @@
       if (window.lagerCollapse) window.lagerCollapse(box);
     }).catch(function () { d.dataset.loaded = ""; });
   }, true);
+})();
+
+
+/* Typ-Liste: Scrollposition und aufgeklappte Gruppen bleiben beim Wechsel erhalten */
+(function () {
+  var KEY_SCROLL = "neu_types_scroll", KEY_OPEN = "neu_types_open";
+  function get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function put(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* ohne Speicher */ } }
+  document.addEventListener("DOMContentLoaded", function () {
+    var list = document.querySelector(".neu-types");
+    if (!list) return;
+    var open = null;
+    try { open = JSON.parse(get(KEY_OPEN) || "null"); } catch (e) { open = null; }
+    list.querySelectorAll("details.grp").forEach(function (g) {
+      if (open && open.indexOf(g.dataset.g) >= 0) g.open = true;
+      g.addEventListener("toggle", function () {
+        var names = Array.prototype.filter.call(list.querySelectorAll("details.grp"), function (x) { return x.open; })
+          .map(function (x) { return x.dataset.g; });
+        put(KEY_OPEN, JSON.stringify(names));
+      });
+    });
+    var y = parseInt(get(KEY_SCROLL) || "0", 10);
+    if (y) list.scrollTop = y;
+    var active = list.querySelector("a.on");
+    if (active && !y) active.scrollIntoView({ block: "nearest" });
+    list.addEventListener("scroll", function () { put(KEY_SCROLL, String(list.scrollTop)); }, { passive: true });
+    list.addEventListener("click", function (ev) {
+      if (ev.target.closest("a")) put(KEY_SCROLL, String(list.scrollTop));
+    });
+  });
 })();
