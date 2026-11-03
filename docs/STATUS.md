@@ -1,6 +1,6 @@
 # Status
 
-Stand: 2026-10-26
+Stand: 2026-11-03
 
 ## Aktuell
 - App „KP Lager“ läuft auf dem Windows-PC unter **https://lager.home.lan** (DNS in AdGuard auf 192.168.74.6 → 192.168.74.5). Start: `tools/serve.ps1` (443 HTTPS + 80 für `/ca.crt`).
@@ -8,6 +8,8 @@ Stand: 2026-10-26
 - Bin-Generator `cad/norb_bins.py`: Rillen (Spitzbogen), Greifmulde R15, Innenrundungen, Etikettenablage. **Testdruck steht aus** (Passung, Rippenrichtung).
 - 2026-10-27: Backlog M10–M17 umgesetzt und live (DB-Version 9). API `/api/v1` + CLI + MCP; Schlüssel in Einstellungen → Admin.
 - Offen: Handy-Test (CA installieren), Probedruck D30 + QR-Scan, Bin-Testdruck, Autostart nach Neustart (nur mit OK), Docker-Host für Dauerbetrieb.
+
+- 2026-11-03: **KI-frei + Hinzufügen-Tab**: alle KI-Bausteine entfernt; Start nur noch Bestandsbrowser; Hinzufügen (`/neu`) mit Reitern Teile · Behälter · Kabel & Material · Einsatz, untere Leiste: Bestand · Hinzufügen · Scannen · Einkauf · Etiketten.
 
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.

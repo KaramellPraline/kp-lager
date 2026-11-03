@@ -33,12 +33,12 @@ def _box(c: TestClient) -> int:
 def test_status_and_checkbox(printer: tuple[TestClient, list[int]]) -> None:
     c, _ = printer
     assert c.get("/d30/status").json() == {"enabled": True, "available": True, "msg": ""}
-    assert "d30_print" in c.get("/").text
+    assert "d30_print" in c.get("/neu/material").text
 
 
 def test_off_by_default(client: TestClient) -> None:
     assert client.get("/d30/status").json()["enabled"] is False
-    assert "d30_print" not in client.get("/").text
+    assert "d30_print" not in client.get("/neu/material").text
 
 
 def test_print_on_quickadd_marks_printed(printer: tuple[TestClient, list[int]]) -> None:

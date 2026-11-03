@@ -106,7 +106,7 @@ class LagerClient:
     def move(self, ref: str, container: str) -> dict[str, Any]:
         return dict(self._call("POST", f"/items/{ref}/move", json={"container": container}))
 
-    def import_json(self, text: str, review: bool = True) -> dict[str, Any]:
+    def import_json(self, text: str, review: bool = False) -> dict[str, Any]:
         return dict(self._call("POST", "/import", json={"text": text, "review": review}))
 
 

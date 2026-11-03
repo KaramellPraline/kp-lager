@@ -34,7 +34,6 @@
       <dt>Datenbank</dt><dd>Version {{ s.db_version }} · {{ s.db_size }}</dd>
       <dt>Fotos</dt><dd>{{ s.photos }}</dd>
       <dt>Speicher frei</dt><dd>{{ s.disk_free }} von {{ s.disk_total }}{% if s.disk_low %} – wenig!{% endif %}</dd>
-      <dt>KI-Gateway</dt><dd>{% if s.gateway_ok %}<b>ok</b>{% else %}<b class="bad">Fehler</b>{% endif %} · {{ s.gateway }}{% if s.gateway_url %}<br><small class="meta">{{ s.gateway_url }}</small>{% endif %}</dd>
       <dt>Läuft seit</dt><dd>{{ s.uptime }}</dd>
       <dt>Server</dt><dd>{{ s.now }} · Python {{ s.python }}</dd>
     </dl>
@@ -46,7 +45,6 @@
       <dt>Behälter</dt><dd>{{ s.n_containers }}</dd>
       <dt>Lagerwert</dt><dd>{{ s.worth }}{% if s.unpriced %}<br><small class="meta">{{ s.unpriced }} Teile ohne Preis</small>{% endif %}</dd>
       <dt>Nachkaufen</dt><dd><a href="/einkauf">{{ s.n_low }}</a></dd>
-      <dt>Zu prüfen</dt><dd><a href="/freigaben">{{ s.n_review }}</a></dd>
       <dt>Etiketten wartend</dt><dd><a href="/labels">{{ s.n_queue }}</a></dd>
     </dl>
   </section>

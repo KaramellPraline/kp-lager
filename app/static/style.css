@@ -400,3 +400,7 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
   text-transform: uppercase; color: var(--sub); display: flex; justify-content: space-between; }
 .neu-types details.grp > summary:hover { color: var(--fg); }
 .neu-types details.grp[open] > summary { color: var(--fg); }
+
+/* Hinzufügen: Reiter Teile · Behälter · Kabel & Material · Einsatz */
+.add-tabs { margin: 0 0 14px; }
+.add-tabs a { padding: 9px 4px; font-size: 14px; white-space: nowrap; text-decoration: none; align-self: stretch; }

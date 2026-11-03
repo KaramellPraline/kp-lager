@@ -5,7 +5,6 @@ Ein FastAPI-Prozess rendert HTML (Jinja2 + HTMX) und spricht direkt mit einer SQ
 
 ```
 Handy (QR scannen) → https://lager.home.lan/c/0042 → Caddy → uvicorn/FastAPI → SQLite (+ data/photos/)
-                                                              └→ (optional) whisper-Dienst
 ```
 
 ## Datenmodell (SQLite)
@@ -47,7 +46,6 @@ Keller (raum)
 - `tools/devcert.py`, `tools/serve.ps1`: lokale CA + HTTPS-Start unter Windows
 - `cad/norb_bins.py`: parametrischer Bin-Generator (build123d, Gruppe `cad`)
 - `app/quick.py`: Schnelleingabe-Parser („3 Rollen Lötzinn“), Standard-Synonyme
-- `app/prompt.py`: Inventur-Prompt für den Haiku-Chat (Quelle der Wahrheit)
 - `app/backup.py`: `python -m app.backup` – SQLite-Kopie + Foto-Archiv, Aufräumen
 - `app/static/app.js`: Kopieren, Mikrofon → `/api/transcribe`; `jsQR.js` Scan-Fallback ohne BarcodeDetector
 - `Dockerfile`, `deploy/compose.yaml`, `deploy/Caddyfile`: App + Caddy (tls internal, `/ca.crt`)
@@ -61,7 +59,7 @@ Keller (raum)
 - Etiketten: `POST /labels/preview` (source=blank|pending|container|item → editierbare Tabelle), `POST /labels/export` (fmt=xlsx|a8)
 - Umlagern: `POST /carry/{item|node}/{id}` setzt Cookie, `POST /drop/{id}` legt ab.
 - Alltag: `POST /undo/{event}`, `/verlauf`, `/verliehen`, `/einkauf`, `/platz`, `/scan`, `/manifest.webmanifest`
-- JSON: `GET /api/code/{code}`, `POST /api/move` (Scan-Einräumen), `POST /api/transcribe` (→ Whisper)
+- JSON: `GET /api/code/{code}`, `POST /api/move` (Scan-Einräumen)
 
 ## Schnittstellen
 - Keine externen Dienste im Betrieb. Erst-Inventur: manuell im Claude-Chat (Haiku) → JSON → `/import`.

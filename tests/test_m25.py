@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from app import importer, prompt, repo
+from app import importer, repo
 from app.db import connect
 
 
@@ -22,25 +22,6 @@ def _seed(client: TestClient) -> None:
         f"/items/{item}/edit",
         data={"name": "Akkuschrauber", "type_id": "neu", "new_type": "Makita"},
     )
-
-
-def test_prompt_has_db_context(client: TestClient, tmp_path) -> None:  # type: ignore[no-untyped-def]
-    _seed(client)
-    conn = connect(tmp_path / "lager.db")
-    text = prompt.base_prompt(prompt.context(conn))
-    assert "workbench=Werkbank (WBA)" in text and "toolbox=Werkzeugbox (TBX)" in text
-    assert "FIL Filament" in text and "CBL Kabel" in text and "PPE Schutzausrüstung" in text
-    assert "makita" in text and "mechanic" in text  # Tags
-    assert (
-        "RAU-001 Werkstatt · room" in text
-        and "WBA-001 Werkbank links · workbench in RAU-001" in text
-    )
-    assert '{"code": null, "name": "Zu sortieren", "kind": "box"}' in text  # Eingang noch ohne Code
-    assert "FIL: material color" in text and "CMP: manufacturer" in text
-    assert len(text) < 4500  # effizient bleiben
-    dictation = prompt.for_dictation("Werkbank links, oben zwei Rollen PETG", "27.10.2026 10:00", "5:00",
-                                     prompt.context(conn))  # fmt: skip
-    assert dictation.endswith("--- Ende ---") and "Ordne gesprochene Namen" in dictation
 
 
 def test_import_new_container_categories_tags_specs(client: TestClient, tmp_path) -> None:  # type: ignore[no-untyped-def]

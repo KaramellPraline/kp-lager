@@ -6,9 +6,6 @@
 |---|---|---|
 | `LAGER_DATA_DIR` | `data` | Ablage für SQLite (`lager.db`), Fotos, Datenblätter, Backups, Notizen, Zertifikate |
 | `LAGER_BASE_URL` | `https://lager.home.lan` | Adresse, die in die QR-Codes kommt (später ändern = Etiketten neu drucken) |
-| `LAGER_WHISPER_URL` | leer | KI-Gateway für Spracheingabe (OpenAI-kompatibel, z. B. `http://127.0.0.1:8766`); leer = aus |
-| `LAGER_WHISPER_TOKEN` | `local` | Bearer-Token für das Gateway |
-| `LAGER_AI_URL` | wie `LAGER_WHISPER_URL` | Chat-/Vision-Gateway (Teil ausfüllen, Foto-Erkennung) |
 | `LAGER_AUTO_BACKUP` | `1` | tägliches Backup im Hintergrund (`0` in Tests/Entwicklung) |
 | `LAGER_D30` | `1` | D30-Direktdruck per Bluetooth anbieten (`0` = Checkbox/Knöpfe verschwinden) |
 | `LAGER_D30_PORT` | automatisch | erzwingt den Bluetooth-Seriell-Port (z. B. `COM5`) |
@@ -28,7 +25,7 @@ Geheimnisse nie committen. Die Datei `.env` ist in `.gitignore`.
 ## Einstellungen in der App (`/settings`)
 
 Werte liegen in der Tabelle `meta` (Register: `app/prefs.py`). Dazu gehören Design/Theme, Startseiten-Abschnitte,
-Code-Zähler je Präfix, Backup-Aufbewahrung (`backup_days`), Slicer-Ordner, KI-Modelle, Etikettenformat u. a.
+Code-Zähler je Präfix, Backup-Aufbewahrung (`backup_days`), Slicer-Ordner, Etikettenformat u. a.
 Neue Einstellungen werden nur im Register ergänzt; die Seite wird daraus erzeugt.
 
 ## Code-Schema

@@ -14,16 +14,17 @@ Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite 
 - Backup: `python -m app.backup [ziel] [tage]`
 
 ## Secrets
-- `LAGER_API_KEY` (nur lokal für CLI/MCP-Schreibzugriff, nie committen). KI-API ist bewusst nicht eingebunden (siehe DECISIONS).
+- `LAGER_API_KEY` (nur lokal für CLI/MCP-Schreibzugriff, nie committen). Das System enthält keine KI-Bausteine (seit 2026-11-03, siehe DECISIONS).
 
 ## Regeln
 - Arbeit in Meilensteinen aus `docs/STATUS.md`; pro Meilenstein ein Branch `feat/mX-…`, Abnahmekriterien = Tests.
-- Kern muss ohne KI-Komponenten laufen (Whisper/Embeddings optional, per Config abschaltbar).
+- Keine KI-Komponenten (kein Whisper/LLM/Vision/Embeddings); alles läuft rein regelbasiert.
+- Start (`/`) ist nur Bestandsbrowser; Anlegen immer im Tab „Hinzufügen“ (`/neu`: Teile · Behälter · Kabel & Material · Einsatz).
 - Mobile first: jede Seite per Daumen bedienbar, max. 2 Taps für Entnehmen/Einlagern.
 - Schema-Änderungen nur als nummerierte SQL-Dateien in `app/migrations/`.
 - Keine externen CDNs (läuft offline im LAN).
 
-Neu (2026-11): Katalog `/neu` (`app/catalog.py`), Einsatz-Assistent `/neu/bin`, Baum `/baum`, D30-Direktdruck (`app/d30.py`, Env `LAGER_D30*`), Trockner-Scan, Filament/Harz-Dropdowns (`app/choices.py`).
-Cloud/CI: Hardware (D30-Bluetooth, lokale KI) ist nur gemockt testbar; Rest läuft überall. Einstieg: `docs/DEVELOPMENT.md`.
+Neu (2026-11): Katalog `/neu` (`app/catalog.py`), Einsatz-Assistent `/neu/bin`, Baum `/baum`, D30-Direktdruck (`app/d30.py`, Env `LAGER_D30*`), Trockner-Scan, Filament/Harz-Dropdowns (`app/choices.py`). Hinzufügen: Katalog, Behälter (`/neu/behaelter`), Kabel & Material (`/neu/material`).
+Cloud/CI: Hardware (D30-Bluetooth) ist nur gemockt testbar; Rest läuft überall. Einstieg: `docs/DEVELOPMENT.md`.
 
-Mehr: `README.md`, `docs/DEVELOPMENT.md`, `docs/CONFIG.md`, `docs/DEPLOYMENT.md`, `docs/FEATURES.md`, `docs/STATUS.md` (Stand + Meilensteine), `docs/ARCHITECTURE.md` (Datenmodell), `docs/DECISIONS.md`, `docs/HAIKU_PROMPT.md` (Erst-Inventur per Chat), `docs/ETIKETTEN.md` (Code-Schema, D30)
+Mehr: `README.md`, `docs/DEVELOPMENT.md`, `docs/CONFIG.md`, `docs/DEPLOYMENT.md`, `docs/FEATURES.md`, `docs/STATUS.md` (Stand + Meilensteine), `docs/ARCHITECTURE.md` (Datenmodell), `docs/DECISIONS.md`, `docs/ETIKETTEN.md` (Code-Schema, D30)

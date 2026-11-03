@@ -67,3 +67,5 @@
 - 2026-10-29 Backup läuft im Server-Prozess (Thread, Sperrdatei) statt als Windows-Aufgabe. Warum: kein Autostart/Admin nötig, beide Prozesse (80/443) sichern nur einmal.
 
 - 2026-10-30: D30-Direktdruck über Bluetooth-Seriell (COM) zuerst, BLE als Rückfall; USB des D30 ist nur Ladeanschluss (kein Datenweg gefunden). Trockner-Ablauf per Cookie (je Gerät/Handy), nicht serverweit.
+| 2026-11-03 | Alle KI-Bausteine entfernt (Whisper/Diktat, lokale KI, Foto-Erkennung, KI-Support, Freigaben, Haiku-Prompt); API markiert nichts mehr als „KI“ | Nutzerwunsch: System ohne KI, mehr Benutzerfreundlichkeit. Alte Spalten (`review`, `ai_backup`) und Tabelle `note` bleiben unberührt (Daten bleiben erhalten). |
+| 2026-11-03 | Start `/` = reiner Bestandsbrowser; Anlegen nur im Tab „Hinzufügen“ (`/neu`) mit Reitern Teile · Behälter · Kabel & Material · Einsatz | Ein Ort zum Anlegen; Behälter wie Teile nach dem Katalog-Prinzip (Art links, Felder rechts, Etikett-Option, bleibt für den nächsten offen). |

@@ -14,7 +14,7 @@ cd kp-lager/deploy
 docker compose up -d --build
 docker compose logs -f app
 ```
-Optional `.env` neben `compose.yaml`: `LAGER_HOST=lager.home.lan`, `LAGER_WHISPER_URL=http://<host>:8001`.
+Optional `.env` neben `compose.yaml`: `LAGER_HOST=lager.home.lan`.
 Daten liegen in `deploy/data/` (SQLite + Fotos).
 
 ## 3. Handy einrichten (einmalig)

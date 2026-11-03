@@ -16,12 +16,11 @@ def _items(c: TestClient, box: int) -> list[dict]:  # type: ignore[type-arg]
 def test_recent_categories_and_kinds_come_first(client: TestClient) -> None:
     box = _box(client, "Regal", "toolbox")
     client.post("/quickadd", data={"mode": "item", "cat": "CMP", "target": box, "text": "ESP32"})
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     cats = page.split('aria-label="Kategorie"')[1].split("</div>")[0]
     assert cats.index('value="CMP"') < cats.index('value="ART"')
-    tiles = page.split('aria-label="Art des Behälters"')[1].split("</div>")[0]
-    assert tiles.index('value="toolbox"') < tiles.index('value="box"')
-    assert 'value="toolbox" checked' in tiles  # zuletzt verwendet = vorbelegt
+    kind_page = client.get("/neu/behaelter").text
+    assert 'name="kind" value="toolbox"' in kind_page  # zuletzt verwendet = vorbelegt
 
 
 def test_filament_and_resin_dropdown_creation(client: TestClient) -> None:
@@ -38,7 +37,7 @@ def test_filament_and_resin_dropdown_creation(client: TestClient) -> None:
     client.post("/quickadd", data={"mode": "item", "cat": "RES", "target": box, "text": "",
                                    "spec_material": "ABS-like", "spec_color": "Grau"})  # fmt: skip
     assert any(i["name"] == "ABS-like Grau" for i in _items(client, box))
-    page = client.get("/").text  # Gelerntes steht jetzt in den Listen, vorn
+    page = client.get("/neu/material").text  # Gelerntes steht jetzt in den Listen, vorn
     brands = page.split('name="spec_brand"')[1].split("</select>")[0]
     assert brands.index("<option>Sunlu") < brands.index("<option>Prusament")
 
@@ -47,7 +46,7 @@ def test_box_size_from_existing_and_airtight(client: TestClient) -> None:
     first = _box(client, "Dose A", "box", dims_other="200x150x100", airtight="1")
     assert ">Luftdicht<" in client.get(f"/n/{first}").text
     assert "200 × 150 × 100 mm" in client.get(f"/n/{first}").text
-    page = client.get("/").text
+    page = client.get("/neu/behaelter?art=box").text
     assert "200x150x100" in page.split("data-opts=")[1].split(">")[0]  # bereits vorhandene Größe
     second = _box(client, "Dose B", "box", dims="200x150x100")
     assert ">Luftdicht<" not in client.get(f"/n/{second}").text
@@ -98,4 +97,4 @@ def test_peek_and_collapse_marker(client: TestClient) -> None:
     peek = client.get(f"/n/{box}/inhalt").text
     assert peek.count("<li>") == 12 and 'data-collapse="9"' in peek
     assert 'data-collapse="9"' in client.get(f"/n/{box}").text
-    assert 'id="qa-peek"' in client.get("/").text
+    assert 'id="qa-peek"' in client.get("/neu/material").text

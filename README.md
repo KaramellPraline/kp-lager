@@ -62,7 +62,6 @@ Kamera-Scan und Mikrofon funktionieren im Browser nur über HTTPS. Für LAN-Betr
 | [docs/ETIKETTEN.md](docs/ETIKETTEN.md) | Code-Schema, XLSX/D30-Vorlage |
 | [docs/DIREKTDRUCK.md](docs/DIREKTDRUCK.md) | D30-Direktdruck (Bluetooth, Protokoll, Fehlersuche) |
 | [docs/NORB16.md](docs/NORB16.md), [docs/BIN_SPEC.md](docs/BIN_SPEC.md) | Sortierkasten und Bin-Spezifikation (+ `cad/bin_params.json`) |
-| [docs/HAIKU_PROMPT.md](docs/HAIKU_PROMPT.md) | Erst-Inventur per Chat |
 | [deploy/README.md](deploy/README.md) | Docker-Deployment, Handy-Einrichtung |
 
 ## Projektstruktur
@@ -85,7 +84,6 @@ Diese Funktionen brauchen den Server-PC mit Bluetooth bzw. lokale KI und sind in
 über Mocks getestet:
 
 - **D30-Direktdruck** (Bluetooth-Seriell/COM oder BLE; Paket `bleak`/`pyserial`) – `app/d30.py`
-- **Spracheingabe/Foto-Erkennung** über ein lokales KI-Gateway (`LAGER_WHISPER_URL`) – optional, Kern läuft ohne
 - **CAD** (`cad/norb_bins.py`, build123d) – nur mit `uv sync --group cad`
 
 ## Lizenz und Daten

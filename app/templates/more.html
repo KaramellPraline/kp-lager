@@ -8,10 +8,7 @@
   <button name="lang" value="en" class="{{ 'active' if P.lang == 'en' }}">English</button>
 </form>
 <ul class="list menu">
-  <li><a href="/sprache">{{ icon('media.dictate') }}<span>Sprache &amp; Aufnahmen</span></a></li>
   <li><a href="/zu-sortieren">{{ icon('content.inbox') }}<span>Zu sortieren</span></a></li>
-  <li><a href="/ki">{{ icon('action.ai') }}<span>KI-Support</span></a></li>
-  <li><a href="/freigaben">{{ icon('action.approve') }}<span>Freigaben{% if NREVIEW %} · <b>{{ NREVIEW }}</b>{% endif %}</span></a></li>
   <li><a href="/projekte">{{ icon('content.project') }}<span>Projekte</span></a></li>
   <li><a href="/entnahmen">{{ icon('action.take') }}<span>Entnahmen</span></a></li>
   <li><a href="/status">{{ icon('status.attention') }}<span>Status &amp; Backup</span></a></li>
@@ -25,7 +22,7 @@
   <li><a href="/einkauf"><span>{{ icon('content.shopping') }} Einkaufsliste{% if n_shopping %} · <b>{{ n_shopping }}</b>{% endif %}</span></a></li>
   <li><a href="/platz"><span>{{ icon('content.space') }} Freie Plätze</span></a></li>
   <li><a href="/verlauf"><span>{{ icon('action.undo') }} Verlauf &amp; Rückgängig</span></a></li>
-  <li><a href="/import"><span>{{ icon('action.upload') }} Import (Inventur-Chat)</span></a></li>
+  <li><a href="/import"><span>{{ icon('action.upload') }} Import (JSON)</span></a></li>
   <li><a href="/export.json"><span>{{ icon('action.download') }} Export (JSON)</span></a></li>
   <li><a href="/settings"><span>{{ icon('nav.settings') }} Einstellungen</span></a></li>
 </ul>

@@ -35,7 +35,7 @@ def test_parse_netzkabel() -> None:
 
 
 def test_auswahl_ist_vollstaendig(client) -> None:  # type: ignore[no-untyped-def]
-    page = client.get("/").text
+    page = client.get("/neu/material").text
     for p in ("Euro-Stecker", "CEE 16A 5p", "USB-C PD", "XT60", "C20", "Perilex"):
         assert f"<option>{p}</option>" in page
     assert len(set(cables.COMMON)) == len(cables.COMMON)

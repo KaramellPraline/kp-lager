@@ -1,0 +1,7 @@
+{%- set p = request.url.path -%}
+<nav class="seg add-tabs" aria-label="Was hinzufügen">
+  <a class="seg-link {{ 'active' if p == '/neu' }}" href="/neu">Teile</a>
+  <a class="seg-link {{ 'active' if p == '/neu/behaelter' }}" href="/neu/behaelter">Behälter</a>
+  <a class="seg-link {{ 'active' if p == '/neu/material' }}" href="/neu/material">Kabel &amp; Material</a>
+  <a class="seg-link {{ 'active' if p == '/neu/bin' }}" href="/neu/bin">Einsatz</a>
+</nav>

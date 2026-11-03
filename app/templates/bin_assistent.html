@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Einsatz anlegen · {{ APP_NAME }}{% endblock %}
 {% block content %}
-<nav class="crumbs"><a href="/neu">Anlegen</a> › Einsatz in Sortierkasten</nav>
+{% include "_add_tabs.html" %}
 <h1>Einsatz in Sortierkasten</h1>
 {% if not boxes %}
-<div class="card"><p>Es gibt noch keinen Sortierkasten mit Modell. Auf der <a href="/">Startseite</a> unter „Behälter“ einen
+<div class="card"><p>Es gibt noch keinen Sortierkasten mit Modell. Unter <a href="/neu/behaelter?art=sortingbox">Behälter</a> einen
 <b>Sortierkasten</b> anlegen und auf der Kasten-Seite das Modell (Kistenberg NORB16) wählen.</p></div>
 {% else %}
 <form method="post" action="/neu/bin" id="bin-form" class="card stack bin-form" data-info='{{ info|tojson }}' data-sugg='{{ sugg|tojson }}'>

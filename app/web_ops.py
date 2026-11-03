@@ -23,7 +23,6 @@ from app import (
     search,
     slicer,
     status,
-    vision,
 )
 from app.config import Settings
 from app.repo import LagerError
@@ -37,7 +36,6 @@ def register(
     render: Callable[..., HTMLResponse],
     redirect: Callable[..., RedirectResponse],
     settings: Settings,
-    ai_url: str,
 ) -> None:
     def safe_back(url: str, default: str) -> str:
         return url if url.startswith("/") and not url.startswith("//") else default
@@ -46,9 +44,7 @@ def register(
 
     @app.get("/status", response_class=HTMLResponse)
     def status_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(
-            request, conn, "status.html", s=status.collect(conn, settings.data_dir, ai_url)
-        )
+        return render(request, conn, "status.html", s=status.collect(conn, settings.data_dir))
 
     @app.post("/status/backup")
     def status_backup(conn: Conn) -> RedirectResponse:
@@ -294,22 +290,6 @@ def register(
 
         repo.update_item(conn, item_id, min_qty=num(min_qty), order_qty=num(order_qty))
         return redirect(safe_back(back, "/einkauf"), "Gespeichert")
-
-    # --- Foto-Erfassung ---------------------------------------------------------------
-
-    @app.post("/api/foto-erkennen")
-    async def identify_photo(conn: Conn, photo: Annotated[UploadFile, File()]) -> JSONResponse:
-        data = await photo.read()
-        if not data or len(data) > MAX_PHOTO:
-            return JSONResponse({"ok": False, "msg": "Foto leer oder zu groß"}, 400)
-        try:
-            items = vision.identify(
-                ai_url, settings.whisper_token, prefs.raw(conn, "ai_model_vision"), data,
-                photo.content_type or "image/jpeg",
-            )  # fmt: skip
-        except LagerError as exc:
-            return JSONResponse({"ok": False, "msg": str(exc)}, 502)
-        return JSONResponse({"ok": True, "items": items})
 
 
 def _today() -> str:

@@ -29,16 +29,15 @@
 <div class="app">
   <aside class="sidenav" aria-label="Navigation">
     <a class="brand" href="/">{{ APP_NAME }}</a>
-    {{ nav_link('/', 'nav.home', 'Übersicht') }}
-    {{ nav_link('/neu', 'action.add', 'Anlegen') }}
+    {{ nav_link('/', 'nav.home', 'Bestand') }}
+    {{ nav_link('/neu', 'action.add', 'Hinzufügen') }}
     {{ nav_link('/scan', 'action.scan', 'Scannen') }}
-    {{ nav_link('/sprache', 'media.dictate', 'Sprache') }}
     {{ nav_link('/suche', 'nav.search', 'Suche') }}
     {{ nav_link('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
     {{ nav_link('/einkauf', 'content.shopping', 'Einkauf') }}
     {{ nav_link('/platz', 'content.space', 'Freie Plätze') }}
     {{ nav_link('/verlauf', 'content.history', 'Verlauf') }}
-    {{ nav_link('/mehr', 'nav.more', 'Mehr', NREVIEW) }}
+    {{ nav_link('/mehr', 'nav.more', 'Mehr') }}
     {{ nav_link('/settings', 'nav.settings', 'Einstellungen') }}
   </aside>
   <div class="main-col">
@@ -49,13 +48,8 @@
         <input type="search" name="q" placeholder="Teil, Box, Code – auch englisch" value="{{ q or '' }}" aria-label="Suchen" enterkeyhint="search">
       </form>
       <a class="icon-btn {% if cur.startswith('/verlauf') %}active{% endif %}" href="/verlauf" aria-label="Verlauf" title="Verlauf">{{ icon('content.history') }}</a>
-      <a class="icon-btn mobile-only {% if cur == '/mehr' %}active{% endif %}" href="/mehr" aria-label="Mehr" title="Mehr">{{ icon('nav.more') }}{% if NREVIEW %}<b class="dot-count"></b>{% endif %}</a>
+      <a class="icon-btn mobile-only {% if cur == '/mehr' %}active{% endif %}" href="/mehr" aria-label="Mehr" title="Mehr">{{ icon('nav.more') }}</a>
     </header>
-    <div class="rec-bar" id="rec-bar" hidden>
-      <span class="dot"></span><span>Aufnahme läuft <b id="rec-time">0:00</b></span>
-      <button type="button" class="primary" id="rec-stop">Stoppen und speichern</button>
-      <button type="button" id="rec-cancel">Verwerfen</button>
-    </div>
     {% if carry %}
     <div class="carry">
       <span>{{ icon('action.move', size='sm') }} Unterwegs: <b>{{ carry.name }}</b></span>
@@ -69,10 +63,10 @@
   </div>
 </div>
 <nav class="bottomnav mobile-only" aria-label="Navigation">
-  {{ navtab('/', 'nav.home', 'Start') }}
-  {{ navtab('/einkauf', 'content.shopping', 'Einkauf') }}
+  {{ navtab('/', 'nav.home', 'Bestand') }}
+  {{ navtab('/neu', 'action.add', 'Hinzufügen') }}
   {{ navtab('/scan', 'action.scan', 'Scannen', extra='scan') }}
-  {{ navtab('/sprache', 'media.dictate', 'Sprache') }}
+  {{ navtab('/einkauf', 'content.shopping', 'Einkauf') }}
   {{ navtab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
 </nav>
 {% if msg %}

@@ -1,122 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
-<form method="post" action="/quickadd" id="schnell" class="card stack add-anything" enctype="multipart/form-data" aria-label="Hinzufügen">
-  <input type="hidden" name="mode" value="item" id="add-mode">
-  <div class="seg" role="tablist" aria-label="Was hinzufügen">
-    <button type="button" class="active" data-mode="item" data-ph="z. B. 3 Rollen Lötzinn und 50 M3 Muttern"
-      data-hint="Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“" data-submit="Teil hinzufügen"
-      data-empty="Zu sortieren (später einräumen)">Teil</button>
-    <button type="button" data-mode="container" data-ph="z. B. Werkzeugkiste blau"
-      data-hint="Name des Behälters · Code wird automatisch vergeben" data-submit="Behälter anlegen"
-      data-empty="Oberste Ebene (eigener Ort)">Behälter</button>
-    <button type="button" data-mode="all" data-ph="z. B. Werkbank links"
-      data-hint="Alle Kategorien: Orte, Behälter und Teile" data-submit="Hinzufügen"
-      data-empty="Oberste Ebene / Zu sortieren">Alle</button>
-    <a class="seg-link" href="/neu">Katalog</a>
-  </div>
-
-  <div data-for="item">
-    <span class="add-label">Kategorie</span>
-    <div class="cats-grid" role="radiogroup" aria-label="Kategorie">
-      {% for p, label in cats %}<label class="cat-tile"><input type="radio" name="cat" value="{{ p }}" {% if loop.first %}checked{% endif %}><b>{{ p }}</b><span>{{ label }}</span></label>{% endfor %}
-    </div>
-  </div>
-
-  <label class="add-label" for="quick-home">Was?</label>
-  <div class="add-item" id="free-row" style="margin:0">
-    <input name="text" id="quick-home" placeholder="z. B. 3 Rollen Lötzinn und 50 M3 Muttern" required autocomplete="off">
-    {% if voice %}<button type="button" class="mic" data-target="quick-home" aria-label="Spracheingabe">{{ icon('media.mic') }}</button>{% endif %}
-    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
-  </div>
-  <div class="spec-fields cable" data-cat="CBL" data-hint="Jedes Kabel bekommt ein eigenes Etikett · Anzahl = so viele Einzelstücke · nur Stecker A = beidseitig gleich" hidden>
-    <label>Stecker A<select name="plug_a" data-reveal="plug-a-new">
-      <option value="">– wählen –</option>{% for p in PLUG_NAMES %}<option>{{ p }}</option>{% endfor %}
-      <option value="neu">Anderer …</option></select></label>
-    <label>Stecker B<select name="plug_b" data-reveal="plug-b-new">
-      <option value="">wie A</option>{% for p in PLUG_NAMES %}<option>{{ p }}</option>{% endfor %}
-      <option value="neu">Anderer …</option></select></label>
-    <label>Länge (m)<input name="length" inputmode="decimal" placeholder="2" autocomplete="off"></label>
-    <label>Anzahl<input name="count" inputmode="numeric" placeholder="1" autocomplete="off" aria-label="Anzahl Stück, jedes bekommt ein Etikett"></label>
-    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
-  </div>
-  <div class="spec-fields psu" data-cat="PSU" data-hint="Name entsteht aus Volt, Ampere und Stecker, z. B. „Netzteil 12V 2A DC 5,5x2,1“ · der Eingang steht im Datenblatt" hidden>
-    <label>Volt<input name="volt" inputmode="decimal" placeholder="12" autocomplete="off"></label>
-    <label>Ampere<input name="amp" inputmode="decimal" placeholder="2" autocomplete="off"></label>
-    <label>Anzahl<input name="count" inputmode="numeric" placeholder="1" autocomplete="off" aria-label="Anzahl Stück, jedes bekommt ein Etikett"></label>
-    <label>Stecker (Ausgang)<select name="psu_plug" data-reveal="psu-plug-new">
-      <option value="">– wählen –</option>{% for p in PSU_PLUGS %}<option>{{ p }}</option>{% endfor %}
-      <option value="neu">Anderer …</option></select></label>
-    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
-    <label class="wide">Eingang (Netzseite)<select name="psu_input" data-reveal="psu-input-new">
-      <option value="">– wählen –</option>{% for p in PSU_INPUTS %}<option>{{ p }}</option>{% endfor %}
-      <option value="neu">Anderer …</option></select></label>
-  </div>
-  {% for prefix, fields in spec_forms.items() %}
-  <div class="spec-fields mat" data-cat="{{ prefix }}" data-hint="Name entsteht aus Hersteller, Werkstoff und Farbe · Auswahllisten wachsen mit dem, was du einträgst" hidden>
-    {% for f in fields %}<label>{{ f.label }}{% if f.unit %} ({{ f.unit }}){% endif %}<select name="spec_{{ f.key }}" data-reveal="new-{{ prefix }}-{{ f.key }}">
-      <option value="">– wählen –</option>{% for o in f.options %}<option>{{ o }}</option>{% endfor %}<option value="neu">Anderes …</option></select></label>
-    {% endfor %}
-    <label>Anzahl<input name="count" inputmode="numeric" placeholder="1" autocomplete="off" aria-label="Anzahl Spulen bzw. Flaschen"></label>
-    <button type="button" class="photo-trigger" aria-label="Foto aufnehmen oder wählen">{{ icon('media.camera') }}</button>
-  </div>
-  {% endfor %}
-  {% for prefix, fields in spec_forms.items() %}{% for f in fields %}<div class="row other-plug" id="new-{{ prefix }}-{{ f.key }}" hidden><input name="spec_{{ f.key }}_new" placeholder="{{ f.label }}" aria-label="Anderer Wert: {{ f.label }}"></div>{% endfor %}{% endfor %}
-  <div class="row other-plug" id="plug-a-new" hidden><input name="plug_a_new" placeholder="Stecker A, z. B. Würth-Stecker" aria-label="Anderer Stecker A"></div>
-  <div class="row other-plug" id="plug-b-new" hidden><input name="plug_b_new" placeholder="Stecker B" aria-label="Anderer Stecker B"></div>
-  <div class="row other-plug" id="psu-input-new" hidden><input name="psu_input_new" placeholder="Eingang, z. B. Kaltgerät C20" aria-label="Anderer Eingang"></div>
-  <div class="row other-plug" id="psu-plug-new" hidden><input name="psu_plug_new" placeholder="Stecker, z. B. DC 4,0x1,7" aria-label="Anderer Stecker"></div>
-  <input type="file" name="photo" id="add-photo" accept="image/*" capture="environment" hidden>
-  <p class="meta add-hint" id="add-hint">Mehrere Teile mit Komma trennen · Menge vorne: „3 Rollen Lötzinn und 50 Muttern“</p>
-  <div class="photo-preview" id="add-photo-preview" hidden>
-    <img alt="Vorschau des Fotos">
-    <span class="meta">Foto wird angehängt</span>
-    {% if AI %}<button type="button" class="link" id="add-photo-ai">{{ icon('action.ai', size='sm') }} Mit KI auswerten</button>{% endif %}
-    <button type="button" class="link" id="add-photo-clear">Entfernen</button>
-  </div>
-  <div data-for="container" hidden class="stack">
-    <span class="add-label">Art</span>
-    <div class="cats-grid" role="radiogroup" aria-label="Art des Behälters">
-      {% for key, prefix, label in add_kinds %}<label class="cat-tile"><input type="radio" name="kind" value="{{ key }}" {% if loop.first %}checked{% endif %}><b>{{ prefix }}</b><span>{{ label }}</span></label>{% endfor %}
-      <label class="cat-tile"><input type="radio" name="kind" value="neu"><b>+</b><span>Neue Art …</span></label>
-    </div>
-    <div class="row" id="new-kind" hidden>
-      <input name="new_kind" placeholder="Name der Art, z. B. Schublade" aria-label="Name der neuen Art">
-      <input name="new_prefix" placeholder="Präfix, z. B. SCH" maxlength="3" aria-label="Präfix" style="text-transform:uppercase">
-    </div>
-    {% include "_dims.html" %}
-  </div>
-  <div data-for="all" hidden>
-    <label class="add-label">Kategorie
-      <select name="choice">
-        {% for group, keys in KIND_GROUPS %}<optgroup label="{{ group }}">{% for k in keys if k not in ('compartment', 'level') %}<option value="kind:{{ k }}">{{ KIND_LABELS[k] }} · {{ KIND_PREFIX[k] }}</option>{% endfor %}</optgroup>{% endfor %}
-        <optgroup label="Teile">{% for p, label in ITEM_CATS %}<option value="item:{{ p }}">{{ label }} · {{ p }}</option>{% endfor %}</optgroup>
-      </select>
-    </label>
-  </div>
-
-  <div class="where">
-    <span class="add-label">Wohin?</span>
-    {% if fav_targets %}
-    <div class="pick-scroll" aria-label="Favoriten">
-      {% for f in fav_targets %}<button type="button" class="pick fav" data-id="{{ f.id }}" title="{{ f.name }}">{{ f.name }}</button>{% endfor %}
-    </div>
-    {% endif %}
-    {% if recent_targets %}
-    <div class="pick-row" aria-label="Zuletzt verwendet">
-      {% for r in recent_targets %}<button type="button" class="pick" data-id="{{ r.id }}" title="{{ r.name }}">{{ r.name }}</button>{% endfor %}
-    </div>
-    {% endif %}
-    <select name="target" id="qa-target" aria-label="Wohin">
-      <option value="" id="qa-empty" {% if not target %}selected{% endif %}>Zu sortieren (später einräumen)</option>
-      {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
-    </select>
-    <div id="qa-peek" class="peek" hidden></div>
-  </div>
-  {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
-    <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
-  <button class="primary add-submit" id="add-submit">{{ icon('action.add', size='sm') }} <span class="lbl">Teil hinzufügen</span></button>
+<form action="/suche" method="get" class="card add-item browse-search" role="search">
+  <input type="search" name="q" placeholder="Teil, Box oder Code suchen" aria-label="Suchen" enterkeyhint="search">
+  <button class="primary" aria-label="Suchen">{{ icon('nav.search', size='sm') }}</button>
 </form>
 
+<div class="chips browse-links">
+  <a class="chip" href="/neu">{{ icon('action.add', size='xs') }} Hinzufügen</a>
+  <a class="chip" href="/zu-sortieren">{{ icon('content.inbox', size='xs') }} Zu sortieren</a>
+  {% if n_shopping %}<a class="chip" href="/einkauf">{{ icon('content.shopping', size='xs') }} Nachkaufen · {{ n_shopping }}</a>{% endif %}
+  {% if n_lent %}<a class="chip" href="/verliehen">{{ icon('content.lent', size='xs') }} Verliehen · {{ n_lent }}</a>{% endif %}
+  {% if n_queue %}<a class="chip" href="/labels">{{ icon('content.tag', size='xs') }} Etiketten · {{ n_queue }}</a>{% endif %}
+</div>
 
 {% if favorites and P.home_favorites == '1' %}
 <h2>Favoriten</h2>
@@ -129,8 +24,8 @@
 <div class="card tree-root">{% with kids=roots, items=[] %}{% include "_branch.html" %}{% endwith %}</div>
 {% else %}
 <div class="card">
-  <p><b>Los geht's.</b> Oben „Behälter“ wählen und einen Raum anlegen, z. B. „Werkstatt“. Darin Regale, Boxen
-  oder einen Sortierkasten anlegen, dann Teile eintragen: tippen, sprechen oder per Chat-Inventur importieren.</p>
+  <p><b>Los geht's.</b> Unter <a href="/neu/behaelter">Hinzufügen › Behälter</a> zuerst einen Raum anlegen, z. B. „Werkstatt“.
+  Darin Regale, Boxen oder einen Sortierkasten anlegen, danach unter <a href="/neu">Hinzufügen › Teile</a> die Teile eintragen.</p>
 </div>
 {% endif %}
 {% endif %}

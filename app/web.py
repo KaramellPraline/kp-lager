@@ -1,6 +1,5 @@
 """HTTP-Oberfläche: Seiten für Behälter (/n/{id}), QR-Einstieg (/c/{code}), Items und Umlagern."""
 
-import json
 import sqlite3
 from collections.abc import Callable, Iterator
 from datetime import date, datetime
@@ -8,9 +7,7 @@ from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
 
-import httpx
 from fastapi import (
-    BackgroundTasks,
     Body,
     Depends,
     FastAPI,
@@ -20,12 +17,11 @@ from fastapi import (
     Request,
     UploadFile,
 )
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import (
-    ai,
     api,
     apikeys,
     backup,
@@ -43,11 +39,9 @@ from app import (
     labelimg,
     labels,
     materials,
-    notes,
     photos,
     prefs,
     projects,
-    prompt,
     psus,
     quick,
     repo,
@@ -243,14 +237,11 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["COMPACT"] = prefs.flag(conn, "compact")
         ctx["NQUEUE"] = labels.queue_count(conn)
         ctx["P"] = prefs.values(conn)
-        ctx["VOICE"] = bool(settings.whisper_url)
         ctx["D30"] = settings.d30
         ctx.setdefault("dims_opts", dims_options(conn))
         ctx.setdefault(
             "dims_kinds", [k for k, _, _ in kinds.ADD_KINDS if k not in ("machine", "dryer")]
         )
-        ctx["AI"] = bool(ai_url)
-        ctx["NREVIEW"] = ai.count(conn)
         if name in ("node.html", "index.html"):
             ctx["VAL"], ctx["UNPRICED"] = value.totals(conn)
         return templates.TemplateResponse(request, name, ctx)
@@ -273,8 +264,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     # --- Seiten --------------------------------------------------------------
 
-    ai_endpoint = settings.ai_url or settings.whisper_url
-    web_ops.register(app, Conn, render, redirect, settings, ai_endpoint)
+    web_ops.register(app, Conn, render, redirect, settings)
     web_katalog.register(app, Conn, render, redirect, settings)
 
     @app.middleware("http")
@@ -303,6 +293,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/", response_class=HTMLResponse)
     def index(request: Request, conn: Conn) -> HTMLResponse:
+        """Bestand durchstöbern – hinzufügen geschieht unter „Hinzufügen“ (/neu)."""
         return render(
             request,
             conn,
@@ -312,16 +303,45 @@ def create_app(settings: Settings) -> FastAPI:
             n_lent=len(repo.lent_items(conn)),
             n_shopping=len(repo.shopping_list(conn)),
             n_queue=labels.queue_count(conn),
+        )
+
+    @app.get("/neu/material", response_class=HTMLResponse)
+    def add_material_page(request: Request, conn: Conn) -> HTMLResponse:
+        """Hinzufügen › Kabel · Netzteil · Material: Teil mit Kategorie und eigenen Feldern."""
+        return render(
+            request,
+            conn,
+            "neu_material.html",
             targets=repo.all_paths(conn),
             target=last_target(request),
             fav_targets=repo.favorites(conn)[:10],
             recent_targets=repo.containers_by_ids(conn, recent_targets(request))[:3],
-            voice=bool(settings.whisper_url),
             cats=ordered(kinds.ITEM_CATS_SHORT, recent_list(request, "qa_cats"), lambda c: c[0]),
-            add_kinds=ordered(
-                kinds.ADD_KINDS, recent_list(request, "qa_kinds") or ["box"], lambda k: k[0]
-            ),
             spec_forms=choices.forms(conn),
+        )
+
+    @app.get("/neu/behaelter", response_class=HTMLResponse)
+    def add_container_page(request: Request, conn: Conn, art: str = "") -> HTMLResponse:
+        """Hinzufügen › Behälter: wie der Teile-Katalog (Art links, Felder rechts)."""
+        offered = [(g, [k for k in ks if k not in ("compartment", "bin", "level")])
+                   for g, ks in kinds.KIND_GROUPS]  # fmt: skip
+        flat = [k for _, ks in offered for k in ks]
+        key = art if art == "neu" else (kinds.resolve(art) if art else None)
+        if key != "neu" and key not in flat:
+            recent = recent_list(request, "qa_kinds")
+            key = next((k for k in recent if k in flat), "box" if "box" in flat else flat[0])
+        recent_rows = conn.execute(
+            "SELECT id, name, code, kind, parent_id FROM container ORDER BY id DESC LIMIT 6"
+        ).fetchall()
+        return render(
+            request,
+            conn,
+            "neu_behaelter.html",
+            groups=[(g, ks) for g, ks in offered if ks],
+            art=key,
+            targets=repo.all_paths(conn),
+            target=last_target(request),
+            recent=recent_rows,
         )
 
     def dims_options(conn: sqlite3.Connection) -> dict[str, list[str]]:
@@ -382,6 +402,7 @@ def create_app(settings: Settings) -> FastAPI:
         dims_other: Annotated[str, Form()] = "",
         airtight: Annotated[str, Form()] = "",
         d30_print: Annotated[str, Form()] = "",
+        back: Annotated[str, Form()] = "",
         specs: Annotated[dict[str, str] | None, Depends(spec_form)] = None,
         photo: Annotated[UploadFile | None, File()] = None,
     ) -> RedirectResponse:
@@ -516,7 +537,8 @@ def create_app(settings: Settings) -> FastAPI:
             labels.enqueue_content(conn, holder)
         msg = f"{', '.join(f'„{n}“' for n in names)} → {repo.path_label(conn, dest['id'])}"
         msg += direct_print(conn, new_codes if d30_print else [])
-        resp = redirect("/", msg, undo)
+        home = back if back.startswith("/") and not back.startswith("//") else "/"
+        resp = redirect(home, msg, undo)
         remember(resp, request, "qa_cats", cat)
         ids = [dest["id"]] + [i for i in recent_targets(request) if i != dest["id"]]
         resp.set_cookie(
@@ -566,7 +588,6 @@ def create_app(settings: Settings) -> FastAPI:
         node = need_node(conn, node_id)
         cols = int(node["grid"].split("x")[0]) if node["grid"] else 0
         path = repo.container_path(conn, node_id)[:-1]
-        parent_code = next((p["code"] for p in reversed(path) if p["code"]), None)
         resp = render(
             request,
             conn,
@@ -576,15 +597,6 @@ def create_app(settings: Settings) -> FastAPI:
             kids=repo.children(conn, node_id),
             items=repo.items_in(conn, node_id),
             cols=cols,
-            chat_prompt=prompt.for_container(
-                node["code"] or "(Code)",
-                node["kind"],
-                node["name"],
-                parent_code,
-                node["grid"],
-                prompt.context(conn),
-            ),
-            voice=bool(settings.whisper_url),
             topview=kasten.topview(conn, node),
             targets=kasten.quick_targets(conn, node) if node["model"] else [],
             free=kasten.free_cells(conn, node),
@@ -922,7 +934,6 @@ def create_app(settings: Settings) -> FastAPI:
             },
             prefixes=codes.PREFIX_LABELS,
             base_url=settings.base_url,
-            whisper_url=settings.whisper_url,
             has_ca=settings.ca_cert.exists(),
         )
 
@@ -1014,42 +1025,6 @@ def create_app(settings: Settings) -> FastAPI:
         files = backup.run(settings.data_dir, settings.data_dir / "backups")
         return redirect("/settings", "Backup: " + ", ".join(f.name for f in files))
 
-    @app.get("/sprache", response_class=HTMLResponse)
-    def voice_page(request: Request, conn: Conn) -> HTMLResponse:
-        inbox_id = repo.inbox(conn)
-        return render(
-            request,
-            conn,
-            "sprache.html",
-            notes=note_rows(conn),
-            n_inbox=len(repo.items_in(conn, inbox_id)),
-        )
-
-    @app.post("/api/sprache/segment")
-    async def voice_segment(audio: UploadFile, conn: Conn) -> JSONResponse:
-        """Dauer-Aufnahme Teil für Teil: Abschnitt erkennen, an „weiter“ trennen, in den Eingang."""
-        if not settings.whisper_url:
-            return JSONResponse({"ok": False, "msg": "Kein Sprachdienst konfiguriert"}, 503)
-        data = await audio.read()
-        if not data:
-            return JSONResponse({"ok": True, "text": "", "items": []})
-        try:
-            text = await speech_to_text(
-                conn, data, audio.filename or "teil.webm", audio.content_type
-            )
-        except httpx.HTTPError as exc:
-            return JSONResponse({"ok": False, "msg": f"Whisper nicht erreichbar: {exc}"}, 502)
-        inbox_id = repo.inbox(conn)
-        added = []
-        for part in quick.split_weiter(text):
-            for amount, unit, name in entries(conn, part):
-                if not name:
-                    continue
-                repo.add_item(conn, inbox_id, name, qty=amount, unit=unit,
-                              code=codes.new_item_code(conn))  # fmt: skip
-                added.append(" ".join(x for x in (str(amount or ""), unit, name) if x))
-        return JSONResponse({"ok": True, "text": text, "items": added})
-
     @app.get("/zu-sortieren", response_class=HTMLResponse)
     def inbox_page(request: Request, conn: Conn) -> HTMLResponse:
         inbox_id = repo.inbox(conn)
@@ -1070,18 +1045,6 @@ def create_app(settings: Settings) -> FastAPI:
             f"Einsortiert nach {repo.path_label(conn, target)}",
             repo.last_event_id(conn),
         )
-
-    def note_rows(conn: sqlite3.Connection) -> list[dict[str, Any]]:
-        ctx = prompt.context(conn)  # einmal je Seite, nicht je Aufnahme
-        return [
-            {
-                "note": n,
-                "stamp": notes.stamp(n),
-                "duration": notes.duration_label(n["duration"]),
-                "prompt": notes.chat_prompt(n, ctx),
-            }
-            for n in notes.all_notes(conn)
-        ]
 
     @app.get("/mehr", response_class=HTMLResponse)
     def more_page(request: Request, conn: Conn) -> HTMLResponse:
@@ -1342,218 +1305,6 @@ def create_app(settings: Settings) -> FastAPI:
             {"type": "unknown", "code": norm, "name": "", "prefix": codes.prefix_of(norm)}
         )
 
-    async def speech_to_text(
-        conn: sqlite3.Connection, data: bytes, filename: str, content_type: str | None
-    ) -> str:
-        """Audio an den KI-Dienst (OpenAI-kompatibel) – wirft httpx.HTTPError bei Fehlern."""
-        async with httpx.AsyncClient(timeout=600) as client:  # Dienste starten bei Bedarf
-            resp = await client.post(
-                f"{settings.whisper_url}/v1/audio/transcriptions",
-                headers={"Authorization": f"Bearer {settings.whisper_token}"},
-                files={"file": (filename, data, content_type)},
-                data={"model": prefs.raw(conn, "voice_model"), "language": "de"},
-            )
-            resp.raise_for_status()
-        return str(resp.json().get("text", "")).strip()
-
-    @app.post("/api/transcribe")
-    async def transcribe(audio: UploadFile, conn: Conn) -> JSONResponse:
-        """Kurze Spracheingabe für ein Eingabefeld."""
-        if not settings.whisper_url:
-            return JSONResponse({"error": "Kein Sprachdienst konfiguriert"}, status_code=503)
-        data = await audio.read()
-        try:
-            text = await speech_to_text(
-                conn, data, audio.filename or "aufnahme.webm", audio.content_type
-            )
-        except httpx.HTTPError as exc:
-            return JSONResponse({"error": f"Whisper nicht erreichbar: {exc}"}, status_code=502)
-        return JSONResponse({"text": text})
-
-    # --- Diktate: lange Aufnahmen -> Haiku-Prompt (Mehr › Aufnahmen) ---------------
-
-    note_dir = settings.data_dir / "notes"
-    ai_url = settings.ai_url or settings.whisper_url
-
-    def ai_args(conn: sqlite3.Connection) -> tuple[str, str, str]:
-        return ai_url, settings.whisper_token, prefs.raw(conn, "ai_model")
-
-    def enrich_args(conn: sqlite3.Connection) -> tuple[str, str, str]:
-        """Tags & Eigenschaften: eigenes (schnelles) Modell."""
-        return ai_url, settings.whisper_token, prefs.raw(conn, "ai_model_enrich")
-
-    def report_msg(report: importer.Report) -> str:
-        if report.errors:
-            return "KI: " + "; ".join(report.errors)[:200]
-        made = f"{report.items_added} Teile, {len(report.containers_created)} Behälter"
-        return f"KI: {made} angelegt – bitte unter Freigaben prüfen"
-
-    @app.post("/items/{item_id}/ai")
-    def ai_enrich(item_id: int, conn: Conn) -> RedirectResponse:
-        msg = ai.enrich_item(conn, *enrich_args(conn), item_id, sheet_dir)
-        return redirect(f"/items/{item_id}", msg)
-
-    @app.post("/api/ai/item/{item_id}")
-    def api_ai_item(item_id: int, conn: Conn) -> JSONResponse:
-        """KI-Support: ein Teil vervollständigen (vom Browser nacheinander aufgerufen)."""
-        try:
-            msg = ai.enrich_item(conn, *enrich_args(conn), item_id, sheet_dir)
-        except LagerError as exc:
-            return JSONResponse({"ok": False, "msg": str(exc)})
-        return JSONResponse({"ok": True, "msg": msg})
-
-    @app.get("/ki", response_class=HTMLResponse)
-    def ki_page(request: Request, conn: Conn, skip: int = 0) -> HTMLResponse:
-        item = ai.next_unchecked(conn, skip)
-        extra: dict[str, object] = {}
-        if item is not None:
-            extra = {
-                "path": repo.path_label(conn, item["container_id"]),
-                "item_type": itemtypes.get(conn, item["type_id"]) if item["type_id"] else None,
-                "spec_sheet": materials.sheet(item, kinds.lang(conn) == "en"),
-                "backup": json.loads(item["ai_backup"]) if item["ai_backup"] else None,
-            }
-        return render(
-            request, conn, "ki.html", boxes=ai.boxes_todo(conn), n_todo=ai.queue_count(conn),
-            item=item, skip=skip, model=prefs.raw(conn, "ai_model_enrich"), **extra,
-        )  # fmt: skip
-
-    @app.post("/ki/item/{item_id}/{action}")
-    def ki_item(item_id: int, action: str, conn: Conn, skip: int = 0) -> RedirectResponse:
-        if action == "ai":
-            msg = ai.enrich_item(conn, *enrich_args(conn), item_id, sheet_dir)
-        elif action == "ok":
-            ai.mark_checked(conn, item_id)
-            msg = "Als geprüft markiert"
-        elif action == "approve":
-            ai.approve_item(conn, item_id)
-            msg = "Freigegeben"
-        elif action == "reject":
-            msg = ai.reject_item(conn, item_id)
-        else:
-            raise LagerError("Unbekannte Aktion")
-        return redirect(f"/ki?skip={skip}#queue", msg)
-
-    @app.post("/ai/node/{node_id}")
-    def ai_node(node_id: int, conn: Conn, text: Annotated[str, Form()]) -> RedirectResponse:
-        """„An lokale KI senden“ auf der Behälterseite: Beschreibung -> Einträge (zu prüfen)."""
-        node = need_node(conn, node_id)
-        if not text.strip():
-            raise LagerError("Bitte den Inhalt beschreiben")
-        code = node["code"]
-        if not code:
-            raise LagerError("Behälter braucht einen Code (Bearbeiten › Code vergeben)")
-        report = ai.entries_from_text(conn, *ai_args(conn), text, code, node["name"], node["kind"])
-        return redirect(f"/n/{node_id}", report_msg(report))
-
-    @app.post("/ai/note/{note_id}")
-    def ai_note(note_id: int, conn: Conn) -> RedirectResponse:
-        note = notes.get(conn, note_id)
-        if note["status"] != "fertig":
-            raise LagerError("Aufnahme hat noch keinen Text")
-        report = ai.entries_from_text(conn, *ai_args(conn), note["transcript"])
-        return redirect("/freigaben" if not report.errors else "/sprache", report_msg(report))
-
-    @app.get("/freigaben", response_class=HTMLResponse)
-    def review_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(request, conn, "review.html", **ai.pending(conn))
-
-    @app.post("/freigaben/item/{item_id}/approve")
-    def approve_item(item_id: int, conn: Conn) -> RedirectResponse:
-        ai.approve_item(conn, item_id)
-        return redirect("/freigaben", "Freigegeben")
-
-    @app.post("/freigaben/item/{item_id}/reject")
-    def reject_item(item_id: int, conn: Conn) -> RedirectResponse:
-        return redirect("/freigaben", ai.reject_item(conn, item_id))
-
-    @app.post("/freigaben/node/{node_id}/approve")
-    def approve_node(node_id: int, conn: Conn) -> RedirectResponse:
-        ai.approve_node(conn, node_id)
-        return redirect("/freigaben", "Freigegeben")
-
-    @app.post("/freigaben/all")
-    def approve_all(conn: Conn) -> RedirectResponse:
-        return redirect("/freigaben", f"{ai.approve_all(conn)} Einträge freigegeben")
-
-    async def transcribe_note(conn: sqlite3.Connection, note_id: int) -> None:
-        note = notes.get(conn, note_id)
-        if not settings.whisper_url:
-            notes.set_result(conn, note_id, error="Kein Sprachdienst konfiguriert")
-            return
-        audio = note_dir / note["audio"]
-        try:
-            ctype = "audio/mp4" if audio.suffix == ".m4a" else "audio/webm"
-            text = await speech_to_text(conn, audio.read_bytes(), audio.name, ctype)
-            notes.set_result(conn, note_id, text=text)
-        except (httpx.HTTPError, OSError) as exc:
-            notes.set_result(conn, note_id, error=str(exc)[:300])
-
-    async def transcribe_in_background(note_id: int) -> None:
-        conn = connect(settings.db_path)
-        try:
-            await transcribe_note(conn, note_id)
-        finally:
-            conn.close()
-
-    @app.post("/api/notes")
-    async def create_note(
-        conn: Conn,
-        background: BackgroundTasks,
-        audio: UploadFile,
-        duration: Annotated[int, Form()] = 0,
-        transcribe: Annotated[int, Form()] = 1,
-    ) -> JSONResponse:
-        """Lange Aufnahme sichern (nur Audio, sofort fertig); der Text entsteht danach im
-        Hintergrund bzw. auf Knopfdruck – so geht nichts verloren und nichts blockiert."""
-        try:
-            name = notes.save_audio(await audio.read(), note_dir, audio.content_type or "")
-        except LagerError as exc:
-            return JSONResponse({"ok": False, "msg": str(exc)}, status_code=400)
-        note_id = notes.create(conn, name, duration)
-        if transcribe and settings.whisper_url:
-            background.add_task(transcribe_in_background, note_id)
-        return JSONResponse({"ok": True, "id": note_id, "msg": "Aufnahme gespeichert"})
-
-    @app.get("/notes/{note_id}/audio")
-    def note_audio(note_id: int, conn: Conn) -> Response:
-        note = notes.get(conn, note_id)
-        path = note_dir / (note["audio"] or "")
-        if not note["audio"] or not path.is_file():
-            raise HTTPException(404, "Audiodatei nicht gefunden")
-        stamp = notes.filename(note).removesuffix(".txt").replace("haiku-diktat", "diktat")
-        return FileResponse(path, filename=f"{stamp}{path.suffix}")
-
-    @app.get("/notes/{note_id}/text.txt")
-    def note_transcript(note_id: int, conn: Conn) -> Response:
-        note = notes.get(conn, note_id)
-        name = notes.filename(note).replace("haiku-diktat", "transkript")
-        return Response(
-            note["transcript"],
-            media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{name}"'},
-        )
-
-    @app.post("/notes/{note_id}/retry")
-    async def retry_note(note_id: int, conn: Conn) -> RedirectResponse:
-        await transcribe_note(conn, note_id)
-        ok = notes.get(conn, note_id)["status"] == "fertig"
-        return redirect("/sprache#aufnahmen", "Text erkannt" if ok else "Erneut fehlgeschlagen")
-
-    @app.post("/notes/{note_id}/delete")
-    def delete_note(note_id: int, conn: Conn) -> RedirectResponse:
-        notes.delete(conn, note_id, note_dir)
-        return redirect("/sprache#aufnahmen", "Aufnahme gelöscht")
-
-    @app.get("/notes/{note_id}.txt")
-    def download_note(note_id: int, conn: Conn) -> Response:
-        note = notes.get(conn, note_id)
-        return Response(
-            notes.chat_prompt(note, prompt.context(conn)),
-            media_type="text/plain; charset=utf-8",
-            headers={"Content-Disposition": f'attachment; filename="{notes.filename(note)}"'},
-        )
-
     @app.get("/manifest.webmanifest")
     def manifest(conn: Conn) -> JSONResponse:
         return JSONResponse(
@@ -1576,6 +1327,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.post("/containers")
     def create_container(
+        request: Request,
         conn: Conn,
         name: Annotated[str, Form()],
         kind: Annotated[str, Form()],
@@ -1588,9 +1340,16 @@ def create_app(settings: Settings) -> FastAPI:
         dims_custom: Annotated[str, Form()] = "",
         dims_other: Annotated[str, Form()] = "",
         airtight: Annotated[str, Form()] = "",
+        new_kind: Annotated[str, Form()] = "",
+        new_prefix: Annotated[str, Form()] = "",
+        queue: Annotated[str, Form()] = "",
+        d30_print: Annotated[str, Form()] = "",
+        back: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         if not name.strip():
             raise LagerError("Name fehlt")
+        if kind == "neu":
+            kind = kinds.create(conn, new_kind, new_prefix)
         kind = kinds.resolve(kind) or kind
         model_key = model if kind == "sortingbox" and model in kasten.MODELS else None
         cid = repo.create_container(
@@ -1605,6 +1364,29 @@ def create_app(settings: Settings) -> FastAPI:
             dims=pick_dims(dims, dims_custom, dims_other),
             airtight=bool(airtight),
         )
+        msg = f"„{name.strip()}“ angelegt"
+        created = repo.get_container(conn, cid)
+        prefix = codes.KIND_PREFIX.get(kind)
+        if created and prefix and (queue or d30_print):
+            new_code = created["code"] or codes.reserve(conn, prefix, 1)[0]
+            if not created["code"]:
+                repo.assign_code(conn, cid, new_code)
+                created = repo.get_container(conn, cid)
+            assert created is not None
+            msg += f" ({new_code})"
+            if queue:
+                labels.enqueue(conn, new_code, *labels.container_label(conn, created))
+            if d30_print:
+                msg += direct_print(conn, [new_code])
+        if back.startswith("/") and not back.startswith("//"):  # weiter im Hinzufügen-Reiter
+            resp = redirect(back, msg)
+            remember(resp, request, "qa_kinds", kind)
+            if parent_id.isdigit():
+                ids = [int(parent_id)] + [i for i in recent_targets(request) if i != int(parent_id)]
+                resp.set_cookie(
+                    TARGET_COOKIE, ",".join(map(str, ids[:3])), max_age=31_536_000, samesite="lax"
+                )
+            return resp
         return redirect(f"/n/{cid}")
 
     # --- Sortierkasten mit Einsätzen (NORB16) ----------------------------------------
