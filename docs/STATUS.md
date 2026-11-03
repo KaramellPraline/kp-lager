@@ -86,3 +86,12 @@ Stand: 2026-10-26
 - `/neu` (Nav „Anlegen“, Tab „Katalog“ im Hinzufügen-Formular): ~55 Teile-Typen in 8 Gruppen (app/catalog.py) aus den Sortierkasten-Fotos + Heimwerken/3D-Druck/Laser/Elektronik. Felder als Chips + Datalist, Live-Namensvorschau, danach gleicher Typ mit leeren Feldern (Ziel bleibt). Elektronik bekommt das Datenblatt-Profil „Elektronikbauteil“.
 - `/neu/bin`: Einsatz-Assistent (Kasten, freie Zelle, X×Y, Fächeranzahl, je Fach Art+Variante+Menge, Etiketten). 
 - Übersicht: Baum mit lazy Zweigen (`/n/<id>/zweig`, `/baum`), auf der Startseite statt Raumkarten; ab 10. Eintrag „Mehr anzeigen“.
+
+## GitHub-Repository (2026-11-03)
+- Projekt als privates GitHub-Repository bereitgestellt (README, docs/DEVELOPMENT.md, CI in `.github/workflows/ci.yml`). Weiterarbeit in der Cloud: `docs/DEVELOPMENT.md` lesen, dann hier die offenen Punkte abarbeiten.
+- Katalog: Typ-Liste mit einklappbaren Gruppen, Scrollposition bleibt beim Wechsel erhalten.
+
+## Offene Punkte (Stand 2026-11-03)
+- Handy-Test (CA, Bedienung Katalog/Baum), D30: Papier-Test des neuen Etikettenlayouts über die App, Bin-Testdruck, echter Creality-Print-Export, Vision-Test.
+- Autostart (geplanter Task) nur mit ausdrücklichem OK; Umzug auf Pi (Docker) vorbereitet, ungetestet.
+- Ideen: Maschinen-Wartung, Inventur-Scan, Etikett nachdrucken, Letzten Eintrag kopieren, Harz-Ablaufwarnung, Backup auf zweites Medium.
