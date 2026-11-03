@@ -1,0 +1,10 @@
+{% if kids %}<ul class="tree-list">
+  {% for k in kids %}<li><details class="twig" data-src="/n/{{ k.id }}/zweig">
+    <summary><span class="tname">{{ k.name }}</span> <span class="meta">{% if k.code %}{{ k.code }}{% endif %}{% if k.n_items %} · {{ k.n_items }} Teile{% endif %}</span>
+      <a class="open" href="/n/{{ k.id }}" title="Seite öffnen">öffnen</a></summary>
+    <div class="branch"></div></details></li>{% endfor %}
+</ul>{% endif %}
+{% if items %}<ul class="tree-items" data-collapse="9">
+  {% for i in items %}<li><a href="/items/{{ i.id }}">{{ i.name }}</a><span class="meta">{% if i.qty is not none %}{{ i.qty }}{% if i.unit %} {{ i.unit }}{% endif %}{% else %}{{ i.qty_hint or '' }}{% endif %}</span></li>{% endfor %}
+</ul>{% endif %}
+{% if not kids and not items %}<p class="meta" style="margin:4px 0 4px 12px">leer</p>{% endif %}

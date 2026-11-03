@@ -1,0 +1,180 @@
+"""Routen: Teile-Katalog („Anlegen“), Einsatz-Assistent (Sortierkasten) und Baumansicht."""
+
+import sqlite3
+from collections.abc import Callable
+from typing import Annotated, Any
+
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+
+from app import catalog, d30, kasten, labels, repo
+from app.config import Settings
+from app.repo import LagerError
+
+TARGET_COOKIE = "qa_targets"  # gleiche Liste wie die Schnelleingabe auf der Startseite
+TYPE_COOKIE = "kat_typ"
+QTYS = ("10", "25", "50", "100", "200", "500")
+
+
+async def form_fields(request: Request) -> dict[str, str]:
+    form = await request.form()
+    return {k: v for k, v in form.items() if isinstance(v, str)}
+
+
+Form = Annotated[dict[str, str], Depends(form_fields)]
+
+
+def register(
+    app: FastAPI,
+    Conn: Any,
+    render: Callable[..., HTMLResponse],
+    redirect: Callable[..., RedirectResponse],
+    settings: Settings,
+) -> None:
+    def targets_cookie(request: Request) -> list[int]:
+        return [int(x) for x in request.cookies.get(TARGET_COOKIE, "").split(",") if x.isdigit()]
+
+    def remember_target(resp: RedirectResponse, request: Request, target: int) -> None:
+        ids = [target] + [i for i in targets_cookie(request) if i != target]
+        resp.set_cookie(
+            TARGET_COOKIE, ",".join(map(str, ids[:3])), max_age=31_536_000, samesite="lax"
+        )
+
+    def print_now(conn: sqlite3.Connection, codes_: list[str]) -> str:
+        try:
+            n = d30.print_codes(conn, settings.base_url, codes_)
+        except LagerError as exc:
+            return f" · nicht gedruckt: {exc}"
+        return f" · {n} Etikett{'en' if n != 1 else ''} gedruckt"
+
+    # --- Katalog ---------------------------------------------------------------------
+
+    @app.get("/neu", response_class=HTMLResponse)
+    def katalog_page(request: Request, conn: Conn, typ: str = "") -> HTMLResponse:
+        key = typ or request.cookies.get(TYPE_COOKIE, "") or "schraube"
+        current = catalog.BY_KEY.get(key) or catalog.BY_KEY["schraube"]
+        last = targets_cookie(request)
+        recent = conn.execute(
+            "SELECT i.id, i.name, i.code, i.qty, c.name AS place FROM item i"
+            " JOIN container c ON c.id = i.container_id ORDER BY i.id DESC LIMIT 6"
+        ).fetchall()
+        return render(
+            request,
+            conn,
+            "katalog.html",
+            groups=catalog.grouped(),
+            ctype=current,
+            targets=repo.all_paths(conn),
+            target=last[0] if last else None,
+            recent=recent,
+        )
+
+    @app.get("/neu/vorschau")
+    def katalog_preview(request: Request, typ: str) -> JSONResponse:
+        t = catalog.BY_KEY.get(typ)
+        if t is None:
+            return JSONResponse({"name": ""})
+        values = {f.key: request.query_params.get(f"f_{f.key}", "") for f in t.fields}
+        return JSONResponse({"name": catalog.name(t, values)})
+
+    @app.post("/neu")
+    def katalog_create(request: Request, conn: Conn, form: Form) -> RedirectResponse:
+        typ = form.get("typ", "")
+        t = catalog.BY_KEY.get(typ)
+        if t is None:
+            raise LagerError("Bitte einen Teile-Typ wählen")
+        target = int(form["target"]) if form.get("target", "").isdigit() else repo.inbox(conn)
+        qty = int(form["qty"]) if form.get("qty", "").strip().isdigit() else None
+        values = {f.key: form.get(f"f_{f.key}", "") for f in t.fields}
+        item_id = catalog.create(conn, typ, values, target, qty)
+        item = repo.get_item(conn, item_id)
+        msg = f"„{item['name']}“ angelegt ({item['code']})"
+        if form.get("d30_print") and settings.d30:
+            msg += print_now(conn, [item["code"]])
+        # gleicher Typ nochmal, Felder zurückgesetzt (Ziel bleibt)
+        resp = redirect(f"/neu?typ={typ}", msg)
+        resp.set_cookie(TYPE_COOKIE, typ, max_age=31_536_000, samesite="lax")
+        remember_target(resp, request, target)
+        return resp
+
+    # --- Einsatz-Assistent ----------------------------------------------------------------
+
+    @app.get("/neu/bin", response_class=HTMLResponse)
+    def bin_page(request: Request, conn: Conn, kasten_id: int = 0) -> HTMLResponse:
+        boxes = conn.execute(
+            "SELECT * FROM container WHERE kind = 'sortingbox' AND model IS NOT NULL ORDER BY name"
+        ).fetchall()
+        info = {}
+        for b in boxes:
+            model = kasten.model_of(b)
+            info[b["id"]] = {
+                "free": kasten.free_cells(conn, b),
+                "cols": model.cols if model else 0,
+                "rows": model.rows if model else 0,
+            }
+        cur = kasten_id or (boxes[0]["id"] if boxes else 0)
+        return render(
+            request,
+            conn,
+            "bin_assistent.html",
+            boxes=boxes,
+            info=info,
+            kcur=cur,
+            divs=kasten.DIVS,
+            quick=catalog.quick_options(),
+            sugg=catalog.suggestions(),
+            qtys=QTYS,
+        )
+
+    @app.post("/neu/bin")
+    def bin_create(request: Request, conn: Conn, form: Form) -> RedirectResponse:
+        if not form.get("kasten", "").isdigit():
+            raise LagerError("Bitte einen Sortierkasten wählen")
+        kid = int(form["kasten"])
+        size = f"{form.get('x', '1')}x{form.get('y', '1')}"
+        div = form.get("div", "1x1")
+        bin_id = kasten.place_bin(conn, kid, form.get("pos", ""), size, div)
+        comps = conn.execute(
+            "SELECT id FROM container WHERE parent_id = ? ORDER BY id", (bin_id,)
+        ).fetchall()
+        slots = [c["id"] for c in comps] or [bin_id]
+        made = 0
+        for i, slot in enumerate(slots):
+            typ, _, art = form.get(f"r{i}_typ", "").partition("|")
+            if not typ:
+                continue
+            qty_raw = form.get(f"r{i}_qty", "")
+            catalog.create_quick(
+                conn, typ, art, form.get(f"r{i}_var", "").strip(), slot,
+                int(qty_raw) if qty_raw.isdigit() else None,
+            )  # fmt: skip
+            made += 1
+        node = repo.get_container(conn, bin_id)
+        assert node is not None
+        if form.get("content"):
+            labels.enqueue_content(conn, node)
+        if form.get("queue"):
+            labels.enqueue(conn, node["code"], *labels.container_label(conn, node))
+        msg = (
+            f"Einsatz {node['code']} bei {node['position']} ({size}, "
+            f"{len(comps) or 1} {'Fächer' if len(comps) > 1 else 'Fach'}) angelegt, {made} Teile"
+        )
+        if form.get("d30_print") and settings.d30:
+            msg += print_now(conn, [node["code"]])
+        resp = redirect(f"/neu/bin?kasten_id={kid}", msg)
+        return resp
+
+    # --- Baumansicht ------------------------------------------------------------------------
+
+    def branch(request: Request, conn: sqlite3.Connection, node_id: int | None) -> HTMLResponse:
+        kids = repo.children(conn, node_id)
+        items = repo.items_in(conn, node_id) if node_id else []
+        return render(request, conn, "_branch.html", kids=kids, items=items)
+
+    @app.get("/baum", response_class=HTMLResponse)
+    def tree_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "baum.html", kids=repo.children(conn, None))
+
+    @app.get("/n/{node_id}/zweig", response_class=HTMLResponse)
+    def tree_branch(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
+        return branch(request, conn, node_id)

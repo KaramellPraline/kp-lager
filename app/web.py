@@ -53,6 +53,7 @@ from app import (
     repo,
     scheduler,
     value,
+    web_katalog,
     web_ops,
     withdrawals,
 )
@@ -274,6 +275,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     ai_endpoint = settings.ai_url or settings.whisper_url
     web_ops.register(app, Conn, render, redirect, settings, ai_endpoint)
+    web_katalog.register(app, Conn, render, redirect, settings)
 
     @app.middleware("http")
     async def force_https(request: Request, call_next: Any) -> Response:
