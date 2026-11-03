@@ -106,6 +106,17 @@ def mark_used_until(conn: sqlite3.Connection, prefix: str, last_number: int) -> 
         )
 
 
+def sync_counters(conn: sqlite3.Connection) -> None:
+    """Zähler aller Präfixe dynamisch aus dem Bestand setzen: nächste = höchste vergebene + 1.
+
+    Gedruckte, aber unbenutzte Vorrats-Codes bleiben reserviert (der Zähler sinkt nie).
+    """
+    for prefix in {*PREFIX_KIND, *ITEM_PREFIXES, TYPE_PREFIX}:
+        used = highest_used(conn, prefix)
+        if used:
+            mark_used_until(conn, prefix, used)
+
+
 def reserve(conn: sqlite3.Connection, prefix: str, count: int) -> list[str]:
     """Reserviert `count` neue Codes (z. B. für einen Etiketten-Vorrat)."""
     start = next_number(conn, prefix)

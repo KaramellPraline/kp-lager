@@ -7,7 +7,7 @@ Suchen und Umlagern im Heimnetz (LAN). Alles läuft lokal, ohne Cloud und ohne e
 - **Stack:** Python ≥ 3.12 · FastAPI · Jinja2 + HTMX (vendored, kein JS-Build) · SQLite (stdlib, FTS5) ·
   segno (QR) · Pillow · uv · pytest · ruff · mypy (strict)
 - **Sprache der Oberfläche:** Deutsch (Englisch für Behälterarten wählbar)
-- **Betrieb:** Windows-PC (`tools/serve.ps1`) oder Docker Compose (App + Caddy, HTTPS) – läuft auf amd64 und arm64 (Raspberry Pi)
+- **Betrieb:** Server nur als Docker Compose (App + Caddy, HTTPS), amd64 und arm64 (Raspberry Pi); am Windows-PC nur der Client (Fenster + D30-Bridge), am Handy die Android-App
 
 ## Funktionen (Überblick)
 
@@ -57,7 +57,7 @@ Kamera-Scan und Mikrofon funktionieren im Browser nur über HTTPS. Für LAN-Betr
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Entscheidungen mit Datum und Begründung (nicht neu diskutieren) |
 | [docs/CONFIG.md](docs/CONFIG.md) | Umgebungsvariablen und Einstellungen |
 | [docs/CLOUD.md](docs/CLOUD.md) | Einrichtung für Claude Code im Web und Codespaces |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Windows-PC, Docker, Raspberry Pi, HTTPS, Backup |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, Raspberry Pi, HTTPS, Backup |
 | [docs/FEATURES.md](docs/FEATURES.md) | Funktionen und Bedienung im Detail |
 | [docs/ETIKETTEN.md](docs/ETIKETTEN.md) | Code-Schema, XLSX/D30-Vorlage |
 | [docs/DIREKTDRUCK.md](docs/DIREKTDRUCK.md) | D30-Direktdruck (Bluetooth, Protokoll, Fehlersuche) |
@@ -71,7 +71,7 @@ app/            FastAPI-App (Routen: web.py, web_ops.py, web_katalog.py, api.py)
 app/templates/  Jinja2-Seiten und Partials     app/static/  CSS, JS, vendored htmx/jsQR, Schriften
 app/migrations/ nummerierte SQL-Migrationen (einzige Quelle für Schemaänderungen)
 tests/          pytest (conftest.py: Test-Client mit temporärem Datenverzeichnis)
-tools/          CLI, MCP-Server, D30-Druck, Zertifikat, serve.ps1 (Windows-Start)
+tools/          CLI, MCP-Server, D30-Druck, Zertifikat, Release-Hilfe
 cad/            parametrischer Bin-Generator (build123d, Gruppe cad) + Parameter-JSON
 deploy/         Docker Compose + Caddy;  Dockerfile im Wurzelverzeichnis
 docs/           Dokumentation

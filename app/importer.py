@@ -20,6 +20,10 @@ class Report:
     containers_moved: list[str] = field(default_factory=list)
     items_added: int = 0
     items_skipped: int = 0
+    events_added: int = 0  # nur Wiederherstellung aus Vollexport
+    codes_assigned: int = 0
+    typed: int = 0
+    restored: bool = False
     warnings: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
@@ -230,6 +234,16 @@ def run(
 ) -> Report:
     """review=True: alles Angelegte bekommt das Flag „zu prüfen“ (KI-Ergebnisse)."""
     report = Report()
+    from app import restore  # spät: restore importiert Report von hier
+
+    if (dump := restore.parse_dump(text)) is not None:  # Vollexport (/export.json)
+        scratch = connect(":memory:")
+        conn.backup(scratch)
+        report = restore.restore(scratch, dump)
+        scratch.close()
+        if commit:
+            restore.restore(conn, dump)
+        return report
     data = parse(text)
     if not data:
         report.errors.append("Kein JSON-Objekt gefunden")

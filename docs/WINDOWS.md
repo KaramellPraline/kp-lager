@@ -1,63 +1,27 @@
-# Windows: Client, Server und D30-Bridge
+# Windows: nur der Client
 
-Zielbild: der **Server** läuft als Docker-Container (`deploy/`, Dauerbetrieb). Am **Windows-PC** läuft der **Client**
-(eigenes Fenster zum Server + D30-Bridge für Bluetooth-Etikettendruck). Zum **Debuggen** lässt sich der Server auch
-direkt auf dem PC starten – per Installer oder mit einem Skript.
+Der **Server läuft ausschließlich als Docker-Container** (`deploy/`, siehe `deploy/README.md`). Am Windows-PC gibt es
+nur den **Client**: ein eigenes Fenster zum Lager plus die **D30-Bridge** für den Bluetooth-Etikettendruck.
 
-> **Status:** Skripte und Installer sind geschrieben, die Python-Teile getestet (`tests/test_m37.py`,
-> `tests/test_windows_client.py`). Die `.exe`-Builds und der Bluetooth-Druck wurden noch **nicht auf Windows
-> ausprobiert** (Cloud-Sitzung ohne Windows/Drucker).
+## Installieren
+`KP-Lager-Client-Setup-<Version>.exe` aus dem Release (GitHub › Releases › Assets) ausführen – kein Administrator nötig.
+1. Beim ersten Start die Server-Adresse eintragen, z. B. `https://lager.home.lan` (gespeichert in `%APPDATA%\KP Lager Client\config.json`).
+2. Das Zertifikat des Servers (`http://lager.home.lan/ca.crt`) in Windows als vertrauenswürdige Stammzertifizierungsstelle installieren.
+3. Für D30-Druck: Bluetooth am PC, D30 einschalten und koppeln.
 
-## 1. Server zum Debuggen (wenig Aufwand)
-Ohne Installer, mit Neustart bei Codeänderungen:
-```powershell
-winget install astral-sh.uv          # einmalig, danach neues Terminal
-powershell -File tools\dev.ps1        # http://localhost:8000, Daten in .\data-dev
-powershell -File tools\dev.ps1 -Test  # Tests, Lint, Typprüfung
-```
-Oder als Programm: **KP-Lager-Server-Setup.exe** (Start-Menü „KP Lager Server (Debug-Konsole)“, Daten in
-`%LOCALAPPDATA%\KP Lager Server\data`, Optionen `--port`, `--host 0.0.0.0`, `--data`, `--no-d30`).
+Optionen: `--server <Adresse>`, `--bridge-only` (nur Bridge, kein Fenster), `--ca <Datei>`, `--no-bridge`, `--reset`, `--version`.
+Installer-Option „Autostart“ startet beim Anmelden nur die Bridge im Hintergrund.
 
-## 2. Client (Frontend am PC)
-**KP-Lager-Client-Setup.exe** installiert `lager-client.exe`:
-- beim ersten Start wird die Server-Adresse abgefragt (z. B. `https://lager.home.lan`), gespeichert in
-  `%APPDATA%\KP Lager Client\config.json`;
-- öffnet den Server in einem eigenen Fenster (Edge WebView2); ohne WebView2 im Standardbrowser;
-- startet die **D30-Bridge** auf `127.0.0.1:8765`. Optional beim Anmelden nur die Bridge im Hintergrund
-  (`--bridge-only`, Installer-Option „Autostart“).
-- Die CA des Servers (`http://lager.home.lan/ca.crt`) einmal in Windows installieren (Zertifikat → „Vertrauenswürdige
-  Stammzertifizierungsstellen“), oder `--ca <Datei>` für die Bridge angeben.
-
-## 2b. Windows-Server im Dauerbetrieb (mit HTTPS)
-Der Server-Installer taugt auch für den Dauerbetrieb am PC (Alternative zu Docker): Option „automatisch starten“ im Installer,
-HTTPS mit eigenem Zertifikat:
-```powershell
-uv run python tools/devcert.py lager.home.lan localhost --ip <IP>      # erzeugt data\certs\server.crt/.key + ca.crt
-lager-server.exe --host 0.0.0.0 --port 443 --cert data\certs\server.crt --key data\certs\server.key --no-browser
-```
-`LAGER_BASE_URL=https://lager.home.lan` setzen, wenn der Name in den QR-Codes stehen soll. Die Variante mit Skript (`tools\serve.ps1`, Port 80+443) bleibt möglich.
-
-## 3. D30-Bridge – so funktioniert der Druck mit Docker-Server
+## D30-Bridge – so funktioniert der Druck
 1. Server mit `LAGER_D30_BRIDGE=1` (in `deploy/compose.yaml` Standard) und `LAGER_D30=0` (kein Bluetooth im Container).
-2. In der Oberfläche erscheinen die D30-Schalter/Knöpfe wie bisher; ihr Status kommt von der Bridge am PC.
-3. „Direkt drucken“ lässt den Server die Codes an den Browser melden, der Browser ruft die Bridge auf, die Bridge holt
-   die Etikettenbilder vom Server und druckt per Bluetooth; danach meldet der Browser „gedruckt“ an den Server.
-4. Sicherheit: Bridge nur auf `127.0.0.1`, nur Anfragen der eingetragenen Server-Adresse, Bilder nur von diesem
-   Server, höchstens 30 Etiketten je Auftrag. Ohne laufende Bridge bleibt das Etikett in der Warteschlange.
+2. In der Oberfläche erscheinen die D30-Schalter wie gewohnt; ihr Status kommt von der Bridge am PC.
+3. „Direkt drucken“ lässt den Server die Codes an den Browser melden, der Browser ruft die Bridge auf, die Bridge holt die
+   Etikettenbilder vom Server und druckt per Bluetooth; danach meldet der Browser „gedruckt“ an den Server.
+4. Sicherheit: Bridge nur auf `127.0.0.1`, nur Anfragen der eingetragenen Server-Adresse, Bilder nur von diesem Server,
+   höchstens 30 Etiketten je Auftrag. Ohne laufende Bridge bleibt das Etikett in der Warteschlange.
 
-Läuft der Server selbst auf dem Windows-PC (Debug-Server mit `LAGER_D30=1`), druckt er direkt – keine Bridge nötig.
-
-## 4. Wo liegen die .exe?
-Im Repository liegen **keine** fertigen Programme, sie werden gebaut:
-- **Testbau:** GitHub › Actions › „Windows-Installer“ › gewünschten Lauf öffnen › unten **Artifacts** › `kp-lager-windows`
-  (ZIP mit beiden Setup-Dateien). Läuft automatisch bei Änderungen in `windows/` und per „Run workflow“.
+## Wo liegt die .exe?
+Im Repository liegen keine fertigen Programme:
 - **Release:** GitHub › Releases › Version › Assets (siehe `docs/RELEASE.md`).
-- **Lokal:** `windows\build.ps1` → `dist\installer\`.
-
-## 5. Installer bauen
-```powershell
-powershell -File windows\build.ps1             # beide; Inno Setup 6 (iscc.exe) für die Installer nötig
-powershell -File windows\build.ps1 -Only client
-```
-Oder auf GitHub: Actions › „Windows-Installer“ › Run workflow – das Ergebnis liegt als Artefakt
-`kp-lager-windows` (beide `.exe`) vor.
+- **Testbau:** GitHub › Actions › „Windows-Installer“ › Lauf › **Artifacts** › `kp-lager-windows`.
+- **Lokal:** `powershell -File windows\build.ps1` → `dist\installer\` (Inno Setup 6 für den Installer nötig).

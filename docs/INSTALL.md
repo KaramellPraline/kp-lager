@@ -28,8 +28,8 @@ Datenbank-Migrationen laufen beim Start automatisch; vorher ein Backup (`docker 
 3. Zertifikat des Servers (`http://lager.home.lan/ca.crt`) in Windows als vertrauenswürdige Stammzertifizierungsstelle installieren.
 4. Für D30-Druck: Bluetooth am PC, D30 einschalten und koppeln. Details: `docs/WINDOWS.md`.
 
-## 3. Windows-Server zum Debuggen (optional)
-`KP-Lager-Server-Setup-<Version>.exe` – oder ohne Installer `powershell -File tools\dev.ps1`. Siehe `docs/WINDOWS.md`.
+## 3. Debuggen am PC (optional)
+Kein Windows-Server mehr: zum Entwickeln `uv run uvicorn app.main:app --reload` (siehe `docs/DEVELOPMENT.md`). Etiketten tragen trotzdem immer `https://lager.home.lan`.
 
 ## 4. Handy (Android)
 `KP-Lager-<Version>.apk` aus dem Release installieren, Adresse eintragen, CA-Zertifikat installieren – Details in `docs/ANDROID.md`.

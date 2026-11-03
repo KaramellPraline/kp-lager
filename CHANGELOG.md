@@ -3,6 +3,13 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [Unveröffentlicht]
+
+### Neu
+- QR-Codes enthalten immer `https://lager.home.lan` (nie localhost oder eine IP).
+- Windows nur noch als Client – der Server läuft ausschließlich als Docker-Container.
+- Vollexport (Mehr › Export) lässt sich unter Mehr › Import als Datei wiederherstellen: Behälter/Teile werden über Codes zusammengeführt, fehlende Codes und die Zähler dynamisch gesetzt, Teile automatisch typisiert.
+
 ## [0.3.0] – 2026-11-04
 
 ### Neu
@@ -21,7 +28,7 @@ Text des GitHub-Releases übernommen (`tools/release.py notes`).
 - Stücklisten-Abgleich im Projekt, Einkäufe und Lieferanten, Notiz- und Pinout-Karten, Inventur.
 - Externes Backup (Ordner/NAS) zusätzlich zum täglichen Backup.
 - API mit Lese- und Schreib-Schlüsseln, Teile/Behälter bearbeiten, Projekte planen (`docs/API.md`); MCP mit 34 Werkzeugen.
-- Windows: Client (Fenster + D30-PC-Bridge) und Server (Debug) als getrennte Installer, `tools/dev.ps1`.
+- Windows: Client-Installer (Fenster + D30-PC-Bridge).
 - Entnehmen am Teil mit Schnellauswahl der Menge.
 
 ### Entfernt

@@ -768,13 +768,16 @@ def create_app(settings: Settings) -> FastAPI:
         return render(request, conn, "import.html", report=None, text="", done=False)
 
     @app.post("/import", response_class=HTMLResponse)
-    def import_run(
+    async def import_run(
         request: Request,
         conn: Conn,
         text: Annotated[str, Form()] = "",
         action: Annotated[str, Form()] = "preview",
+        file: Annotated[UploadFile | None, File()] = None,
     ) -> HTMLResponse:
         commit = action == "commit"
+        if file is not None and file.filename:
+            text = (await file.read()).decode("utf-8-sig", errors="replace")
         report = importer.run(conn, text, commit=commit)
         done = commit and not report.errors
         return render(request, conn, "import.html", report=report, text=text, done=done)
