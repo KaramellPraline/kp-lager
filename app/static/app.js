@@ -614,3 +614,18 @@
     });
   });
 })();
+
+// M46: Bearbeiten-Symbol öffnet den Bearbeiten-Block; Namenszeile haftet beim Runterscrollen
+(function () {
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-open]");
+    if (!b) return;
+    var d = document.getElementById(b.dataset.open);
+    if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    var mini = document.querySelector(".sticky-mini"), head = document.getElementById("head-card");
+    if (!mini || !head || !window.IntersectionObserver) return;
+    new IntersectionObserver(function (e) { mini.classList.toggle("show", !e[0].isIntersecting); }).observe(head);
+  });
+})();

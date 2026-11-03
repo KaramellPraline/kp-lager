@@ -7,7 +7,8 @@
 
 <div class="layout-2">
 <div>
-  <div class="card head-card">
+  <div class="sticky-mini" aria-hidden="true"><b>{{ item.name }}</b>{% if item.code %}<span class="code">{{ item.code }}</span>{% endif %}</div>
+  <div class="card head-card" id="head-card">
     {% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo-thumb" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
     <div class="grow">
       <h1>{{ item.name }}</h1>
@@ -24,6 +25,16 @@
         {% if item.opened %}<span class="chip">geöffnet {{ item.opened }}</span>{% endif %}
       </div>
     </div>
+  </div>
+
+  <div class="icon-row" role="toolbar" aria-label="Schnellaktionen">
+    {% if item.code %}<form method="post" action="/labels/queue/item/{{ item.id }}"><button title="Etikett in Warteschlange" aria-label="Etikett drucken">{{ icon('action.print') }}</button></form>{% endif %}
+    <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
+      <label class="file-btn" title="Foto" aria-label="Foto">{{ icon('media.camera') }}
+        <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
+    </form>
+    <form method="post" action="/carry/item/{{ item.id }}"><button title="Umlagern" aria-label="Umlagern">{{ icon('action.move') }}</button></form>
+    <button type="button" data-open="edit-box" title="Bearbeiten" aria-label="Bearbeiten">{{ icon('action.edit') }}</button>
   </div>
 
   <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
@@ -202,7 +213,7 @@
     </div>
   </div>
 
-  <details>
+  <details id="edit-box">
     <summary>Bearbeiten</summary>
     <form method="post" action="/items/{{ item.id }}/edit" class="stack">
       <label>Anzeigename (kurz, fürs Etikett) <input name="name" value="{{ item.name }}" required></label>
