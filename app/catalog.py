@@ -1141,6 +1141,7 @@ def create(
     values: dict[str, str],
     container_id: int,
     qty: int | None = None,
+    standalone: bool = True,
 ) -> int:
     t = lookup(conn, type_key)
     if t is None:
@@ -1150,12 +1151,17 @@ def create(
     if not text:
         raise LagerError(f"Bitte mindestens ein Feld für „{t.label}“ ausfüllen")
     code = (
-        codes.new_item_code(conn)
+        None
+        if not standalone  # Fachinhalt ohne eigenes Etikett: nur Tags, kein Code
+        else codes.new_item_code(conn)
         if t.cat == codes.ITEM_PREFIX
         else codes.reserve(conn, t.cat, 1)[0]
     )
     tags = auto_tags(t, clean)
     item_id = repo.add_item(conn, container_id, text, qty=qty, code=code, tags=tags)
+    if not standalone:
+        with conn:
+            conn.execute("UPDATE item SET standalone = 0 WHERE id = ?", (item_id,))
     store(conn, item_id, t.key, clean)
     if t.cmp:
         form = {

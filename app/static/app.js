@@ -638,3 +638,11 @@ document.addEventListener("click", function (ev) {
   var d = document.getElementById(a.dataset.jump);
   if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
 });
+
+// M46: Schnellknopf setzt ein Auswahlfeld (z. B. Ziel = Zu sortieren)
+document.addEventListener("click", function (ev) {
+  var b = ev.target.closest("[data-set]");
+  if (!b) return;
+  var el = document.getElementById(b.dataset.set);
+  if (el) { el.value = b.dataset.val; el.dispatchEvent(new Event("change", { bubbles: true })); }
+});

@@ -38,12 +38,16 @@
       </div>
       <div class="nf">
         <label for="target">Wohin?</label>
-        <select id="target" name="target">
-          <option value="">Zu sortieren (später einräumen)</option>
-          {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+        <div class="row"><select id="target" name="target" class="grow">
+          <option value="">Zu sortieren (Box of Shame)</option>
+          {% if recent_targets %}<optgroup label="Zuletzt">{% for p in recent_targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</optgroup>{% endif %}
+          <optgroup label="Alle Orte">{% for p in targets %}<option value="{{ p.id }}" {% if p.id == target and not recent_targets %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</optgroup>
+          {% if fav_targets %}<optgroup label="Favoriten">{% for p in fav_targets %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}</optgroup>{% endif %}
         </select>
+        <button type="button" class="icon-btn" data-set="target" data-val="" title="Zu sortieren (Box of Shame)" aria-label="Zu sortieren">{{ icon('content.inbox') }}</button></div>
         <div class="chips place-sugg" data-select="target" aria-label="Platz-Vorschläge"></div>
       </div>
+      <label class="meta"><input type="checkbox" name="no_label" value="1"> Kein eigenes Etikett (nur Tags, Fachinhalt)</label>
       {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
         <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
       <div class="row"><button class="primary" id="neu-submit">{{ icon('action.add', size='sm') }} Anlegen</button>

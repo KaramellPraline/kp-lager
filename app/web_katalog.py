@@ -67,6 +67,14 @@ def register(
             ctype=current,
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
+            recent_targets=[
+                {"id": p["id"], "label": repo.path_label(conn, p["id"])}
+                for p in repo.containers_by_ids(conn, last)[:3]
+            ],
+            fav_targets=[
+                {"id": f["id"], "label": repo.path_label(conn, f["id"])}
+                for f in repo.favorites(conn)[:10]
+            ],
             recent=recent,
         )
 
@@ -103,10 +111,12 @@ def register(
                     {**dict(d), "path": repo.path_label(conn, d["container_id"])} for d in dupes
                 ],
             )  # fmt: skip
-        item_id = catalog.create(conn, typ, values, target, qty)
+        item_id = catalog.create(
+            conn, typ, values, target, qty, standalone=not form.get("no_label")
+        )
         item = repo.get_item(conn, item_id)
-        msg = f"„{item['name']}“ angelegt ({item['code']})"
-        if form.get("d30_print") and settings.d30:
+        msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"
+        if form.get("d30_print") and settings.d30 and item["code"]:
             msg += print_now(conn, [item["code"]])
         # gleicher Typ nochmal, Felder zurückgesetzt (Ziel bleibt)
         resp = redirect(f"/neu?typ={typ}", msg)
