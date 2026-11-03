@@ -55,6 +55,8 @@ dürfen nicht `cur` heißen.
 
 ## Arbeiten in der Cloud (Claude Code, GitHub Codespaces o. ä.)
 
+Einrichtung Schritt für Schritt: [CLOUD.md](CLOUD.md) (Hook `.claude/hooks/session-start.sh`, `.devcontainer/`).
+
 Funktioniert vollständig für alles außer Hardware:
 
 - Läuft in der Cloud: App, API, Tests, Lint, Typecheck, Katalog, Baum, Etiketten als Bild (`/labels/img/<CODE>.png`), XLSX-Export.
