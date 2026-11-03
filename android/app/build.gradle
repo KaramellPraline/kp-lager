@@ -1,0 +1,61 @@
+plugins {
+    id "com.android.application"
+}
+
+// Version kommt aus app/__init__.py (Release-Workflow übergibt -PappVersion=1.2.3)
+def appVersion = (project.findProperty("appVersion") ?: {
+    def m = (new File(rootDir, "../app/__init__.py").text =~ /__version__ = "([^"]+)"/)
+    m.find() ? m.group(1) : "0.0.0"
+}()).toString()
+def parts = appVersion.tokenize(".").collect { it.isInteger() ? it.toInteger() : 0 } + [0, 0, 0]
+
+android {
+    namespace "de.kplager.app"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "de.kplager.app"
+        minSdk 26
+        targetSdk 35
+        versionCode parts[0] * 10000 + parts[1] * 100 + parts[2]
+        versionName appVersion
+        // Standard-Adresse beim ersten Start (änderbar in der App)
+        buildConfigField "String", "DEFAULT_SERVER", "\"${project.findProperty("defaultServer") ?: "https://lager.home.lan"}\""
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    signingConfigs {
+        release {
+            // Schlüssel nur aus der Umgebung (GitHub-Secrets bzw. lokal gesetzte Variablen),
+            // nie aus dem Repo. Ohne Schlüssel wird mit dem Debug-Schlüssel signiert.
+            def ks = System.getenv("KP_KEYSTORE_FILE")
+            if (ks) {
+                storeFile file(ks)
+                storePassword System.getenv("KP_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KP_KEY_ALIAS")
+                keyPassword System.getenv("KP_KEY_PASSWORD")
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig System.getenv("KP_KEYSTORE_FILE") ? signingConfigs.release : signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "KP-Lager-${appVersion}.apk"
+        }
+    }
+}

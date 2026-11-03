@@ -1,6 +1,8 @@
 ; Inno Setup 6 – Installer „KP Lager Client“ (Fenster zum Server + D30-PC-Bridge)
 #define AppName "KP Lager"
-#define AppVersion "0.1.0"
+#ifndef AppVersion
+  #define AppVersion "0.0.0"
+#endif
 
 [Setup]
 AppId={{6F0C3C2E-7B7A-4B0E-9A53-2D6F6E8C1A02}
@@ -9,7 +11,7 @@ AppVersion={#AppVersion}
 DefaultDirName={autopf}\KP Lager Client
 DefaultGroupName=KP Lager
 OutputDir=..\..\dist\installer
-OutputBaseFilename=KP-Lager-Client-Setup
+OutputBaseFilename=KP-Lager-Client-Setup-{#AppVersion}
 Compression=lzma2
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible

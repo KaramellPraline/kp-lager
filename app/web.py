@@ -22,11 +22,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import (
+    __version__,
     api,
     apikeys,
     backup,
     cables,
     cards,
+    catalog,
     choices,
     codes,
     d30,
@@ -49,10 +51,14 @@ from app import (
     quick,
     repo,
     scheduler,
+    status,
+    typesettings,
     value,
+    web_extra,
     web_katalog,
     web_lab,
     web_ops,
+    web_sortiment,
     withdrawals,
 )
 from app import search as finder  # Modul; „search“ ist der Name der Such-Route
@@ -277,6 +283,8 @@ def create_app(settings: Settings) -> FastAPI:
     web_ops.register(app, Conn, render, redirect, settings)
     web_katalog.register(app, Conn, render, redirect, settings)
     web_lab.register(app, Conn, render, redirect, settings)
+    web_sortiment.register(app, Conn, render, redirect, settings)
+    web_extra.register(app, Conn, render, redirect, settings)
 
     @app.middleware("http")
     async def force_https(request: Request, call_next: Any) -> Response:
@@ -296,7 +304,7 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {"status": "ok", "version": __version__}
 
     @app.get("/ca.crt")
     def ca_cert() -> Response:
@@ -319,6 +327,10 @@ def create_app(settings: Settings) -> FastAPI:
             ("/inventur", "select.check", "Inventur fällig",
              len(inventory.due(conn, prefs.number(conn, "inventory_days")))),
             ("/labels", "content.tag", "Etiketten wartend", labels.queue_count(conn)),
+            ("/entnahmen", "action.take", "Entnahmen offen", withdrawals.open_count(conn)),
+            ("/ablauf", "status.attention", "Läuft ab", len(status.expiring(conn))),
+            ("/projekte", "content.project", "Offene Projekte",
+             conn.execute("SELECT COUNT(*) FROM project WHERE done = 0").fetchone()[0]),
             ("/verliehen", "content.lent", "Verliehen", len(repo.lent_items(conn))),
         ]  # fmt: skip
         worth, _unpriced = value.total(conn)
@@ -693,6 +705,11 @@ def create_app(settings: Settings) -> FastAPI:
             individual=bool(item["code"]) and item["code"][:3] in repo.INDIVIDUAL,
             today=date.today().isoformat(),
             cards=cards.for_item(conn, item_id),
+            ctype=catalog.lookup(conn, item["ctype"]) if item["ctype"] else None,
+            cvalues=catalog.values_of(item),
+            type_groups=catalog.grouped(conn) if not item["material"] else [],
+            tset=typesettings.get(conn, typesettings.key_of(item)),
+            reservations=projects.reservations(conn, item_id),
             buys=purchases.for_item(conn, item_id),
             supplier_names=purchases.names(conn),
         )
@@ -751,13 +768,16 @@ def create_app(settings: Settings) -> FastAPI:
         return render(request, conn, "import.html", report=None, text="", done=False)
 
     @app.post("/import", response_class=HTMLResponse)
-    def import_run(
+    async def import_run(
         request: Request,
         conn: Conn,
         text: Annotated[str, Form()] = "",
         action: Annotated[str, Form()] = "preview",
+        file: Annotated[UploadFile | None, File()] = None,
     ) -> HTMLResponse:
         commit = action == "commit"
+        if file is not None and file.filename:
+            text = (await file.read()).decode("utf-8-sig", errors="replace")
         report = importer.run(conn, text, commit=commit)
         done = commit and not report.errors
         return render(request, conn, "import.html", report=report, text=text, done=done)
@@ -1363,19 +1383,49 @@ def create_app(settings: Settings) -> FastAPI:
             {"type": "unknown", "code": norm, "name": "", "prefix": codes.prefix_of(norm)}
         )
 
+    @app.get("/sw.js")
+    def service_worker() -> Response:
+        """Service Worker im Wurzelpfad (Geltungsbereich „/“); Version = Stand von CSS/JS."""
+        js = (APP_DIR / "static" / "sw.js").read_text(encoding="utf-8")
+        return Response(
+            js.replace("__V__", str(templates.env.globals["ASSET_V"])),
+            media_type="text/javascript",
+            headers={"Cache-Control": "no-cache", "Service-Worker-Allowed": "/"},
+        )
+
+    @app.get("/offline", response_class=HTMLResponse)
+    def offline_page(request: Request, conn: Conn) -> HTMLResponse:
+        return render(request, conn, "offline.html")
+
     @app.get("/manifest.webmanifest")
     def manifest(conn: Conn) -> JSONResponse:
         return JSONResponse(
             {
+                "id": "/",
                 "name": prefs.raw(conn, "app_name"),
                 "short_name": prefs.raw(conn, "app_name"),
+                "description": "Lager mit QR-Codes: suchen, einlagern, entnehmen – auch offline.",
+                "lang": "de",
                 "start_url": "/",
+                "scope": "/",
                 "display": "standalone",
-                "background_color": "#ffffff",
-                "theme_color": "#2563eb",
+                "orientation": "portrait",
+                "background_color": "#0B0306",
+                "theme_color": "#0B0306",
                 "icons": [
                     {"src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png"},
                     {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png"},
+                    {
+                        "src": "/static/icon-512.png",
+                        "sizes": "512x512",
+                        "type": "image/png",
+                        "purpose": "maskable",
+                    },
+                ],
+                "shortcuts": [
+                    {"name": "Scannen", "url": "/scan"},
+                    {"name": "Hinzufügen", "url": "/neu/go"},
+                    {"name": "Suche", "url": "/suche"},
                 ],
             },
             media_type="application/manifest+json",

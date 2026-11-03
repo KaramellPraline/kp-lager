@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Typen zuordnen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/sortiment">Sortiment</a> › Typen zuordnen</nav>
+<h1>Typen zuordnen</h1>
+<p class="meta">{{ total }} Teile haben noch keinen Typ. Vorschläge kommen aus dem Namen (Regeln, keine KI). Prüfen, Häkchen setzen, übernehmen.
+Zeigt höchstens 100 auf einmal.</p>
+{% if rows %}
+<form method="post" class="stack">
+  <label class="check"><input type="checkbox" name="rename" value="1"> Namen aus den Feldern neu bilden (sonst bleibt der Name)</label>
+  <ul class="list">
+    {% for r in rows %}{% set g = r.guess %}
+    <li class="item assign-row">
+      <input type="checkbox" name="sel" value="{{ r.id }}" {% if g and g[2] >= 6 %}checked{% endif %} aria-label="{{ r.name }} übernehmen">
+      <a class="name" href="/items/{{ r.id }}">{{ r.name }}<small>{{ r.path }}{% if g %} · {% for k, v in g[1].items() %}{{ k }}={{ v }} {% endfor %}{% endif %}</small></a>
+      <select name="typ_{{ r.id }}" aria-label="Typ für {{ r.name }}">
+        <option value="">– kein Typ –</option>
+        {% for grp, ts in groups %}<optgroup label="{{ grp }}">{% for t in ts %}<option value="{{ t.key }}" {% if g and g[0] == t.key %}selected{% endif %}>{{ t.label }}</option>{% endfor %}</optgroup>{% endfor %}
+      </select>
+      <input type="hidden" name="vals_{{ r.id }}" value="{{ (g[1] if g else {})|tojson|forceescape }}">
+    </li>
+    {% endfor %}
+  </ul>
+  <button class="primary">{{ icon('select.check', size='sm') }} Ausgewählte übernehmen</button>
+</form>
+{% else %}<p class="empty">Alle Teile haben einen Typ.</p>{% endif %}
+{% endblock %}

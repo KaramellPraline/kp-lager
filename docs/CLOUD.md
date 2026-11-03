@@ -23,6 +23,6 @@ Port 8000 wird weitergeleitet.
 ## Was in der Cloud geht – und was nicht
 
 - Geht: App starten, Tests/Lint/Typecheck, Katalog, Baum, API/CLI/MCP, Etikettenbild, XLSX, Migrationen.
-- Nur am Server-PC: D30-Druck (Bluetooth), lokales KI-Gateway/Whisper, `tools/serve.ps1`.
-- Änderungen kommen per PR zurück nach `main`; auf dem Server dann `git pull` und `tools/serve.ps1` (Neustart).
+- Nur am Windows-PC: D30-Druck (Bluetooth, Client mit Bridge).
+- Änderungen kommen per PR zurück nach `main`; auf dem Server dann `docker compose up -d --build` (oder neue Version ziehen).
 - Geheimnisse (`LAGER_API_KEY`, Tokens) nie ins Repo; in der Cloud-Umgebung als Secret/Umgebungsvariable setzen.

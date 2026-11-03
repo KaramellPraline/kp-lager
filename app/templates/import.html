@@ -2,7 +2,7 @@
 {% block title %}Import{% endblock %}
 {% block content %}
 <h1>Import (JSON)</h1>
-<p class="meta">JSON-Dateien einfügen (eine oder mehrere, auch mit ```json), z. B. aus einem früheren Export. Erst Vorschau, dann übernehmen. Bereits vorhandene Teile werden übersprungen.</p>
+<p class="meta">JSON einfügen oder als Datei laden: ein <b>vollständiger Export</b> (Mehr › Export) wird wiederhergestellt – Behälter und Teile werden über ihren Code zusammengeführt, fehlende Codes dynamisch vergeben und die Zähler neu gesetzt. Sonst Inventur-JSON. Erst Vorschau, dann übernehmen; Vorhandenes wird übersprungen.</p>
 
 {% if report %}
 <section class="report">
@@ -15,13 +15,20 @@
     <li>{{ report.containers_created|length }} neue Behälter{% if report.containers_created %}: {{ report.containers_created|join(', ') }}{% endif %}</li>
     {% if report.containers_moved %}<li>Umgezogen: {{ report.containers_moved|join(', ') }}</li>{% endif %}
     <li>{{ report.items_added }} Teile neu, {{ report.items_skipped }} schon vorhanden</li>
+    {% if report.restored %}
+    <li>{{ report.events_added }} Verlaufseinträge</li>
+    <li>{{ report.codes_assigned }} fehlende Codes dynamisch vergeben (Etiketten liegen in der Warteschlange)</li>
+    <li>{{ report.typed }} Teile automatisch einem Typ zugeordnet – Rest unter <a href="/sortiment/zuordnen">Typen zuordnen</a></li>
+    <li>Code-Zähler automatisch aus dem Bestand gesetzt</li>
+    {% endif %}
     {% for w in report.warnings %}<li>{{ icon('status.attention') }} {{ w }}</li>{% endfor %}
   </ul>
   {% endif %}
 </section>
 {% endif %}
 
-<form method="post" action="/import" class="stack">
+<form method="post" action="/import" class="stack" enctype="multipart/form-data">
+  <label>Datei (JSON) <input type="file" name="file" accept=".json,application/json,text/plain"></label>
   <textarea name="text" rows="14" placeholder='{"code":"0042","name":"Elektronik","kind":"eurobox","parent":null,"items":[...]}'>{{ text if not done else '' }}</textarea>
   <div class="row">
     <button name="action" value="preview">Vorschau</button>

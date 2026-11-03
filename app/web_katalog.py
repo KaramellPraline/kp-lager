@@ -5,7 +5,7 @@ from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import catalog, d30, kasten, labels, repo
 from app.config import Settings
@@ -52,7 +52,7 @@ def register(
     @app.get("/neu", response_class=HTMLResponse)
     def katalog_page(request: Request, conn: Conn, typ: str = "") -> HTMLResponse:
         key = typ or request.cookies.get(TYPE_COOKIE, "") or "schraube"
-        current = catalog.BY_KEY.get(key) or catalog.BY_KEY["schraube"]
+        current = catalog.lookup(conn, key) or catalog.BY_KEY["schraube"]
         last = targets_cookie(request)
         recent = conn.execute(
             "SELECT i.id, i.name, i.code, i.qty, c.name AS place FROM item i"
@@ -62,7 +62,7 @@ def register(
             request,
             conn,
             "katalog.html",
-            groups=catalog.grouped(),
+            groups=catalog.grouped(conn),
             ctype=current,
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
@@ -70,22 +70,31 @@ def register(
         )
 
     @app.get("/neu/vorschau")
-    def katalog_preview(request: Request, typ: str) -> JSONResponse:
-        t = catalog.BY_KEY.get(typ)
+    def katalog_preview(request: Request, typ: str, conn: Conn) -> JSONResponse:
+        t = catalog.lookup(conn, typ)
         if t is None:
             return JSONResponse({"name": ""})
         values = {f.key: request.query_params.get(f"f_{f.key}", "") for f in t.fields}
         return JSONResponse({"name": catalog.name(t, values)})
 
     @app.post("/neu")
-    def katalog_create(request: Request, conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_create(request: Request, conn: Conn, form: Form) -> Response:
         typ = form.get("typ", "")
-        t = catalog.BY_KEY.get(typ)
+        t = catalog.lookup(conn, typ)
         if t is None:
             raise LagerError("Bitte einen Teile-Typ wählen")
         target = int(form["target"]) if form.get("target", "").isdigit() else repo.inbox(conn)
         qty = int(form["qty"]) if form.get("qty", "").strip().isdigit() else None
         values = {f.key: form.get(f"f_{f.key}", "") for f in t.fields}
+        dupes = [] if form.get("force") else catalog.duplicates(conn, typ, values)
+        if dupes:  # gibt es schon: Menge dort erhöhen statt doppelt anlegen
+            return render(
+                request, conn, "neu_dublette.html", ctype=t, form=form, qty=qty,
+                dname=catalog.name(t, values),
+                dupes=[
+                    {**dict(d), "path": repo.path_label(conn, d["container_id"])} for d in dupes
+                ],
+            )  # fmt: skip
         item_id = catalog.create(conn, typ, values, target, qty)
         item = repo.get_item(conn, item_id)
         msg = f"„{item['name']}“ angelegt ({item['code']})"
@@ -96,6 +105,22 @@ def register(
         resp.set_cookie(TYPE_COOKIE, typ, max_age=31_536_000, samesite="lax")
         remember_target(resp, request, target)
         return resp
+
+    @app.post("/neu/dublette/{item_id}")
+    def katalog_add_to_existing(item_id: int, conn: Conn, form: Form) -> RedirectResponse:
+        item = repo.get_item(conn, item_id)
+        qty = int(form["qty"]) if form.get("qty", "").strip().isdigit() else 0
+        if qty and item["qty"] is not None:
+            repo.change_qty(conn, item_id, qty, note="Nachgelegt (Hinzufügen)")
+            msg = f"„{item['name']}“: +{qty} → {item['qty'] + qty}"
+        elif qty:
+            repo.update_item(conn, item_id, qty=qty)
+            msg = f"„{item['name']}“: jetzt {qty} gezählt"
+        else:
+            msg = f"„{item['name']}“ gibt es schon – nichts geändert"
+        return redirect(
+            f"/neu?typ={item['ctype'] or ''}", msg, repo.last_event_id(conn) if qty else None
+        )
 
     # --- Einsatz-Assistent ----------------------------------------------------------------
 

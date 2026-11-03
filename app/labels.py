@@ -4,9 +4,13 @@ QR-Inhalt komplett in Großbuchstaben (HTTP://LAGER.HOME.LAN/C/EUR-001): Dann nu
 Alphanumerik-Modus, wird eine Version kleiner und auf 10 mm besser scannbar. /C/ = /c/.
 """
 
+import copy
 import io
+import json
+import re
 import sqlite3
 from dataclasses import dataclass
+from typing import Any
 
 import segno
 from openpyxl import Workbook
@@ -23,6 +27,64 @@ class Label:
     qr: str
     text: str = ""
     extra: str = ""
+    # Layout je Typ: ((Text, Höhenanteil, Ausrichtung), …) und QR-Position; leer = Standard
+    lines: tuple[tuple[str, int, str], ...] = ()
+    qr_pos: str = "left"
+
+
+# --- Layout je Typ -------------------------------------------------------------------------
+
+QR_POSITIONS = ("left", "right", "none")
+ALIGNS = ("left", "center", "right")
+MAX_LINES = 4
+Layout = dict[str, Any]
+DEFAULT_LAYOUT: Layout = {
+    "qr": "left",
+    "lines": [{"t": "{name}", "w": 1, "a": "center"}, {"t": "{code}", "w": 1, "a": "center"}],
+}
+
+
+def default_layout() -> Layout:
+    return copy.deepcopy(DEFAULT_LAYOUT)
+
+
+def parse_layout(raw: str | Layout | None) -> Layout:
+    """JSON-Layout prüfen und bereinigen; ungültig/leer -> Standard (Name + Code)."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw) if raw.strip() else None
+        except ValueError:
+            raw = None
+    if not isinstance(raw, dict):
+        return default_layout()
+    qr = raw.get("qr") if raw.get("qr") in QR_POSITIONS else "left"
+    lines: list[dict[str, Any]] = []
+    given = raw.get("lines")
+    for ln in given if isinstance(given, list) else []:
+        if len(lines) >= MAX_LINES:
+            break
+        if not isinstance(ln, dict):
+            continue
+        tpl = str(ln.get("t", "")).strip()[:80]
+        if not tpl:
+            continue
+        try:
+            weight = max(1, min(4, int(ln.get("w", 1))))
+        except (TypeError, ValueError):
+            weight = 1
+        align = ln.get("a") if ln.get("a") in ALIGNS else "center"
+        lines.append({"t": tpl, "w": weight, "a": align})
+    return {"qr": qr, "lines": lines or default_layout()["lines"]}
+
+
+def layout_lines(layout: Layout, values: dict[str, str]) -> tuple[tuple[str, int, str], ...]:
+    """Vorlagen mit Werten füllen; leere Zeilen fallen weg (Höhe verteilt sich neu)."""
+    out = []
+    for ln in layout["lines"]:
+        text = fill(ln["t"], values)
+        if text:
+            out.append((text, int(ln["w"]), str(ln["a"])))
+    return tuple(out)
 
 
 def qr_content(base_url: str, code: str) -> str:
@@ -67,12 +129,111 @@ def blank(conn: sqlite3.Connection, base_url: str, prefix: str, count: int) -> l
     ]
 
 
-def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> Label:
+def fill(template: str, values: dict[str, str]) -> str:
+    """„{thread}x{length} {head}“ -> „M3x10 Zylinderkopfschraube“; leere Felder fallen weg
+    (samt direkt angehängter Zeichen wie „x“ oder „mm“, wenn sie dadurch allein stünden)."""
+    out = []
+    for token in template.split():
+        keys = re.findall(r"{(\w+)}", token)
+        if keys and not all(values.get(k, "").strip() for k in keys):
+            continue
+        out.append(re.sub(r"{(\w+)}", lambda m: values.get(m.group(1), "").strip(), token))
+    return " ".join(out).strip()
+
+
+def item_texts(conn: sqlite3.Connection, item: sqlite3.Row) -> tuple[str, str]:
+    """(Text, Zusatz) fürs Teile-Etikett: Vorlage des Typs, sonst Name und Ort."""
+    from app import catalog, materials, typesettings  # spät: Zyklen vermeiden
+
     holder = conn.execute(
         "SELECT kind, name, position FROM container WHERE id = ?", (item["container_id"],)
     ).fetchone()
-    extra = holder["position"] if holder["kind"] == "compartment" else holder["name"]
-    return Label(item["code"], qr_content(base_url, item["code"]), item["name"], extra or "")
+    place = (holder["position"] if holder["kind"] == "compartment" else holder["name"]) or ""
+    text, extra = item["name"], place
+    key = typesettings.key_of(item)
+    if key:
+        ts = typesettings.get(conn, key)
+        if ts["label_main"] or ts["label_extra"]:
+            values = {**materials.specs(item), **catalog.values_of(item)}
+            values.update({"name": item["name"], "code": item["code"] or "", "ort": place})
+            text = fill(ts["label_main"], values) or item["name"] if ts["label_main"] else text
+            extra = fill(ts["label_extra"], values) if ts["label_extra"] else extra
+    return text, extra
+
+
+def item_values(conn: sqlite3.Connection, item: sqlite3.Row) -> dict[str, str]:
+    """Felder fürs Etikett: Typ-Felder, Datenblatt, dazu {name}, {code}, {ort}."""
+    from app import catalog, materials
+
+    holder = conn.execute(
+        "SELECT kind, name, position FROM container WHERE id = ?", (item["container_id"],)
+    ).fetchone()
+    place = (holder["position"] if holder["kind"] == "compartment" else holder["name"]) or ""
+    values = {**materials.specs(item), **catalog.values_of(item)}
+    values.update({"name": item["name"], "code": item["code"] or "", "ort": place})
+    return values
+
+
+def type_layout(conn: sqlite3.Connection, item: sqlite3.Row) -> Layout | None:
+    """Gespeichertes Layout des Typs dieses Teils (None = Standarddarstellung)."""
+    from app import typesettings
+
+    key = typesettings.key_of(item)
+    raw = typesettings.get(conn, key).get("label_layout") if key else ""
+    return parse_layout(raw) if raw else None
+
+
+def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> Label:
+    text, extra = item_texts(conn, item)
+    label = Label(item["code"], qr_content(base_url, item["code"]), text, extra)
+    return with_layout(conn, label, item)
+
+
+def with_layout(conn: sqlite3.Connection, label: Label, item: sqlite3.Row | None = None) -> Label:
+    """Layout des Typs anhängen (aus der Warteschlange kommen Etiketten ohne Layout)."""
+    if item is None:
+        item = conn.execute("SELECT * FROM item WHERE code = ?", (label.code,)).fetchone()
+    layout = type_layout(conn, item) if item is not None else None
+    if layout is None:
+        return label
+    lines = layout_lines(layout, item_values(conn, item))
+    shown = [t for t, _, _ in lines if t != (item["code"] or "")]  # ohne die reine Code-Zeile
+    text = shown[0] if shown else label.text
+    extra = shown[1] if len(shown) > 1 else ""
+    return Label(label.code, label.qr, text, extra, lines, str(layout["qr"]))
+
+
+def unprinted_in(conn: sqlite3.Connection, base_url: str, container_id: int) -> list[Label]:
+    """Sammeldruck: alle noch nicht gedruckten Etiketten im Behälter samt Unterbehältern
+    (Behälter selbst, Unterbehälter mit Code, Teile mit Code)."""
+    tree = conn.execute(
+        """
+        WITH RECURSIVE down(id) AS (
+            SELECT id FROM container WHERE id = ?
+            UNION ALL SELECT c.id FROM container c JOIN down ON c.parent_id = down.id
+        ) SELECT id FROM down
+        """,
+        (container_id,),
+    ).fetchall()
+    ids = [r["id"] for r in tree]
+    marks = ",".join("?" * len(ids))
+    out = []
+    for c in conn.execute(
+        f"SELECT * FROM container WHERE id IN ({marks}) AND code IS NOT NULL AND label_printed = 0"
+        " ORDER BY id",
+        ids,
+    ):
+        text, extra = container_label(conn, c)
+        out.append(Label(c["code"], qr_content(base_url, c["code"]), text, extra))
+    out += [
+        item_label(conn, base_url, i)
+        for i in conn.execute(
+            f"SELECT * FROM item WHERE container_id IN ({marks}) AND code IS NOT NULL"
+            " AND label_printed = 0 AND archived = 0 ORDER BY container_id, name",
+            ids,
+        )
+    ]
+    return out
 
 
 def pending(conn: sqlite3.Connection, base_url: str) -> list[Label]:
@@ -187,7 +348,7 @@ def enqueue(conn: sqlite3.Connection, code: str, text: str, extra: str = "") -> 
 
 def queue(conn: sqlite3.Connection, base_url: str) -> list[Label]:
     return [
-        Label(r["code"], qr_content(base_url, r["code"]), r["text"], r["extra"])
+        with_layout(conn, Label(r["code"], qr_content(base_url, r["code"]), r["text"], r["extra"]))
         for r in conn.execute("SELECT * FROM label_queue ORDER BY added_at, code")
     ]
 

@@ -422,3 +422,42 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
 table.pinout { width: 100%; border-collapse: collapse; font: 14px var(--font-mono); }
 table.pinout th, table.pinout td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
 @media (max-width: 420px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+
+/* Sortiment: Filter, Variantenraster, Zuordnen */
+.facets { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.facets label { display: flex; flex-direction: column; font-size: 13px; color: var(--sub); min-width: 120px; }
+.raster-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: var(--r-sm); }
+table.raster { border-collapse: collapse; font-size: 14px; min-width: 100%; }
+table.raster th, table.raster td { border: 1px solid var(--line); padding: 6px 8px; text-align: center; white-space: nowrap; }
+table.raster thead th, table.raster tbody th { background: var(--surface); position: sticky; }
+table.raster tbody th { left: 0; text-align: left; }
+table.raster td.has a { display: block; text-decoration: none; color: var(--fg); }
+table.raster td.has { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+table.raster td.empty { color: var(--sub); }
+table.raster small { display: block; color: var(--sub); font-size: 11px; }
+.assign-row { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
+.assign-row select { grid-column: 2; }
+
+/* Schnellaktionen */
+.qa-more { background: none; border: none; padding: 6px; color: var(--sub); }
+.qa-sheet { position: fixed; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 60;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-md, 14px); padding: 8px;
+  display: flex; flex-direction: column; gap: 4px; box-shadow: 0 10px 40px rgba(0,0,0,.45); max-width: 480px; margin: 0 auto; }
+.qa-sheet .qa-title { padding: 8px 10px; font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.qa-sheet button { text-align: left; padding: 12px 10px; border-radius: var(--r-sm); }
+.qa-sheet .qa-cancel { text-align: center; color: var(--sub); }
+
+/* Offline */
+.offline-bar { position: fixed; left: 8px; right: 8px; bottom: calc(76px + env(safe-area-inset-bottom)); z-index: 55;
+  background: var(--raised); border: 1px solid var(--accent); border-radius: var(--r-sm); padding: 10px 12px; font-size: 14px; }
+html.is-offline .topbar::after { content: "offline"; font: 12px var(--font-mono); color: var(--accent); margin-left: 8px; }
+@media (min-width: 900px) { .offline-bar { bottom: 16px; left: auto; max-width: 420px; } }
+
+/* Etiketten-Layout */
+.label-stage { display: flex; justify-content: center; padding: 14px; background: #fff; }
+.label-preview { image-rendering: pixelated; width: 100%; max-width: 480px; height: auto; border: 1px dashed #bbb; background: #fff; }
+.layout-line { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.layout-line .row { display: flex; gap: 6px; }
+.layout-line .row input { flex: 1 1 0; min-width: 0; }
+.layout-line .row select { flex: 1 1 0; min-width: 0; }
+.layout-line .row button { flex: 0 0 48px; }

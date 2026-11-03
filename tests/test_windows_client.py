@@ -4,9 +4,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parents[1] / "windows" / "client"))
-sys.path.insert(0, str(Path(__file__).parents[1] / "windows" / "server"))
 import kp_client as lc  # noqa: E402
-import kp_server as ls  # noqa: E402
 
 
 def test_normalize_url() -> None:
@@ -30,18 +28,3 @@ def test_config_roundtrip_and_precedence(tmp_path: Path) -> None:
 def test_client_flags() -> None:
     a = lc.parse(["--bridge-only", "--port", "9000", "--no-bridge", "--reset"])
     assert a.bridge_only and a.no_bridge and a.reset and a.port == 9000
-
-
-def test_server_configure(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    for k in ("LAGER_DATA_DIR", "LAGER_BASE_URL", "LAGER_D30", "LAGER_AUTO_BACKUP"):
-        monkeypatch.delenv(k, raising=False)
-    args = ls.parse(["--data", str(tmp_path / "d"), "--port", "8123", "--no-d30"])
-    data = ls.configure(args)
-    import os
-
-    assert data.is_dir() and os.environ["LAGER_DATA_DIR"] == str(data)
-    assert (
-        os.environ["LAGER_BASE_URL"] == "http://localhost:8123" and os.environ["LAGER_D30"] == "0"
-    )
-    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
-    assert ls.default_data_dir() == tmp_path / "KP Lager Server" / "data"

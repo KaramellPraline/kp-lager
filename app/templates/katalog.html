@@ -40,6 +40,7 @@
           <option value="">Zu sortieren (später einräumen)</option>
           {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
         </select>
+        <div class="chips place-sugg" data-select="target" aria-label="Platz-Vorschläge"></div>
       </div>
       {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
         <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}

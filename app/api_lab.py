@@ -12,17 +12,25 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import (
+    __version__,
     cards,
+    catalog,
     codes,
+    expiry,
     inventory,
+    invoice,
     kinds,
+    labels,
     materials,
     prefs,
     projects,
     purchases,
     repo,
     scheduler,
+    sortiment,
+    typesettings,
     value,
+    withdrawals,
 )
 from app.repo import LagerError, Row
 
@@ -45,6 +53,9 @@ class ItemPatch(BaseModel):
     price: float | None = None  # Stückpreis in Euro
     on_list: bool | None = None  # auf die Einkaufsliste
     archived: bool | None = None
+    ctype: str | None = None  # Typ-Schlüssel (GET /types/catalog), "" = Typ entfernen
+    fields: dict[str, str] | None = None  # Felder des Typs; mit rename=true Name neu bilden
+    rename: bool = False
 
 
 class ContainerNew(BaseModel):
@@ -88,6 +99,23 @@ class CardNew(BaseModel):
     kind: str = "note"  # note | pinout
 
 
+class ImportText(BaseModel):
+    text: str  # CSV oder Rechnungstext
+    supplier: str = ""
+
+
+class ImportRow(BaseModel):
+    line: dict[str, Any]  # wie aus /purchases/import/preview
+    target: str = "skip"  # "item:<id>" | "new" | "skip"
+
+
+class ImportApply(BaseModel):
+    rows: list[ImportRow]
+    supplier: str = ""
+    bought_at: str = ""
+    book: bool = True
+
+
 class Count(BaseModel):
     qty: int | None = None  # gezählte Menge (leer = nur bestätigen)
 
@@ -113,6 +141,9 @@ def register(
                 "order_qty": i["order_qty"], "on_list": bool(i["on_list"]),
                 "order_url": i["order_url"], "lent_to": i["lent_to"], "expires": i["expires"],
                 "specs": materials.specs(i), "checked_at": i["checked_at"],
+                "ctype": i["ctype"], "fields": catalog.values_of(i),
+                "reserved": [{"project": r["name"], "project_id": r["id"], "qty": r["reserved"]}
+                             for r in projects.reservations(conn, i["id"])],
                 "last_supplier": purchases.last_supplier(conn, i["id"]),
                 "cards": [
                     {"id": c["id"], "kind": c["kind"], "title": c["title"], "body": c["body"]}
@@ -133,6 +164,7 @@ def register(
         amount, unpriced = value.total(conn)
         one = conn.execute
         return {
+            "version": __version__,
             "items": one("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
             "containers": one("SELECT COUNT(*) FROM container").fetchone()[0],
             "value_eur": round(amount, 2),
@@ -144,6 +176,55 @@ def register(
             "last_backup": codes.get_setting(conn, "backup_last", ""),
             "extern_backup": scheduler.extern_target(conn) != "",
         }
+
+    @router.get("/ha")
+    def home_assistant(conn: Conn) -> dict[str, Any]:
+        """Home-Assistant-REST-Sensor: state = Teile unter Mindestbestand, Rest als Attribute."""
+        low = repo.shopping_list(conn)
+        due = expiry.due(conn)
+        amount, _ = value.total(conn)
+        err = codes.get_setting(conn, "backup_error", "")
+        return {
+            "state": len(low),
+            "attributes": {
+                "to_buy": len(low),
+                "to_buy_items": [f"{r['name']} ({r['need']}×)" for r in low[:20]],
+                "to_buy_eur": round(sum(r["cost"] for r in low if r["cost"] is not None), 2),
+                "expired": len(due["expired"]),
+                "expiring": len(due["soon"]),
+                "expiring_items": [
+                    f"{r['name']} ({r['expires']})" for r in (due["expired"] + due["soon"])[:20]
+                ],
+                "unsorted": len(repo.items_in(conn, repo.inbox(conn))),
+                "inventory_due": len(inventory.due(conn, prefs.number(conn, "inventory_days"))),
+                "labels_waiting": labels.queue_count(conn),
+                "open_withdrawals": withdrawals.open_count(conn),
+                "open_projects": conn.execute(
+                    "SELECT COUNT(*) FROM project WHERE done = 0"
+                ).fetchone()[0],
+                "items": conn.execute("SELECT COUNT(*) FROM item WHERE archived = 0").fetchone()[0],
+                "value_eur": round(amount, 2),
+                "last_backup": codes.get_setting(conn, "backup_last", ""),
+                "backup_ok": not err,
+                "version": __version__,
+                "unit_of_measurement": "Teile",
+                "friendly_name": "Lager: nachkaufen",
+            },
+        }
+
+    @router.get("/ha/item/{ref}")
+    def home_assistant_item(conn: Conn, ref: str) -> dict[str, Any]:
+        """Bestand eines einzelnen Teils (z. B. Filament-Spulen) als eigener Sensor."""
+        i = find_item(conn, ref)
+        min_eff, _ = typesettings.effective_min(conn, i)
+        return {
+            "state": i["qty"] if i["qty"] is not None else "ungezählt",
+            "attributes": {
+                "name": i["name"], "code": i["code"], "unit": i["unit"], "min": min_eff,
+                "low": i["qty"] is not None and min_eff is not None and i["qty"] < min_eff,
+                "path": repo.path_label(conn, i["container_id"]), "expires": i["expires"],
+            },
+        }  # fmt: skip
 
     @router.get("/tree")
     def tree(conn: Conn, depth: int = 4) -> list[dict[str, Any]]:
@@ -162,6 +243,31 @@ def register(
 
         return [walk(c, 1) for c in repo.children(conn, None)]
 
+    @router.get("/types/catalog")
+    def catalog_types(conn: Conn) -> list[dict[str, Any]]:
+        """Alle Typen (Katalog + eigene) mit Feldern und Auswahlwerten, plus Anzahl Teile."""
+        n = sortiment.counts(conn)
+        return [
+            {"key": t.key, "label": t.label, "group": g, "category": t.cat,
+             "items": n.get(t.key, 0),
+             "fields": [{"key": f.key, "label": f.label, "unit": f.unit, "options": list(f.options)}
+                        for f in t.fields]}
+            for g, ts in catalog.grouped(conn) for t in ts
+        ]  # fmt: skip
+
+    @router.get("/types/catalog/{key}/items")
+    def type_items(conn: Conn, key: str) -> list[dict[str, Any]]:
+        """Teile eines Typs (auch mat:fil, mat:cbl …) mit Feldwerten, natürlich sortiert."""
+        try:
+            k = sortiment.kind(conn, key)
+        except LagerError as exc:
+            raise HTTPException(404, str(exc)) from None
+        return [
+            {"code": r["code"], "name": r["name"], "qty": r["qty"], "unit": r["unit"],
+             "path": r["path"], "fields": r["values"]}
+            for r in sortiment.items(conn, k)
+        ]  # fmt: skip
+
     @router.get("/items")
     def list_items(
         conn: Conn, container: str = "", limit: int = 200, offset: int = 0, low: bool = False
@@ -177,7 +283,10 @@ def register(
             where += f" AND i.container_id IN ({','.join('?' * len(ids))})"
             args += ids
         if low:
-            where += " AND i.min_qty IS NOT NULL AND i.qty IS NOT NULL AND i.qty < i.min_qty"
+            where += (
+                " AND i.qty IS NOT NULL AND i.qty < COALESCE(i.min_qty, (SELECT ts.min_qty"
+                " FROM type_setting ts WHERE ts.key = COALESCE(i.ctype, 'mat:' || i.material)))"
+            )
         total = conn.execute(f"SELECT COUNT(*) FROM item i WHERE {where}", args).fetchone()[0]
         rows = conn.execute(
             f"SELECT i.* FROM item i WHERE {where} ORDER BY i.id LIMIT ? OFFSET ?",
@@ -192,12 +301,26 @@ def register(
         item = find_item(conn, ref)
         data = body.model_dump(exclude_none=True)
         qty, delta = data.pop("qty", None), data.pop("qty_delta", None)
+        ctype, fields, rename = (
+            data.pop("ctype", None),
+            data.pop("fields", None),
+            data.pop("rename"),
+        )
         for flag in ("on_list", "archived"):
             if flag in data:
                 data[flag] = int(data[flag])
         try:
             if data:
                 repo.update_item(conn, item["id"], **data)
+            if ctype == "":
+                with conn:
+                    conn.execute("UPDATE item SET ctype = NULL WHERE id = ?", (item["id"],))
+            elif ctype or fields is not None:
+                key = ctype or item["ctype"]
+                if not key:
+                    raise LagerError("Teil hat keinen Typ – ctype angeben")
+                current = catalog.values_of(item) if key == item["ctype"] else {}
+                catalog.set_fields(conn, item["id"], key, {**current, **(fields or {})}, rename)
             if qty is not None or delta is not None:
                 if item["qty"] is None and qty is None:
                     raise LagerError("Teil ist ungezählt – bitte qty setzen")
@@ -267,7 +390,8 @@ def register(
             "missing_cost_eur": round(bom["cost"], 2),
             "lines": [
                 {"id": r["id"], "item": r["code"], "name": r["name"], "qty": r["qty"],
-                 "stock": r["stock"], "status": r["status"], "short": r["short"],
+                 "stock": r["stock"], "free": r["free"], "reserved": r["reserved"],
+                 "status": r["status"], "short": r["short"],
                  "path": r["path"], "gathered": bool(r["gathered"])}
                 for r in bom["lines"]
             ],
@@ -312,6 +436,36 @@ def register(
             raise HTTPException(404, str(exc)) from None
         add_lines(conn, pid, lines)
         return project_json(conn, pid)
+
+    @router.post("/projects/{pid}/reserve", dependencies=[Write])
+    def project_reserve(conn: Conn, pid: int, release: bool = False) -> dict[str, Any]:
+        """Verfügbares für das Projekt reservieren (`release=true` hebt die Reservierung auf)."""
+        try:
+            projects.get(conn, pid)
+        except LagerError as exc:
+            raise HTTPException(404, str(exc)) from None
+        if release:
+            projects.release(conn, pid)
+        else:
+            projects.reserve(conn, pid)
+        return project_json(conn, pid)
+
+    @router.post("/purchases/import/preview")
+    def import_preview(conn: Conn, body: ImportText) -> list[dict[str, Any]]:
+        """Rechnungstext oder CSV -> erkannte Positionen mit Zuordnungsvorschlag (ändert nichts)."""
+        try:
+            return invoice.preview(conn, invoice.parse(body.text), body.supplier)
+        except LagerError as exc:
+            raise bad(exc) from None
+
+    @router.post("/purchases/import", dependencies=[Write])
+    def import_apply(conn: Conn, body: ImportApply) -> dict[str, int]:
+        """Positionen übernehmen: target je Zeile "item:<id>" | "new" | "skip"."""
+        try:
+            return invoice.apply(conn, [r.model_dump() for r in body.rows], body.supplier,
+                                 body.bought_at, body.book)  # fmt: skip
+        except LagerError as exc:
+            raise bad(exc) from None
 
     @router.post("/projects/{pid}/shopping", dependencies=[Write])
     def project_shopping(conn: Conn, pid: int) -> dict[str, Any]:

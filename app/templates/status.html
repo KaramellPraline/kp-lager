@@ -40,7 +40,7 @@
       <dt>Fotos</dt><dd>{{ s.photos }}</dd>
       <dt>Speicher frei</dt><dd>{{ s.disk_free }} von {{ s.disk_total }}{% if s.disk_low %} – wenig!{% endif %}</dd>
       <dt>Läuft seit</dt><dd>{{ s.uptime }}</dd>
-      <dt>Server</dt><dd>{{ s.now }} · Python {{ s.python }}</dd>
+      <dt>Server</dt><dd>Version <b>{{ s.version }}</b> · {{ s.now }} · Python {{ s.python }}</dd>
     </dl>
   </section>
   <section class="card">

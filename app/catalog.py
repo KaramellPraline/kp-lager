@@ -6,6 +6,7 @@ Teilename wie im Lager üblich („Zylinderkopfschraube M3x10“, „Holzinsert 
 schnelles Anlegen, nicht um exakte Erfassung – Details lassen sich am Teil nachtragen.
 """
 
+import json
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -815,8 +816,119 @@ TYPES: tuple[Type, ...] = (
 BY_KEY = {t.key: t for t in TYPES}
 
 
-def grouped() -> list[tuple[str, list[Type]]]:
-    return [(g, [t for t in TYPES if t.group == g]) for g in GROUPS]
+CUSTOM_GROUP = "Eigene Typen"
+
+
+def grouped(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
+    out = [(g, [t for t in TYPES if t.group == g]) for g in GROUPS]
+    if conn is not None:
+        mine = custom_types(conn)
+        groups = list(dict.fromkeys(t.group for t in mine))
+        out += [(g, [t for t in mine if t.group == g]) for g in groups]
+    return out
+
+
+# --- Eigene Typen ------------------------------------------------------------------------
+
+
+def slug(text: str) -> str:
+    table = str.maketrans({"ä": "ae", "ö": "oe", "ü": "ue", "ß": "ss"})
+    return re.sub(r"[^a-z0-9]+", "_", text.casefold().translate(table)).strip("_")[:30]
+
+
+def _custom(row: sqlite3.Row) -> Type:
+    fields = tuple(
+        Field(f["key"], f["label"], tuple(f.get("options", ())), f.get("unit", ""))
+        for f in json.loads(row["fields"] or "[]")
+    )
+    tpl = row["name_tpl"].strip() or " ".join("{" + f.key + "}" for f in fields)
+    parts = tuple((part,) for part in tpl.split())
+    return Type(row["key"], row["grp"] or CUSTOM_GROUP, row["label"], row["cat"], fields, parts)
+
+
+def custom_types(conn: sqlite3.Connection) -> list[Type]:
+    rows = conn.execute("SELECT * FROM custom_type ORDER BY grp, label COLLATE NOCASE").fetchall()
+    return [_custom(r) for r in rows]
+
+
+def lookup(conn: sqlite3.Connection | None, key: str) -> Type | None:
+    """Katalog-Typ oder eigener Typ."""
+    if key in BY_KEY:
+        return BY_KEY[key]
+    if conn is None or not key:
+        return None
+    row = conn.execute("SELECT * FROM custom_type WHERE key = ?", (key,)).fetchone()
+    return _custom(row) if row else None
+
+
+def parse_field_lines(text: str) -> list[dict[str, object]]:
+    """Formular „Feldname | Option, Option | Einheit“ (eine Zeile je Feld) -> Feldliste."""
+    out: list[dict[str, object]] = []
+    for line in text.splitlines():
+        parts = [p.strip() for p in line.split("|")]
+        if not parts[0]:
+            continue
+        key = slug(parts[0]) or f"f{len(out) + 1}"
+        if any(f["key"] == key for f in out):
+            raise LagerError(f"Feld „{parts[0]}“ doppelt")
+        options = [o.strip() for o in parts[1].split(",") if o.strip()] if len(parts) > 1 else []
+        out.append({"key": key, "label": parts[0], "options": options,
+                    "unit": parts[2] if len(parts) > 2 else ""})  # fmt: skip
+    if not out:
+        raise LagerError("Mindestens ein Feld angeben")
+    return out
+
+
+def save_custom(
+    conn: sqlite3.Connection,
+    label: str,
+    fields_text: str,
+    cat: str = "ART",
+    group: str = "",
+    name_tpl: str = "",
+    key: str = "",
+) -> str:
+    """Eigenen Typ anlegen oder (mit `key`) ändern; gibt den Schlüssel zurück."""
+    if not label.strip():
+        raise LagerError("Name des Typs fehlt")
+    cat = cat.strip().upper() or "ART"
+    if cat not in codes.ITEM_PREFIXES:
+        raise LagerError(f"Unbekannte Kategorie {cat}")
+    fields = parse_field_lines(fields_text)
+    for ref in re.findall(r"{(\w+)}", name_tpl):
+        if ref not in {f["key"] for f in fields}:
+            raise LagerError(f"Namensvorlage nutzt unbekanntes Feld {{{ref}}}")
+    key = key or "c_" + slug(label)
+    if not key or key == "c_":
+        raise LagerError("Name des Typs ungültig")
+    if key in BY_KEY:
+        raise LagerError("Diesen Namen hat schon ein Katalog-Typ")
+    with conn:
+        conn.execute(
+            "INSERT INTO custom_type (key, label, grp, cat, fields, name_tpl) VALUES (?, ?, ?, ?, ?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET label = excluded.label, grp = excluded.grp,"
+            " cat = excluded.cat, fields = excluded.fields, name_tpl = excluded.name_tpl",
+            (key, label.strip(), group.strip() or CUSTOM_GROUP, cat,
+             json.dumps(fields, ensure_ascii=False), name_tpl.strip()),
+        )  # fmt: skip
+    return key
+
+
+def delete_custom(conn: sqlite3.Connection, key: str) -> int:
+    """Eigenen Typ löschen; Teile behalten Name und Felder, verlieren nur die Typ-Zuordnung."""
+    with conn:
+        n = conn.execute("UPDATE item SET ctype = NULL WHERE ctype = ?", (key,)).rowcount
+        conn.execute("DELETE FROM custom_type WHERE key = ?", (key,))
+    return n
+
+
+def field_lines(t: Type) -> str:
+    """Rückweg fürs Bearbeiten-Formular."""
+    return "\n".join(
+        " | ".join(x for x in (f.label, ", ".join(f.options), f.unit) if x) if f.unit
+        else " | ".join(x for x in (f.label, ", ".join(f.options)) if x)
+        for f in t.fields
+    )  # fmt: skip
 
 
 def name(t: Type, values: dict[str, str]) -> str:
@@ -842,7 +954,7 @@ def create(
     container_id: int,
     qty: int | None = None,
 ) -> int:
-    t = BY_KEY.get(type_key)
+    t = lookup(conn, type_key)
     if t is None:
         raise LagerError("Unbekannter Teile-Typ")
     clean = {f.key: values.get(f.key, "").strip() for f in t.fields}
@@ -856,6 +968,7 @@ def create(
     )
     tags = " ".join(v.lower() for v in (t.label, *clean.values()) if v)
     item_id = repo.add_item(conn, container_id, text, qty=qty, code=code, tags=tags)
+    store(conn, item_id, t.key, clean)
     if t.cmp:
         form = {
             f"spec_{k}": v
@@ -899,7 +1012,7 @@ def create_quick(
     qty: int | None = None,
 ) -> int:
     """Teil aus Art + Variante („Zylinderkopfschraube“ + „M3x10“) – für Fächer im Einsatz."""
-    t = BY_KEY.get(type_key)
+    t = lookup(conn, type_key)
     if t is None:
         raise LagerError("Unbekannter Teile-Typ")
     text = f"{art} {variant}".strip()
@@ -910,6 +1023,110 @@ def create_quick(
     )
     tags = " ".join(x.lower() for x in (t.label, art, variant) if x)
     item_id = repo.add_item(conn, container_id, text, qty=qty, code=code, tags=tags)
+    vals = {t.fields[0].key: art} if t.fields and art else {}
+    if variant and len(t.fields) > 1:
+        vals.update(split_variant(t, variant))
+    store(conn, item_id, t.key, vals)
     if t.cmp:
         materials.save_specs(conn, item_id, "cmp", {"spec_function": f"{t.label} {art}".strip()})
     return item_id
+
+
+# --- Typ am Teil: speichern, bearbeiten, Dubletten ---------------------------------------------
+
+
+def store(conn: sqlite3.Connection, item_id: int, key: str, values: dict[str, str]) -> None:
+    clean = {k: v.strip() for k, v in values.items() if v and v.strip()}
+    with conn:
+        conn.execute(
+            "UPDATE item SET ctype = ?, cfields = ? WHERE id = ?",
+            (key, json.dumps(clean, ensure_ascii=False), item_id),
+        )
+
+
+def values_of(item: sqlite3.Row) -> dict[str, str]:
+    try:
+        data = json.loads(item["cfields"] or "{}")
+    except ValueError:
+        return {}
+    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+
+
+def split_variant(t: Type, variant: str) -> dict[str, str]:
+    """„M3x10“ -> thread/length, sonst die Variante ins zweite Feld."""
+    keys = [f.key for f in t.fields]
+    m = re.fullmatch(r"\s*(M\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*", variant, re.I)
+    if m and "thread" in keys and "length" in keys:
+        return {"thread": m.group(1).upper(), "length": m.group(2)}
+    return {keys[1]: variant.strip()}
+
+
+def set_fields(
+    conn: sqlite3.Connection, item_id: int, key: str, values: dict[str, str], rename: bool = True
+) -> str:
+    """Typ und Felder am Teil setzen; optional Namen aus den Feldern neu bilden."""
+    t = lookup(conn, key)
+    if t is None:
+        raise LagerError("Unbekannter Teile-Typ")
+    allowed = {f.key for f in t.fields}
+    clean = {k: v.strip() for k, v in values.items() if k in allowed}
+    store(conn, item_id, key, clean)
+    new_name = name(t, clean)
+    if rename and new_name:
+        tags = " ".join(v.lower() for v in (t.label, *clean.values()) if v)
+        repo.update_item(conn, item_id, name=new_name, tags=tags)
+    return new_name
+
+
+def _norm(values: dict[str, str]) -> dict[str, str]:
+    return {k: v.strip().casefold().replace(",", ".") for k, v in values.items() if v.strip()}
+
+
+def duplicates(conn: sqlite3.Connection, key: str, values: dict[str, str]) -> list[sqlite3.Row]:
+    """Teile desselben Typs mit genau denselben ausgefüllten Feldern (nicht archiviert)."""
+    want = _norm(values)
+    if not want:
+        return []
+    rows = conn.execute(
+        "SELECT * FROM item WHERE ctype = ? AND archived = 0 ORDER BY id", (key,)
+    ).fetchall()
+    return [r for r in rows if _norm(values_of(r)) == want]
+
+
+# --- Altbestand: Typ und Felder aus dem Namen erkennen (regelbasiert) ------------------------
+
+
+def _label_words(t: Type) -> list[str]:
+    words = re.findall(r"[a-zäöüß]{4,}", t.label.casefold())
+    return [w.removesuffix("en").removesuffix("e") if len(w) > 6 else w for w in words]
+
+
+def guess(conn: sqlite3.Connection | None, text: str) -> tuple[str, dict[str, str], int] | None:
+    """(Typ, Felder, Punkte) für einen vorhandenen Teilenamen – oder None, wenn nichts passt."""
+    low = text.casefold()
+    best: tuple[str, dict[str, str], int] | None = None
+    types = list(TYPES) + (custom_types(conn) if conn is not None else [])
+    for t in types:
+        score, vals = 0, {}
+        if any(w in low for w in _label_words(t)):
+            score += 3
+        for f in t.fields:
+            hits = [
+                o
+                for o in f.options
+                if re.search(rf"(?<![\w]){re.escape(o.casefold())}(?![\w])", low)
+            ]
+            if hits:
+                vals[f.key] = max(hits, key=len)
+                score += 2 if len(vals[f.key]) < 4 else 3
+        keys = {f.key for f in t.fields}
+        m = re.search(r"\b(m\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\b", low)
+        if m and {"thread", "length"} <= keys:
+            vals["thread"], vals["length"] = m.group(1).upper(), m.group(2)
+            score += 3
+        elif (m2 := re.search(r"\b(m\d+(?:[.,]\d+)?)\b", low)) and "thread" in keys:
+            vals.setdefault("thread", m2.group(1).upper())
+            score += 1
+        if score >= 4 and (best is None or score > best[2]):
+            best = (t.key, vals, score)
+    return best

@@ -1,27 +1,11 @@
 # Betrieb und Deployment
 
-Der Dauerbetrieb läuft derzeit auf dem Windows-PC KP-DESKTOP (192.168.74.5) unter `https://lager.home.lan`.
-Ein Umzug auf Docker/Raspberry Pi ist vorbereitet (`Dockerfile`, `deploy/`).
-
-## Windows-PC (aktuell)
-
-```powershell
-powershell -File tools\serve.ps1          # starten bzw. neu starten
-powershell -File tools\serve.ps1 -Stop    # beenden
-```
-
-- Startet zwei Prozesse: Port 443 (App mit HTTPS) und Port 80 (`/ca.crt` für das Handy, sonst Umleitung auf HTTPS).
-- Zertifikat: `uv run python tools/devcert.py lager.home.lan localhost --ip <IP>` (lokale CA, wird beim ersten Start erzeugt, liegt in `data/certs/`).
-- Logs: `data/logs/https.log`, `data/logs/http.log`.
-- Umgebung: `LAGER_DATA_DIR=data`, `LAGER_BASE_URL=https://lager.home.lan`.
-- `tools/serve.ps1` muss als UTF-8 **mit BOM** gespeichert sein (Windows PowerShell 5.1).
-- Autostart nach Neustart ist **nicht** eingerichtet (nur mit ausdrücklichem OK; geplanter Task).
-- DNS: `lager.home.lan` → IP des Servers (AdGuard Home, DNS-Umschreibung).
-- D30-Direktdruck: Bluetooth des Server-PCs, Drucker eingeschaltet und gekoppelt, Handy-App geschlossen (siehe `docs/DIREKTDRUCK.md`).
+Der Server läuft nur als **Docker-Container** (Compose: App + Caddy mit HTTPS) unter `https://lager.home.lan`.
+Am Windows-PC gibt es keinen Server mehr, nur den Client (`docs/WINDOWS.md`). Kurzanleitung: `deploy/README.md`.
 
 ## Windows-Programme (Server und Client getrennt)
 
-Siehe `docs/WINDOWS.md`: zwei Installer (Server zum Debuggen, Client mit D30-Bridge) und `tools/dev.ps1`.
+Siehe `docs/WINDOWS.md`: Client-Installer (Fenster + D30-Bridge).
 
 ## Handy einrichten (einmalig)
 
@@ -53,5 +37,5 @@ Reichweite des Druckers (nur BLE; der COM-Weg ist Windows-spezifisch).
 
 ## Updates einspielen
 
-`git pull`, dann App neu starten (`serve.ps1` bzw. `docker compose up -d --build`). Migrationen laufen beim Start.
+Neue Version ziehen und `docker compose up -d --build`. Migrationen laufen beim Start.
 Vorher Tests grün (siehe `docs/DEVELOPMENT.md`).

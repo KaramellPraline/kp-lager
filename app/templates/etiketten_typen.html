@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Etiketten-Layout · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/labels">Etiketten</a> › Layout je Typ</nav>
+<h1>Etiketten-Layout je Typ</h1>
+<p class="meta">Pro Typ festlegen, welche Felder in welcher Zeile auf dem Etikett stehen. Die Schrift passt sich in jedem Feld automatisch an. Typen ohne eigenes Layout drucken Name und Code.</p>
+{% for g, ks in groups %}
+<details class="grp card">
+  <summary><b>{{ g }}</b> <span class="meta">{{ ks|selectattr(2)|list|length }} mit eigenem Layout</span></summary>
+  <ul class="list">
+    {% for k, n, custom in ks %}
+    <li><a href="/etiketten/typ/{{ k.key }}"><span>{{ k.label }}</span><small>{{ n }} Teile{% if custom %} · eigenes Layout{% endif %}</small></a></li>
+    {% endfor %}
+  </ul>
+</details>
+{% endfor %}
+{% endblock %}

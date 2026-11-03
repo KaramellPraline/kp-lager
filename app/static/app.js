@@ -425,3 +425,187 @@
     });
   });
 })();
+
+/* Platz-Vorschlag beim Anlegen: Behälter mit ähnlichen Teilen (oder leere Boxen) als Chips */
+(function () {
+  var box = document.querySelector(".place-sugg");
+  if (!box) return;
+  var form = box.closest("form"), select = document.getElementById(box.dataset.select), timer = null;
+  function query() {
+    var p = new URLSearchParams();
+    var typ = form.querySelector("input[name=typ]"), cat = form.querySelector("input[name=cat]:checked");
+    if (typ) p.set("typ", typ.value); else if (cat) p.set("cat", cat.value);
+    form.querySelectorAll("input[name^=f_]").forEach(function (el) { if (el.value) p.set(el.name, el.value); });
+    return p.toString();
+  }
+  function load() {
+    fetch("/neu/platz?" + query()).then(function (r) { return r.json(); }).then(function (rows) {
+      box.innerHTML = "";
+      rows.forEach(function (r) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "chip" + (select && select.value === String(r.id) ? " on" : "");
+        b.title = r.reason; b.textContent = r.label + " · " + r.reason;
+        b.addEventListener("click", function () {
+          if (!select) return;
+          select.value = String(r.id); select.dispatchEvent(new Event("change", { bubbles: true }));
+          box.querySelectorAll(".chip").forEach(function (c) { c.classList.toggle("on", c === b); });
+        });
+        box.appendChild(b);
+      });
+    }).catch(function () { box.innerHTML = ""; });
+  }
+  form.addEventListener("input", function () { clearTimeout(timer); timer = setTimeout(load, 400); });
+  form.addEventListener("change", function (ev) { if (ev.target.name === "cat") load(); });
+  load();
+})();
+
+/* Schnellaktionen für Teile: langer Druck, Rechtsklick oder „⋯“-Knopf öffnet ein Menü */
+(function () {
+  var ACTIONS = [
+    ["Öffnen", null],
+    ["1 entnehmen", "/items/{id}/take", { qty: "1" }],
+    ["Umlagern (aufnehmen)", "/carry/item/{id}"],
+    ["Etikett vormerken", "/labels/queue/item/{id}"],
+    ["Auf Einkaufsliste", "/items/{id}/list"],
+    ["Inventur: stimmt", "/inventur/item/{id}"],
+  ];
+  var sheet = null;
+  function close() { if (sheet) { sheet.remove(); sheet = null; } }
+  function post(url, data) {
+    var f = document.createElement("form");
+    f.method = "post"; f.action = url;
+    Object.keys(data || {}).forEach(function (k) {
+      var i = document.createElement("input"); i.type = "hidden"; i.name = k; i.value = data[k]; f.appendChild(i);
+    });
+    document.body.appendChild(f); f.submit();
+  }
+  function open(li) {
+    close();
+    var id = li.dataset.qa, link = li.querySelector("a.name");
+    sheet = document.createElement("div");
+    sheet.className = "qa-sheet"; sheet.setAttribute("role", "menu");
+    var title = document.createElement("div");
+    title.className = "qa-title"; title.textContent = link ? link.textContent.trim() : "Teil";
+    sheet.appendChild(title);
+    ACTIONS.forEach(function (a) {
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "menuitem"); b.textContent = a[0];
+      b.addEventListener("click", function () {
+        if (!a[1]) { location.href = "/items/" + id; return; }
+        post(a[1].replace("{id}", id), a[2]);
+      });
+      sheet.appendChild(b);
+    });
+    var c = document.createElement("button");
+    c.type = "button"; c.className = "qa-cancel"; c.textContent = "Abbrechen";
+    c.addEventListener("click", close);
+    sheet.appendChild(c);
+    document.body.appendChild(sheet);
+    sheet.querySelector("button[role=menuitem]").focus();
+  }
+  document.addEventListener("click", function (ev) {
+    var more = ev.target.closest("button.qa-more");
+    if (more) { ev.preventDefault(); open(more.closest("li[data-qa]")); return; }
+    if (sheet && !ev.target.closest(".qa-sheet")) close();
+  });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") close(); });
+  document.addEventListener("contextmenu", function (ev) {
+    var li = ev.target.closest("li[data-qa]");
+    if (li && !ev.target.closest("button")) { ev.preventDefault(); open(li); }
+  });
+  var timer = null, startX = 0, startY = 0, fired = false;
+  document.addEventListener("touchstart", function (ev) {
+    var li = ev.target.closest("li[data-qa]");
+    if (!li || ev.target.closest("button")) return;
+    fired = false; startX = ev.touches[0].clientX; startY = ev.touches[0].clientY;
+    timer = setTimeout(function () { fired = true; if (navigator.vibrate) navigator.vibrate(15); open(li); }, 500);
+  }, { passive: true });
+  document.addEventListener("touchmove", function (ev) {
+    if (timer && (Math.abs(ev.touches[0].clientX - startX) > 10 || Math.abs(ev.touches[0].clientY - startY) > 10)) {
+      clearTimeout(timer); timer = null;
+    }
+  }, { passive: true });
+  document.addEventListener("touchend", function (ev) {
+    clearTimeout(timer); timer = null;
+    if (fired) { ev.preventDefault(); fired = false; }  // kein Klick auf den Link nach langem Druck
+  });
+})();
+
+/* Offline: Service Worker registrieren, Hinweis bei gemerkten Buchungen, bei Verbindung senden */
+(function () {
+  if (!("serviceWorker" in navigator)) return;
+  var bar = null;
+  function show(n) {
+    if (!n) { if (bar) { bar.remove(); bar = null; } return; }
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "offline-bar"; bar.setAttribute("role", "status");
+      document.body.appendChild(bar);
+    }
+    bar.textContent = n + (n === 1 ? " Buchung" : " Buchungen") + " offline gemerkt – " +
+      (navigator.onLine ? "wird gesendet …" : "wird gesendet, sobald Verbindung besteht");
+  }
+  navigator.serviceWorker.addEventListener("message", function (ev) {
+    if (ev.data && ev.data.type === "queue") show(ev.data.count);
+  });
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js").then(function () {
+      return navigator.serviceWorker.ready;
+    }).then(function (reg) {
+      if (reg.active) reg.active.postMessage(navigator.onLine ? "flush" : "count");
+    }).catch(function () { /* ohne HTTPS/localhost gibt es keinen Service Worker */ });
+  });
+  window.addEventListener("online", function () {
+    if (navigator.serviceWorker.controller) navigator.serviceWorker.controller.postMessage("flush");
+    document.documentElement.classList.remove("is-offline");
+  });
+  window.addEventListener("offline", function () { document.documentElement.classList.add("is-offline"); });
+  if (!navigator.onLine) document.documentElement.classList.add("is-offline");
+})();
+
+/* Etiketten-Layout: Live-Vorschau, Felder einfügen, Zeilen verschieben */
+(function () {
+  var form = document.getElementById("layout-form");
+  if (!form) return;
+  var img = document.getElementById("label-preview"), timer = null, last = null;
+  function query() {
+    var p = new URLSearchParams(new FormData(form));
+    p.delete("reset");
+    return p.toString();
+  }
+  function refresh() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      img.src = "/etiketten/typ/" + form.dataset.key + "/vorschau.png?" + query() + "&_=" + Date.now();
+    }, 150);
+  }
+  form.addEventListener("input", refresh);
+  form.addEventListener("change", refresh);
+  form.addEventListener("focusin", function (ev) {
+    if (ev.target.matches("input[name^=t_]")) last = ev.target;
+  });
+  form.querySelectorAll(".field-chip").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var target = last || form.querySelector("input[name=t_0]");
+      var pos = target.selectionStart == null ? target.value.length : target.selectionStart;
+      var tok = b.dataset.token, v = target.value;
+      var sep = pos > 0 && v.charAt(pos - 1) !== " " && v.charAt(pos - 1) !== "" ? " " : "";
+      target.value = v.slice(0, pos) + sep + tok + v.slice(pos);
+      target.focus();
+      refresh();
+    });
+  });
+  // Zeile nach oben: Werte mit der Zeile darüber tauschen
+  form.querySelectorAll(".line-up").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var row = b.closest(".layout-line"), prev = row.previousElementSibling;
+      if (!prev) return;
+      ["t", "w", "a"].forEach(function (k) {
+        var a = row.querySelector("[name=" + k + "_" + row.dataset.i + "]");
+        var c = prev.querySelector("[name=" + k + "_" + prev.dataset.i + "]");
+        var tmp = a.value; a.value = c.value; c.value = tmp;
+      });
+      refresh();
+    });
+  });
+})();

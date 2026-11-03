@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Gibt es schon · {{ APP_NAME }}{% endblock %}
+{% block content %}
+{% include "_add_tabs.html" %}
+<section class="card stack">
+  <h1 style="margin:0">„{{ dname }}“ gibt es schon</h1>
+  <p class="meta">Gleicher Typ ({{ ctype.label }}) mit denselben Feldern. Menge dort erhöhen statt doppelt anlegen?</p>
+  {% for d in dupes %}
+  <form method="post" action="/neu/dublette/{{ d.id }}" class="add-item" style="margin:0">
+    <span class="grow"><a href="/items/{{ d.id }}"><b>{{ d.name }}</b></a><small style="display:block">{{ d.path }} · {% if d.qty is not none %}{{ d.qty }} {{ d.unit }}{% else %}ungezählt{% endif %}{% if d.code %} · {{ d.code }}{% endif %}</small></span>
+    <input name="qty" value="{{ qty or '' }}" inputmode="numeric" class="short" placeholder="Menge" aria-label="Menge dazu">
+    <button class="primary">+ hierhin</button>
+  </form>
+  {% endfor %}
+  <form method="post" action="/neu">
+    {% for k, v in form.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    <input type="hidden" name="force" value="1">
+    <button>Trotzdem neu anlegen (anderer Ort)</button>
+  </form>
+  <a href="/neu?typ={{ ctype.key }}">Abbrechen</a>
+</section>
+{% endblock %}

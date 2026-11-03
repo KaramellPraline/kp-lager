@@ -9,3 +9,11 @@ data/
 deploy/data/
 out/
 data/notes/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.keystore
+*.jks

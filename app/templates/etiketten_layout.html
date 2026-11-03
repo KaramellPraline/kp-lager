@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Etikett {{ kind.label }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/labels">Etiketten</a> › <a href="/etiketten/typ">Layout je Typ</a> › {{ kind.label }}</nav>
+<h1>Etikett: {{ kind.label }}</h1>
+<p class="meta">40 × 12 mm (D30). Jede Zeile bekommt die größte Schrift, die in ihr Feld passt – längere Texte werden automatisch kleiner, nie umgebrochen.</p>
+
+<div class="label-stage card">
+  <img id="label-preview" class="label-preview" alt="Vorschau des Etiketts" width="320" height="96"
+       src="/etiketten/typ/{{ kind.key }}/vorschau.png?{{ request.url.query }}">
+</div>
+
+<form method="post" action="/etiketten/typ/{{ kind.key }}" class="card stack" id="layout-form" data-key="{{ kind.key }}">
+  <div class="nf">
+    <label for="qr">QR-Code</label>
+    <select id="qr" name="qr">
+      {% for v, lb in (('left', 'links'), ('right', 'rechts'), ('none', 'ohne – ganze Breite für Text')) %}<option value="{{ v }}" {% if layout.qr == v %}selected{% endif %}>{{ lb }}</option>{% endfor %}
+    </select>
+  </div>
+
+  <div id="lines" class="stack">
+    {% for i in range(max_lines) %}{% set ln = layout.lines[i] if i < layout.lines|length else none %}
+    <div class="layout-line" data-i="{{ i }}">
+      <div class="row">
+        <input name="t_{{ i }}" value="{{ ln.t if ln else '' }}" placeholder="{% if i == 0 %}z. B. {thread}x{length}{% else %}Zeile {{ i + 1 }} (leer = nicht drucken){% endif %}" aria-label="Zeile {{ i + 1 }}" autocomplete="off">
+        <button type="button" class="line-up" aria-label="Zeile nach oben">{{ icon('nav.up', size='sm') }}</button>
+      </div>
+      <div class="row">
+        <select name="w_{{ i }}" aria-label="Höhe Zeile {{ i + 1 }}">
+          {% for v, lb in ((1, 'klein'), (2, 'mittel'), (3, 'groß'), (4, 'sehr groß')) %}<option value="{{ v }}" {% if ln and ln.w == v %}selected{% endif %}>Höhe: {{ lb }}</option>{% endfor %}
+        </select>
+        <select name="a_{{ i }}" aria-label="Ausrichtung Zeile {{ i + 1 }}">
+          {% for v, lb in (('left', 'linksbündig'), ('center', 'mittig'), ('right', 'rechtsbündig')) %}<option value="{{ v }}" {% if ln and ln.a == v %}selected{% endif %}>{{ lb }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div>
+    <span class="meta">Feld einfügen (in die zuletzt bearbeitete Zeile):</span>
+    <div class="chips">{% for tok, lb in fields %}<button type="button" class="chip field-chip" data-token="{{ tok }}" title="{{ tok }}">{{ lb }}</button>{% endfor %}</div>
+  </div>
+
+  <div class="row">
+    <button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
+    <button name="reset" value="1" {% if not custom %}disabled{% endif %}>Standard wiederherstellen</button>
+  </div>
+  <p class="meta" style="margin:0">Vorschau mit {{ sample_code }}. Das Layout gilt für das D30-Etikett (Direktdruck, Bild); XLSX und A4 nutzen weiter Name/Zusatz.</p>
+</form>
+{% endblock %}

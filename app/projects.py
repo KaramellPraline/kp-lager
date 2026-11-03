@@ -90,7 +90,8 @@ def gather(conn: sqlite3.Connection, line_id: int, take: bool = True) -> str:
         )
     with conn:
         conn.execute(
-            "UPDATE project_item SET gathered = 1, gathered_at = datetime('now') WHERE id = ?",
+            "UPDATE project_item SET gathered = 1, gathered_at = datetime('now'), reserved = 0"
+            " WHERE id = ?",
             (line_id,),
         )
     return f"„{line['name']}“ eingesammelt"
@@ -111,32 +112,81 @@ def gather_by_code(conn: sqlite3.Connection, pid: int, code: str) -> str:
 def set_done(conn: sqlite3.Connection, pid: int, done: bool) -> None:
     with conn:
         conn.execute("UPDATE project SET done = ? WHERE id = ?", (int(done), pid))
+    if done:
+        release(conn, pid)
+
+
+def reserved_elsewhere(conn: sqlite3.Connection, item_id: int, pid: int | None = None) -> int:
+    """Von offenen Projekten (außer `pid`) reservierte, noch nicht geholte Menge eines Teils."""
+    row = conn.execute(
+        "SELECT COALESCE(SUM(l.reserved), 0) FROM project_item l"
+        " JOIN project p ON p.id = l.project_id"
+        " WHERE l.item_id = ? AND l.gathered = 0 AND p.done = 0 AND (? IS NULL OR p.id != ?)",
+        (item_id, pid, pid),
+    ).fetchone()
+    return int(row[0])
+
+
+def reservations(conn: sqlite3.Connection, item_id: int) -> list[Row]:
+    return conn.execute(
+        "SELECT p.id, p.name, l.reserved FROM project_item l JOIN project p ON p.id = l.project_id"
+        " WHERE l.item_id = ? AND l.reserved > 0 AND l.gathered = 0 AND p.done = 0 ORDER BY p.name",
+        (item_id,),
+    ).fetchall()
 
 
 def compare(conn: sqlite3.Connection, pid: int) -> dict[str, Any]:
-    """Stückliste gegen den Bestand: je Zeile ok / teil (zu wenig) / fehlt (nicht im Lager)."""
+    """Stückliste gegen den Bestand: je Zeile ok / teil (zu wenig) / fehlt (nicht im Lager).
+
+    Was andere offene Projekte reserviert haben, steht diesem Projekt nicht zur Verfügung.
+    """
     out = []
     cost = 0.0
     for line in lines(conn, pid):
+        free: int | None = None
         if line["gathered"]:
             status, short = "geholt", 0
         elif line["item_id"] is None:
             status, short = "fehlt", int(line["qty"] or 1)
         else:
             need, stock = int(line["qty"] or 1), line["stock"]
-            short = max(0, need - stock) if stock is not None else 0
-            status = "ok" if short == 0 else ("teil" if stock else "fehlt")
+            if stock is None:
+                short = 0
+            else:
+                free = max(0, stock - reserved_elsewhere(conn, line["item_id"], pid))
+                short = max(0, need - free)
+            status = "ok" if short == 0 else ("teil" if free else "fehlt")
         price = conn.execute("SELECT price FROM item WHERE id = ?", (line["item_id"],)).fetchone()
         if short and price and price["price"] is not None:
             cost += float(price["price"]) * short
-        out.append({**line, "status": status, "short": short})
+        out.append({**line, "status": status, "short": short, "free": free})
     counts = {s: sum(1 for r in out if r["status"] == s) for s in ("ok", "teil", "fehlt", "geholt")}
     return {
         "lines": out,
         "counts": counts,
         "cost": cost,
         "complete": not (counts["teil"] + counts["fehlt"]),
+        "reserved": sum(1 for r in out if r["reserved"]),
     }
+
+
+def reserve(conn: sqlite3.Connection, pid: int) -> int:
+    """Verfügbares für offene Zeilen reservieren (höchstens den Bedarf); gibt die Zeilenzahl."""
+    n = 0
+    for line in compare(conn, pid)["lines"]:
+        if line["gathered"] or line["item_id"] is None:
+            continue
+        need = int(line["qty"] or 1)
+        amount = need if line["free"] is None else min(need, line["free"])
+        with conn:
+            conn.execute("UPDATE project_item SET reserved = ? WHERE id = ?", (amount, line["id"]))
+        n += 1 if amount else 0
+    return n
+
+
+def release(conn: sqlite3.Connection, pid: int) -> None:
+    with conn:
+        conn.execute("UPDATE project_item SET reserved = 0 WHERE project_id = ?", (pid,))
 
 
 def to_shopping(conn: sqlite3.Connection, pid: int) -> int:

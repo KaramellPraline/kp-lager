@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Übersicht · {{ APP_NAME }}{% endblock %}
 {% block content %}
-<h1>Übersicht</h1>
-<p class="meta">Aufklappen zeigt, was wo drin ist. „öffnen“ springt zur Seite.</p>
+{% include "_browse_tabs.html" %}
+<p class="meta">Alles auf einen Blick: Aufklappen zeigt, was wo drin ist. „öffnen“ springt zur Seite.</p>
 <div class="card tree-root">{% with items=[] %}{% include "_branch.html" %}{% endwith %}</div>
 {% endblock %}

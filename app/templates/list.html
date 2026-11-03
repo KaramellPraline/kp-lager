@@ -4,13 +4,13 @@
 <h1>{{ title }}</h1>
 {% if kind == 'shopping' %}
 <p class="meta">{{ rows|length }} Positionen{% if total %} · geschätzt <b>{{ euro(total) }}</b>{% endif %} ·
-  <a href="/auswahl?src=einkauf">mehrere bearbeiten</a></p>
+  <a href="/auswahl?src=einkauf">mehrere bearbeiten</a> · <a href="/einkauf/import">Rechnung/CSV importieren</a></p>
 {% endif %}
 <ul class="list">
   {% for i in rows %}
   <li class="item {% if kind == 'shopping' and i.ordered_at %}ordered{% endif %}">
     <a href="/items/{{ i.id }}" class="name">{{ i.name }}
-      <small>{% if kind == 'lent' %}bei {{ i.lent_to }} seit {{ i.lent_since }} · gehört nach {{ i.path }}{% elif kind == 'shopping' %}{% if i.qty is not none %}{{ i.qty }}{% if i.min_qty is not none %} / min. {{ i.min_qty }}{% endif %} {{ i.unit }} · {% endif %}<b>{{ i.need }}×</b>{% if i.cost is not none %} = {{ euro(i.cost) }}{% endif %}{% if i.ordered_at %} · bestellt {{ i.ordered_at }}{% endif %} · {{ i.path }}{% else %}{{ i.path }}{% endif %}</small>
+      <small>{% if kind == 'lent' %}bei {{ i.lent_to }} seit {{ i.lent_since }} · gehört nach {{ i.path }}{% elif kind == 'shopping' %}{% if i.qty is not none %}{{ i.qty }}{% if i.min_eff is not none %} / min. {{ i.min_eff }}{% if i.min_from_type %} (Typ){% endif %}{% endif %} {{ i.unit }} · {% endif %}<b>{{ i.need }}×</b>{% if i.cost is not none %} = {{ euro(i.cost) }}{% endif %}{% if i.ordered_at %} · bestellt {{ i.ordered_at }}{% endif %} · {{ i.path }}{% else %}{{ i.path }}{% endif %}</small>
     </a>
     {% if kind == 'lent' %}
     <form method="post" action="/items/{{ i.id }}/return"><button>Zurück</button></form>

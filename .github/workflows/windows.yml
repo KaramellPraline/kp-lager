@@ -1,10 +1,10 @@
 name: Windows-Installer
 
-# Baut KP-Lager-Server-Setup.exe und KP-Lager-Client-Setup.exe (manuell oder bei Tag v*).
+# Testbau der Windows-Installer (manuell). Offizielle Releases: release.yml.
 on:
   workflow_dispatch:
-  push:
-    tags: ["v*"]
+  push:   # läuft auch von Arbeits-Branches aus, ohne dass der Workflow schon auf main liegt
+    paths: ["windows/**", "app/d30_bridge.py", "app/__init__.py", ".github/workflows/windows.yml"]
 
 jobs:
   build:

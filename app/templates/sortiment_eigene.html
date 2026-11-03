@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Eigene Typen · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/sortiment">Sortiment</a> › Eigene Typen</nav>
+<h1>Eigene Typen</h1>
+<p class="meta">Für alles, was der Katalog nicht kennt: Typ mit eigenen Feldern anlegen – erscheint danach unter Hinzufügen › Teile, im Sortiment und im Variantenraster. Codes und Etiketten bleiben unverändert.</p>
+{% if types %}
+<ul class="list">
+  {% for t in types %}
+  <li class="item"><a class="name" href="/sortiment/{{ t.key }}">{{ t.label }}<small>{{ t.group }} · {{ t.cat }} · {{ t.fields|map(attribute='label')|join(', ') }} · {{ counts.get(t.key, 0) }} Teile</small></a>
+    <a class="button" href="/sortiment/eigene?key={{ t.key }}">Bearbeiten</a>
+    <form method="post" action="/sortiment/eigene/{{ t.key }}/delete" onsubmit="return confirm('Typ {{ t.label }} löschen? Teile bleiben erhalten.')"><button aria-label="Löschen">{{ icon('nav.close', size='sm') }}</button></form></li>
+  {% endfor %}
+</ul>
+{% endif %}
+<form method="post" action="/sortiment/eigene" class="card stack">
+  <h2 style="margin:0">{% if current %}„{{ current.label }}“ bearbeiten{% else %}Neuer Typ{% endif %}</h2>
+  {% if current %}<input type="hidden" name="key" value="{{ current.key }}">{% endif %}
+  <label>Name <input name="label" value="{{ current.label if current else '' }}" placeholder="z. B. Zahnriemen" required></label>
+  <label>Gruppe <input name="group" value="{{ current.group if current else '' }}" placeholder="Eigene Typen"></label>
+  <label>Kategorie (Code-Präfix)
+    <select name="cat">{% for p, lb in cats %}<option value="{{ p }}" {% if (current and current.cat == p) or (not current and p == 'ART') %}selected{% endif %}>{{ p }} · {{ lb }}</option>{% endfor %}</select></label>
+  <label>Felder – eine Zeile je Feld: <code>Name | Auswahl, Auswahl | Einheit</code>
+    <textarea name="fields" rows="6" required placeholder="Profil | GT2, GT3, HTD3M&#10;Breite | 6, 9, 10 | mm&#10;Länge | | mm">{{ lines }}</textarea></label>
+  <label>Namensvorlage (optional) <input name="name_tpl" value="{{ current.parts|map('first')|join(' ') if current else '' }}" placeholder="z. B. Zahnriemen {profil} {breite}mm"></label>
+  <p class="meta">In der Vorlage stehen Felder in geschweiften Klammern, kleingeschrieben ohne Umlaute (Breite → <code>{breite}</code>). Leer = Felder der Reihe nach.</p>
+  <button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
+</form>
+{% endblock %}
