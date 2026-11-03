@@ -7,10 +7,11 @@ import sqlite3
 from collections.abc import Callable, Iterator
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 
 from app import (
+    api_lab,
     apikeys,
     bulk,
     codes,
@@ -88,17 +89,38 @@ class ImportText(BaseModel):
 
 
 def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRouter:
-    router = APIRouter(prefix="/api/v1", tags=["api"])
     Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
+
+    def presented(x_api_key: str, authorization: str) -> str:
+        return x_api_key or authorization.removeprefix("Bearer ").strip()
+
+    def read_gate(
+        request: Request,
+        conn: Conn,
+        x_api_key: Annotated[str, Header()] = "",
+        authorization: Annotated[str, Header()] = "",
+    ) -> None:
+        """Lesen ist offen – außer die Einstellung „auch Lesen nur mit Schlüssel“ ist an."""
+        if (
+            request.method == "GET"
+            and prefs.flag(conn, "api_read_key")
+            and not apikeys.verify(conn, presented(x_api_key, authorization), need="read")
+        ):
+            raise HTTPException(401, "API-Schlüssel fehlt oder ist ungültig (auch zum Lesen)")
+
+    router = APIRouter(prefix="/api/v1", tags=["api"], dependencies=[Depends(read_gate)])
 
     def require_key(
         conn: Conn,
         x_api_key: Annotated[str, Header()] = "",
         authorization: Annotated[str, Header()] = "",
     ) -> None:
-        key = x_api_key or authorization.removeprefix("Bearer ").strip()
-        if not apikeys.verify(conn, key):
+        key = presented(x_api_key, authorization)
+        scope = apikeys.scope_of(conn, key)
+        if scope is None:
             raise HTTPException(401, "API-Schlüssel fehlt oder ist ungültig (nur Schreiben)")
+        if scope != "write":
+            raise HTTPException(403, "Dieser Schlüssel darf nur lesen")
 
     Write = Depends(require_key)
 
@@ -143,7 +165,8 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
 
     @router.get("/items/{ref}")
     def get_item(conn: Conn, ref: str) -> dict[str, Any]:
-        return item_json(conn, find_item(conn, ref))
+        out: dict[str, Any] = item_detail(conn, find_item(conn, ref))
+        return out
 
     @router.get("/containers/{ref}")
     def get_container(conn: Conn, ref: str) -> dict[str, Any]:
@@ -299,4 +322,5 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
         except LagerError as exc:
             raise HTTPException(400, str(exc)) from None
 
+    item_detail = api_lab.register(router, Conn, Write, find_node, find_item, item_json, node_json)
     return router

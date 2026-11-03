@@ -11,32 +11,48 @@ def _hash(key: str) -> str:
     return hashlib.sha256(key.encode()).hexdigest()
 
 
-def create(conn: sqlite3.Connection, name: str) -> str:
-    """Neuen Schlüssel erzeugen; der Klartext wird nur hier einmal zurückgegeben."""
+SCOPES = ("read", "write")
+
+
+def create(conn: sqlite3.Connection, name: str, scope: str = "write") -> str:
+    """Neuen Schlüssel erzeugen (read = nur lesen, write = lesen und schreiben).
+
+    Der Klartext wird nur hier einmal zurückgegeben.
+    """
     if not name.strip():
         raise LagerError("Name für den Schlüssel fehlt")
+    if scope not in SCOPES:
+        raise LagerError("Rechte: read oder write")
     key = "kpl_" + secrets.token_urlsafe(32)
     with conn:
         conn.execute(
-            "INSERT INTO api_key (name, key_hash) VALUES (?, ?)", (name.strip(), _hash(key))
+            "INSERT INTO api_key (name, key_hash, scope) VALUES (?, ?, ?)",
+            (name.strip(), _hash(key), scope),
         )
     return key
 
 
-def verify(conn: sqlite3.Connection, key: str) -> bool:
+def scope_of(conn: sqlite3.Connection, key: str) -> str | None:
+    """Rechte des Schlüssels (und „zuletzt benutzt“ merken); None = unbekannt."""
     if not key:
-        return False
-    row = conn.execute("SELECT id FROM api_key WHERE key_hash = ?", (_hash(key),)).fetchone()
+        return None
+    row = conn.execute("SELECT id, scope FROM api_key WHERE key_hash = ?", (_hash(key),)).fetchone()
     if row is None:
-        return False
+        return None
     with conn:
         conn.execute("UPDATE api_key SET last_used = datetime('now') WHERE id = ?", (row["id"],))
-    return True
+    return str(row["scope"])
+
+
+def verify(conn: sqlite3.Connection, key: str, need: str = "write") -> bool:
+    """Schlüssel gültig und für `need` ausreichend? (write schließt read ein)."""
+    scope = scope_of(conn, key)
+    return scope == "write" or (scope == "read" and need == "read")
 
 
 def all_keys(conn: sqlite3.Connection) -> list[Row]:
     return conn.execute(
-        "SELECT id, name, created_at, last_used FROM api_key ORDER BY id"
+        "SELECT id, name, scope, created_at, last_used FROM api_key ORDER BY id"
     ).fetchall()
 
 

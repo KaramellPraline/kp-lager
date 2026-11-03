@@ -1014,10 +1014,13 @@ def create_app(settings: Settings) -> FastAPI:
 
     @app.post("/settings/admin/keys", response_class=HTMLResponse)
     def admin_create_key(
-        request: Request, conn: Conn, name: Annotated[str, Form()]
+        request: Request,
+        conn: Conn,
+        name: Annotated[str, Form()],
+        scope: Annotated[str, Form()] = "write",
     ) -> HTMLResponse:
         """Neuen API-Schlüssel erzeugen und genau einmal anzeigen (nie in der URL)."""
-        return render_admin(request, conn, new_key=apikeys.create(conn, name))
+        return render_admin(request, conn, new_key=apikeys.create(conn, name, scope))
 
     @app.post("/settings/admin/keys/{key_id}/delete")
     def admin_delete_key(key_id: int, conn: Conn) -> RedirectResponse:

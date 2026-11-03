@@ -59,6 +59,9 @@ PREFS = (
          "NAS-Freigabe, USB oder Sync-Ordner. Leer = aus. Die tägliche Sicherung wird zusätzlich "
          "dorthin kopiert. Im Docker-Container den Ordner als Volume einbinden und den Pfad "
          "im Container eintragen (oder LAGER_BACKUP_EXTERN setzen)."),
+    Pref("api_read_key", "API: auch Lesen nur mit Schlüssel", "bool", "0", "Betrieb",
+         "Aus: Lesen im LAN offen, Schreiben nur mit Schlüssel. An: jede API-Anfrage braucht "
+         "einen (Lese- oder Schreib-)Schlüssel – sinnvoll bei Zugriff von außen."),
     Pref("inventory_days", "Inventur fällig nach (Tagen)", "int", "180", "Betrieb",
          min=7, max=3650),
     Pref("slicer_dir", "Ordner mit exportiertem G-Code (Creality Print)", "text", "", "Betrieb",

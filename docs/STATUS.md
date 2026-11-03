@@ -11,6 +11,9 @@ Stand: 2026-11-03
 
 - 2026-11-03: **KI-frei + Hinzufügen-Tab**: alle KI-Bausteine entfernt; Start nur noch Bestandsbrowser; Hinzufügen (`/neu`) mit Reitern Teile · Behälter · Kabel & Material · Einsatz, untere Leiste: Bestand · Hinzufügen · Scannen · Einkauf · Etiketten.
 
+- 2026-11-03 (M35): Einkäufe/Lieferanten, Notiz- & Pinout-Karten, Inventur, Stücklisten-Abgleich (Fehlmengen → Einkaufsliste), externes Backup (Ordner/NAS), Startseite mit Aufgaben-Karten und Kennzahlen, Mehr-Menü gruppiert, Hinzufügen merkt letzten Reiter. Migration 019.
+- 2026-11-03 (M36): API mit Lese-/Schreib-Schlüsseln, `PATCH/DELETE` für Teile, Behälter anlegen/ändern, Projekte, Einkäufe, Karten, Inventur, `/overview`, `/tree`; MCP/Client erweitert (`docs/API.md`).
+
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.
 
