@@ -254,10 +254,19 @@
       try { localStorage.setItem(KEY, box.checked ? "1" : "0"); } catch (e) { /* ohne Speicher */ }
     });
   });
+  var BRIDGE = "http://127.0.0.1:8765";
+  function bridgeStatus() {
+    return fetch(BRIDGE + "/status").then(function (r) { return r.json(); })
+      .then(function (d) { apply(!!d.available, d.msg); })
+      .catch(function () { apply(false, "PC-Bridge nicht gestartet (KP-Lager-Client)"); });
+  }
   function poll() {
     if (document.hidden) return;
     fetch("/d30/status").then(function (r) { return r.json(); })
-      .then(function (d) { apply(!!d.available, d.msg); })
+      .then(function (d) {
+        if (!d.enabled && d.bridge) return bridgeStatus();  // Server ohne Bluetooth: Bridge am PC
+        apply(!!d.available, d.msg);
+      })
       .catch(function () { apply(false, "Server nicht erreichbar"); });
   }
   poll();
@@ -265,6 +274,29 @@
   document.addEventListener("visibilitychange", poll);
 })();
 
+
+/* PC-Bridge: Codes aus der Meldung (data-d30-codes) per lokalem Druckdienst auf den D30 drucken */
+(function () {
+  var BRIDGE = "http://127.0.0.1:8765";
+  document.addEventListener("DOMContentLoaded", function () {
+    var toast = document.querySelector(".toast[data-d30-codes]");
+    if (!toast) return;
+    var codes = toast.dataset.d30Codes.split(",").filter(Boolean);
+    var label = toast.querySelector("span");
+    function say(text) { if (label) label.textContent = text; toast.removeAttribute("data-autohide"); }
+    say("Drucke " + codes.length + " Etikett(en) über die PC-Bridge …");
+    fetch(BRIDGE + "/print", {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes: codes })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) throw new Error(d.error || "Druck fehlgeschlagen");
+      var f = new FormData(); codes.forEach(function (c) { f.append("code", c); });
+      fetch("/d30/printed", { method: "POST", body: f });
+      say(d.printed + " Etikett(en) gedruckt");
+    }).catch(function (e) {
+      say("Nicht gedruckt: " + (e && e.message ? e.message : "PC-Bridge nicht erreichbar") + " – Etiketten bleiben in der Warteschlange.");
+    });
+  });
+})();
 
 /* Anlegen (Katalog): Chips, Namensvorschau, Typ-Suche; Einsatz-Assistent; Baum */
 (function () {

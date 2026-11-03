@@ -128,6 +128,8 @@ def redirect(url: str, msg: str = "", undo: int | None = None) -> RedirectRespon
     return RedirectResponse(url + hash_ + anchor, status_code=303)
 
 
+BRIDGE_MARK = "\u27e6d30:"  # in der Meldung: Codes, die die PC-Bridge drucken soll
+BRIDGE_END = "\u27e7"
 RECENT_COOKIE = "recent"
 DRYER_COOKIE = "dryer_wait"  # gescannter Trockner wartet 10 min auf Filament-Etiketten
 TARGET_COOKIE = "qa_targets"  # zuletzt gewählte Ziele der Schnelleingabe (neueste zuerst)
@@ -242,7 +244,10 @@ def create_app(settings: Settings) -> FastAPI:
         ctx["COMPACT"] = prefs.flag(conn, "compact")
         ctx["NQUEUE"] = labels.queue_count(conn)
         ctx["P"] = prefs.values(conn)
-        ctx["D30"] = settings.d30
+        ctx["D30"] = settings.d30 or settings.d30_bridge
+        raw_msg, _, marker = str(ctx["msg"]).partition(BRIDGE_MARK)
+        ctx["msg"] = raw_msg
+        ctx["bridge_codes"] = marker.removesuffix(BRIDGE_END)
         ctx.setdefault("dims_opts", dims_options(conn))
         ctx.setdefault(
             "dims_kinds", [k for k, _, _ in kinds.ADD_KINDS if k not in ("machine", "dryer")]
@@ -401,6 +406,8 @@ def create_app(settings: Settings) -> FastAPI:
 
     def direct_print(conn: sqlite3.Connection, codes_: list[str]) -> str:
         """Direktdruck nach dem Eintragen; ein Druckfehler lässt das Eintragen gelten."""
+        if settings.d30_bridge and not settings.d30 and codes_:
+            return f" · Druck über PC-Bridge{BRIDGE_MARK}{','.join(codes_)}{BRIDGE_END}"
         if not (settings.d30 and codes_):
             return ""
         try:
@@ -908,7 +915,8 @@ def create_app(settings: Settings) -> FastAPI:
         if not (len(code) == len(text) == len(extra)):
             raise HTTPException(400, "Tabelle unvollständig")
         entries_ = list(zip(code, text, extra, strict=True))
-        if fmt == "d30":  # erst drucken – nur Gedrucktes wird als gedruckt gebucht
+        bridge = fmt == "d30" and settings.d30_bridge and not settings.d30
+        if fmt == "d30" and not bridge:  # erst drucken – nur Gedrucktes wird als gedruckt gebucht
             if not settings.d30:
                 raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
             d30.print_labels(
@@ -935,6 +943,9 @@ def create_app(settings: Settings) -> FastAPI:
             return redirect("/labels", f"{len(rows)} Etikett(en) in der Warteschlange")
         if source == "queue":
             labels.dequeue(conn, [r.code for r in rows])
+        if bridge:
+            marker = f"{BRIDGE_MARK}{','.join(r.code for r in rows)}{BRIDGE_END}"
+            return redirect("/labels", f"{len(rows)} Etikett(en) an die PC-Bridge gesendet{marker}")
         if fmt == "d30":
             return redirect("/labels", f"{len(rows)} Etikett(en) auf dem D30 gedruckt")
         if fmt == "a4":

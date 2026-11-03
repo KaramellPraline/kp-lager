@@ -70,7 +70,7 @@
   {{ navtab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
 </nav>
 {% if msg %}
-<div class="toast" role="status" {% if not undo %}data-autohide{% endif %}>
+<div class="toast" role="status" {% if not undo %}data-autohide{% endif %}{% if bridge_codes %} data-d30-codes="{{ bridge_codes }}"{% endif %}>
   <span>{{ msg }}</span>
   {% if undo %}<form method="post" action="/undo/{{ undo }}"><button class="link">Rückgängig</button></form>{% endif %}
   <button type="button" class="x" aria-label="Schließen" onclick="this.parentElement.remove()">{{ icon('nav.close', size='sm') }}</button>

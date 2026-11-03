@@ -1,0 +1,25 @@
+name: Windows-Installer
+
+# Baut KP-Lager-Server-Setup.exe und KP-Lager-Client-Setup.exe (manuell oder bei Tag v*).
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Inno Setup
+        run: choco install innosetup -y --no-progress
+      - name: Bauen
+        shell: pwsh
+        run: |
+          $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+          ./windows/build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kp-lager-windows
+          path: dist/installer/*.exe

@@ -66,7 +66,9 @@ def register(
     @app.get("/d30/status")
     def d30_status() -> JSONResponse:
         if not settings.d30:
-            return JSONResponse({"enabled": False, "available": False, "msg": "aus"})
+            return JSONResponse(
+                {"enabled": False, "available": False, "msg": "aus", "bridge": settings.d30_bridge}
+            )
         ok, msg = d30.status()
         return JSONResponse({"enabled": True, "available": ok, "msg": msg})
 
@@ -74,10 +76,30 @@ def register(
     def d30_print(
         conn: Conn, code: Annotated[list[str], Form()], back: Annotated[str, Form()] = "/"
     ) -> RedirectResponse:
+        if settings.d30_bridge and not settings.d30:
+            marker = f"\u27e6d30:{','.join(dict.fromkeys(code))}\u27e7"
+            return redirect(safe_back(back, "/"), "Druck über PC-Bridge" + marker)
         if not settings.d30:
             raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
         n = d30.print_codes(conn, settings.base_url, code)
         return redirect(safe_back(back, "/"), f"{n} Etikett{'en' if n != 1 else ''} gedruckt")
+
+    @app.post("/d30/printed")
+    def d30_printed(conn: Conn, code: Annotated[list[str], Form()]) -> JSONResponse:
+        """Die PC-Bridge meldet gedruckte Etiketten: als gedruckt buchen, Warteschlange leeren."""
+        from app import codes as code_schema
+        from app import labels
+
+        norm = [c for raw in code if (c := code_schema.normalize(raw))]
+        with conn:
+            conn.executemany(
+                "UPDATE container SET label_printed = 1 WHERE code = ?", [(c,) for c in norm]
+            )
+            conn.executemany(
+                "UPDATE item SET label_printed = 1 WHERE code = ?", [(c,) for c in norm]
+            )
+        labels.dequeue(conn, norm)
+        return JSONResponse({"ok": True, "count": len(norm)})
 
     # --- Trockner: Etikett scannen, dann Filament-Etiketten = getrocknet ---------------
 
