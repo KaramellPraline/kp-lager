@@ -371,7 +371,13 @@ def create_app(settings: Settings) -> FastAPI:
             target=last_target(request),
             fav_targets=repo.favorites(conn)[:10],
             recent_targets=repo.containers_by_ids(conn, recent_targets(request))[:3],
-            cats=ordered(kinds.ITEM_CATS_SHORT, recent_list(request, "qa_cats"), lambda c: c[0]),
+            cats=[
+                c
+                for c in ordered(
+                    kinds.ITEM_CATS_SHORT, recent_list(request, "qa_cats"), lambda c: c[0]
+                )  # fmt: skip
+                if c[0] not in ("CNS", "RAW", "CMP")  # nur noch über den Katalog (Typ + Tags)
+            ],
             spec_forms=choices.forms(conn),
         )
 

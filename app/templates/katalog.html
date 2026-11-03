@@ -21,7 +21,7 @@
       {% for f in ctype.fields %}
       <div class="nf">
         <label for="f_{{ f.key }}">{{ f.label }}{% if f.unit %} <span class="meta">({{ f.unit }})</span>{% endif %}</label>
-        <input id="f_{{ f.key }}" name="f_{{ f.key }}" {% if f.options %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" autocomplete="off" {% if loop.first %}autofocus{% endif %}>
+        <input id="f_{{ f.key }}" name="f_{{ f.key }}" {% if f.options %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" autocomplete="off">
         {% if f.options %}
         <datalist id="dl_{{ f.key }}">{% for o in f.options %}<option value="{{ o }}">{% endfor %}</datalist>
         <div class="chips">{% for o in f.options[:18] %}<button type="button" class="chip" data-for="f_{{ f.key }}">{{ o }}</button>{% endfor %}</div>

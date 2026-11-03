@@ -164,8 +164,14 @@
   }
   document.addEventListener("change", function (ev) {
     if (!ev.target.matches(".add-anything input[name=cat]")) return;
-    var active = syncCable(ev.target.form);
-    if (active) active.querySelector("input").focus();
+    syncCable(ev.target.form);  // kein Auto-Fokus: Tastatur soll nicht ungefragt aufgehen
+  });
+
+  // Eingabefeld beim Antippen sichtbar halten (Handy-Tastatur verdeckt sonst das Feld)
+  document.addEventListener("focusin", function (ev) {
+    var el = ev.target;
+    if (!el.matches || !el.matches("input:not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea, select")) return;
+    setTimeout(function () { el.scrollIntoView({ block: "center", behavior: "smooth" }); }, 300);
   });
 
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
@@ -186,7 +192,6 @@
     form.querySelectorAll("[data-for]").forEach(function (el) {
       el.hidden = el.dataset.for.split(" ").indexOf(b.dataset.mode) < 0;
     });
-    form.querySelector("#quick-home").focus();
   });
 
   // Behälter: Art (Kacheln oder Liste) -> passende Größen zur Auswahl, Airtight nur bei Boxen
