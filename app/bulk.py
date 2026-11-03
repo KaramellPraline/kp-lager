@@ -57,7 +57,7 @@ def apply(
         for iid in item_ids:
             it = repo.get_item(conn, iid)
             if it["code"]:
-                labels.enqueue(conn, it["code"], it["name"], "")
+                labels.enqueue(conn, it["code"], *labels.item_texts(conn, it))
                 n += 1
         for cid in node_ids:
             c = repo.get_container(conn, cid)
@@ -116,4 +116,4 @@ def _change_cat(conn: sqlite3.Connection, item_id: int, cat: str) -> None:
             (materials.PREFIX_MATERIAL.get(cat), item_id),
         )
     if new and cat in repo.INDIVIDUAL:
-        labels.enqueue(conn, new, item["name"], "")
+        labels.enqueue(conn, new, *labels.item_texts(conn, repo.get_item(conn, item["id"])))

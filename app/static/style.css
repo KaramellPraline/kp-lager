@@ -437,3 +437,12 @@ table.raster td.empty { color: var(--sub); }
 table.raster small { display: block; color: var(--sub); font-size: 11px; }
 .assign-row { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; }
 .assign-row select { grid-column: 2; }
+
+/* Schnellaktionen */
+.qa-more { background: none; border: none; padding: 6px; color: var(--sub); }
+.qa-sheet { position: fixed; left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 60;
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--r-md, 14px); padding: 8px;
+  display: flex; flex-direction: column; gap: 4px; box-shadow: 0 10px 40px rgba(0,0,0,.45); max-width: 480px; margin: 0 auto; }
+.qa-sheet .qa-title { padding: 8px 10px; font-weight: 600; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.qa-sheet button { text-align: left; padding: 12px 10px; border-radius: var(--r-sm); }
+.qa-sheet .qa-cancel { text-align: center; color: var(--sub); }

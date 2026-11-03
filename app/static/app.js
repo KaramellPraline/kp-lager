@@ -458,3 +458,75 @@
   form.addEventListener("change", function (ev) { if (ev.target.name === "cat") load(); });
   load();
 })();
+
+/* Schnellaktionen für Teile: langer Druck, Rechtsklick oder „⋯“-Knopf öffnet ein Menü */
+(function () {
+  var ACTIONS = [
+    ["Öffnen", null],
+    ["1 entnehmen", "/items/{id}/take", { qty: "1" }],
+    ["Umlagern (aufnehmen)", "/carry/item/{id}"],
+    ["Etikett vormerken", "/labels/queue/item/{id}"],
+    ["Auf Einkaufsliste", "/items/{id}/list"],
+    ["Inventur: stimmt", "/inventur/item/{id}"],
+  ];
+  var sheet = null;
+  function close() { if (sheet) { sheet.remove(); sheet = null; } }
+  function post(url, data) {
+    var f = document.createElement("form");
+    f.method = "post"; f.action = url;
+    Object.keys(data || {}).forEach(function (k) {
+      var i = document.createElement("input"); i.type = "hidden"; i.name = k; i.value = data[k]; f.appendChild(i);
+    });
+    document.body.appendChild(f); f.submit();
+  }
+  function open(li) {
+    close();
+    var id = li.dataset.qa, link = li.querySelector("a.name");
+    sheet = document.createElement("div");
+    sheet.className = "qa-sheet"; sheet.setAttribute("role", "menu");
+    var title = document.createElement("div");
+    title.className = "qa-title"; title.textContent = link ? link.textContent.trim() : "Teil";
+    sheet.appendChild(title);
+    ACTIONS.forEach(function (a) {
+      var b = document.createElement("button");
+      b.type = "button"; b.setAttribute("role", "menuitem"); b.textContent = a[0];
+      b.addEventListener("click", function () {
+        if (!a[1]) { location.href = "/items/" + id; return; }
+        post(a[1].replace("{id}", id), a[2]);
+      });
+      sheet.appendChild(b);
+    });
+    var c = document.createElement("button");
+    c.type = "button"; c.className = "qa-cancel"; c.textContent = "Abbrechen";
+    c.addEventListener("click", close);
+    sheet.appendChild(c);
+    document.body.appendChild(sheet);
+    sheet.querySelector("button[role=menuitem]").focus();
+  }
+  document.addEventListener("click", function (ev) {
+    var more = ev.target.closest("button.qa-more");
+    if (more) { ev.preventDefault(); open(more.closest("li[data-qa]")); return; }
+    if (sheet && !ev.target.closest(".qa-sheet")) close();
+  });
+  document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") close(); });
+  document.addEventListener("contextmenu", function (ev) {
+    var li = ev.target.closest("li[data-qa]");
+    if (li && !ev.target.closest("button")) { ev.preventDefault(); open(li); }
+  });
+  var timer = null, startX = 0, startY = 0, fired = false;
+  document.addEventListener("touchstart", function (ev) {
+    var li = ev.target.closest("li[data-qa]");
+    if (!li || ev.target.closest("button")) return;
+    fired = false; startX = ev.touches[0].clientX; startY = ev.touches[0].clientY;
+    timer = setTimeout(function () { fired = true; if (navigator.vibrate) navigator.vibrate(15); open(li); }, 500);
+  }, { passive: true });
+  document.addEventListener("touchmove", function (ev) {
+    if (timer && (Math.abs(ev.touches[0].clientX - startX) > 10 || Math.abs(ev.touches[0].clientY - startY) > 10)) {
+      clearTimeout(timer); timer = null;
+    }
+  }, { passive: true });
+  document.addEventListener("touchend", function (ev) {
+    clearTimeout(timer); timer = null;
+    if (fired) { ev.preventDefault(); fired = false; }  // kein Klick auf den Link nach langem Druck
+  });
+})();

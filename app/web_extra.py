@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from app import expiry, materials, placement, sortiment, typesettings, weighing
+from app import expiry, labels, materials, placement, repo, sortiment, typesettings, weighing
 from app.config import Settings
 from app.repo import LagerError
 
@@ -48,6 +48,20 @@ def register(
         sortiment.kind(conn, key)  # existiert?
         typesettings.save(conn, key, _int(min_qty), _int(shelf_months), label_main, label_extra)
         return redirect(f"/sortiment/{key}#einstellungen", "Einstellungen für den Typ gespeichert")
+
+    @app.post("/labels/sammel/{node_id}")
+    def collect_labels(node_id: int, conn: Conn) -> RedirectResponse:
+        """Sammeldruck: alle ungedruckten Etiketten der Box (inkl. Unterbehälter) vormerken."""
+        node = repo.get_container(conn, node_id)
+        if node is None:
+            raise LagerError("Behälter nicht gefunden")
+        rows = labels.unprinted_in(conn, settings.base_url, node_id)
+        for r in rows:
+            labels.enqueue(conn, r.code, r.text, r.extra)
+        if not rows:
+            return redirect(f"/n/{node_id}", "Alle Etiketten dieser Box sind schon gedruckt")
+        msg = f"{len(rows)} ungedruckte Etiketten aus „{node['name']}“ vorgemerkt"
+        return redirect("/labels", msg)
 
     # --- Zählen per Waage -------------------------------------------------------------------
 

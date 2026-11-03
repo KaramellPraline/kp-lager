@@ -5,6 +5,7 @@ Alphanumerik-Modus, wird eine Version kleiner und auf 10 mm besser scannbar. /C/
 """
 
 import io
+import re
 import sqlite3
 from dataclasses import dataclass
 
@@ -67,12 +68,74 @@ def blank(conn: sqlite3.Connection, base_url: str, prefix: str, count: int) -> l
     ]
 
 
-def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> Label:
+def fill(template: str, values: dict[str, str]) -> str:
+    """„{thread}x{length} {head}“ -> „M3x10 Zylinderkopfschraube“; leere Felder fallen weg
+    (samt direkt angehängter Zeichen wie „x“ oder „mm“, wenn sie dadurch allein stünden)."""
+    out = []
+    for token in template.split():
+        keys = re.findall(r"{(\w+)}", token)
+        if keys and not all(values.get(k, "").strip() for k in keys):
+            continue
+        out.append(re.sub(r"{(\w+)}", lambda m: values.get(m.group(1), "").strip(), token))
+    return " ".join(out).strip()
+
+
+def item_texts(conn: sqlite3.Connection, item: sqlite3.Row) -> tuple[str, str]:
+    """(Text, Zusatz) fürs Teile-Etikett: Vorlage des Typs, sonst Name und Ort."""
+    from app import catalog, materials, typesettings  # spät: Zyklen vermeiden
+
     holder = conn.execute(
         "SELECT kind, name, position FROM container WHERE id = ?", (item["container_id"],)
     ).fetchone()
-    extra = holder["position"] if holder["kind"] == "compartment" else holder["name"]
-    return Label(item["code"], qr_content(base_url, item["code"]), item["name"], extra or "")
+    place = (holder["position"] if holder["kind"] == "compartment" else holder["name"]) or ""
+    text, extra = item["name"], place
+    key = typesettings.key_of(item)
+    if key:
+        ts = typesettings.get(conn, key)
+        if ts["label_main"] or ts["label_extra"]:
+            values = {**materials.specs(item), **catalog.values_of(item)}
+            values.update({"name": item["name"], "code": item["code"] or "", "ort": place})
+            text = fill(ts["label_main"], values) or item["name"] if ts["label_main"] else text
+            extra = fill(ts["label_extra"], values) if ts["label_extra"] else extra
+    return text, extra
+
+
+def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> Label:
+    text, extra = item_texts(conn, item)
+    return Label(item["code"], qr_content(base_url, item["code"]), text, extra)
+
+
+def unprinted_in(conn: sqlite3.Connection, base_url: str, container_id: int) -> list[Label]:
+    """Sammeldruck: alle noch nicht gedruckten Etiketten im Behälter samt Unterbehältern
+    (Behälter selbst, Unterbehälter mit Code, Teile mit Code)."""
+    tree = conn.execute(
+        """
+        WITH RECURSIVE down(id) AS (
+            SELECT id FROM container WHERE id = ?
+            UNION ALL SELECT c.id FROM container c JOIN down ON c.parent_id = down.id
+        ) SELECT id FROM down
+        """,
+        (container_id,),
+    ).fetchall()
+    ids = [r["id"] for r in tree]
+    marks = ",".join("?" * len(ids))
+    out = []
+    for c in conn.execute(
+        f"SELECT * FROM container WHERE id IN ({marks}) AND code IS NOT NULL AND label_printed = 0"
+        " ORDER BY id",
+        ids,
+    ):
+        text, extra = container_label(conn, c)
+        out.append(Label(c["code"], qr_content(base_url, c["code"]), text, extra))
+    out += [
+        item_label(conn, base_url, i)
+        for i in conn.execute(
+            f"SELECT * FROM item WHERE container_id IN ({marks}) AND code IS NOT NULL"
+            " AND label_printed = 0 AND archived = 0 ORDER BY container_id, name",
+            ids,
+        )
+    ]
+    return out
 
 
 def pending(conn: sqlite3.Connection, base_url: str) -> list[Label]:

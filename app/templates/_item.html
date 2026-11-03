@@ -1,4 +1,4 @@
-<li class="item" id="item-{{ i.id }}">
+<li class="item" id="item-{{ i.id }}" data-qa="{{ i.id }}" data-qty="{{ i.qty if i.qty is not none else '' }}">
   <a href="/items/{{ i.id }}" class="name">{{ i.name }}{% if i.lent_to %} <span class="badge">bei {{ i.lent_to }}</span>{% endif %}{% if i.min_qty is not none and i.qty is not none and i.qty < i.min_qty %} <span class="badge warn">nachkaufen</span>{% endif %}</a>
   {% if i.code and i.code[:3] in ('CBL', 'PSU') %}
   <span class="qty hint">Einzelstück</span>
@@ -13,4 +13,5 @@
   {% else %}
   <span class="qty hint">{{ i.qty_hint or 'ungezählt' }}</span>
   {% endif %}
+  <button type="button" class="qa-more icon-only" aria-label="Aktionen für {{ i.name }}">{{ icon('nav.more', size='sm') }}</button>
 </li>

@@ -64,6 +64,7 @@
       {% endif %}
       {% if items or kids %}
       <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>{{ icon('action.print') }} Teile-Etiketten</button></form>
+      <form method="post" action="/labels/sammel/{{ node.id }}"><button>{{ icon('content.tag') }} Alle ungedruckten (Sammeldruck)</button></form>
       {% endif %}
       {% if items or kids %}
       <a class="button" href="/auswahl?node={{ node.id }}">{{ icon('action.edit') }} Mehrere bearbeiten</a>
