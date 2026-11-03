@@ -1,7 +1,7 @@
 # Installation
 
 Drei Teile, getrennt nutzbar: **Server** (Docker, Dauerbetrieb) · **Windows-Client** (Fenster + D30-Bridge am PC) ·
-**Handy** (Browser/Home-Bildschirm). Aktuelle Version und Downloads: GitHub › Releases.
+**Handy** (Android-App oder Browser). Aktuelle Version und Downloads: GitHub › Releases.
 
 ## 1. Server (Docker, empfohlen)
 Voraussetzung: Docker mit Compose auf dem Server (Raspberry Pi, NAS, Mini-PC).
@@ -31,8 +31,9 @@ Datenbank-Migrationen laufen beim Start automatisch; vorher ein Backup (`docker 
 ## 3. Windows-Server zum Debuggen (optional)
 `KP-Lager-Server-Setup-<Version>.exe` – oder ohne Installer `powershell -File tools\dev.ps1`. Siehe `docs/WINDOWS.md`.
 
-## 4. Handy
-`https://lager.home.lan` öffnen, CA-Zertifikat installieren, „Zum Home-Bildschirm“ (Anleitung: `deploy/README.md`).
+## 4. Handy (Android)
+`KP-Lager-<Version>.apk` aus dem Release installieren, Adresse eintragen, CA-Zertifikat installieren – Details in `docs/ANDROID.md`.
+Ohne APK (auch iPhone): `https://lager.home.lan` öffnen, CA installieren, „Zum Home-Bildschirm“.
 
 ## Version prüfen
 Mehr › Status zeigt die Version des Servers; `https://<host>/health` liefert sie als JSON; `lager-client.exe --version`.

@@ -3,9 +3,10 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
-## [Unveröffentlicht]
+## [0.3.0] – 2026-11-04
 
 ### Neu
+- Android-App als APK (KP-Lager-0.3.0.apk): eigenes Fenster, Server-Adresse einstellbar, QR-Scan mit Kamera, Foto-Upload, Downloads, offline über den Service Worker.
 - Typen am Teil mit Datenblatt, Sortiment nach Typ, Variantenraster für alle Arten, Dublettenwarnung, eigene Typen, Altbestand-Zuordnung.
 - Standard-Mindestbestand je Typ, Platz-Vorschlag beim Anlegen, Zählen per Waage, Ablauf-Erinnerung.
 - Projekt-Reservierung; Einkauf aus CSV, Rechnungstext oder PDF übernehmen.

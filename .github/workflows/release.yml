@@ -2,8 +2,8 @@ name: Release
 
 # Veröffentlichen: Version hochzählen (tools/release.py bump), committen, Tag pushen:
 #   git tag v0.3.0 && git push origin v0.3.0
-# Der Workflow prüft Tag == Version, testet, baut Windows-Installer und Docker-Image und
-# legt ein GitHub-Release mit den Dateien an.
+# Der Workflow prüft Tag == Version, testet, baut Windows-Installer, Android-APK und Docker-Image
+# und legt ein GitHub-Release mit Installern und APK an.
 on:
   push:
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
@@ -57,6 +57,35 @@ jobs:
           name: installer
           path: dist/installer/*.exe
 
+  android:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Eigener Signaturschlüssel (optional, Secret ANDROID_KEYSTORE_B64)
+        env:
+          KS: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+        if: env.KS != ''
+        run: |
+          echo "$KS" | base64 -d > "$RUNNER_TEMP/release.keystore"
+          echo "KP_KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          echo "KP_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" >> "$GITHUB_ENV"
+          echo "KP_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}" >> "$GITHUB_ENV"
+          echo "KP_KEY_PASSWORD=${{ secrets.ANDROID_KEY_PASSWORD }}" >> "$GITHUB_ENV"
+      - name: APK bauen
+        working-directory: android
+        run: ./gradlew assembleRelease --no-daemon -PappVersion=${{ needs.test.outputs.version }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: android/app/build/outputs/apk/release/*.apk
+
   docker:
     needs: test
     runs-on: ubuntu-latest
@@ -83,7 +112,7 @@ jobs:
             ${{ env.IMAGE }}:latest
 
   release:
-    needs: [test, windows, docker]
+    needs: [test, windows, android]   # Docker läuft getrennt und hält das Release nicht auf
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -93,9 +122,13 @@ jobs:
         with:
           name: installer
           path: dist
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: dist
       - name: Release anlegen
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python3 tools/release.py notes "$TAG" > notes.md
-          gh release create "$TAG" dist/*.exe --title "KP Lager ${TAG}" --notes-file notes.md
+          gh release create "$TAG" dist/*.exe dist/*.apk --title "KP Lager ${TAG}" --notes-file notes.md

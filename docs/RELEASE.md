@@ -16,9 +16,9 @@ git tag v0.3.0 && git push origin v0.3.0      # löst den Workflow „Release“
 Der Workflow (`.github/workflows/release.yml`)
 1. prüft, dass Tag, `app/__init__.py` und `pyproject.toml` übereinstimmen und der Changelog-Text vorhanden ist,
 2. führt Lint, Typprüfung und Tests aus,
-3. baut beide Windows-Installer (`KP-Lager-Client-Setup-0.3.0.exe`, `KP-Lager-Server-Setup-0.3.0.exe`),
+3. baut beide Windows-Installer (`KP-Lager-Client-Setup-0.3.0.exe`, `KP-Lager-Server-Setup-0.3.0.exe`) und die Android-App (`KP-Lager-0.3.0.apk`),
 4. baut das Docker-Image (amd64 + arm64) und legt es unter `ghcr.io/karamellpraline/kp-lager:0.3.0` ab,
-5. erstellt das GitHub-Release `v0.3.0` mit Changelog-Text und den beiden Installern.
+5. erstellt das GitHub-Release `v0.3.0` mit Changelog-Text, beiden Installern und der APK (das Docker-Image läuft daneben und hält das Release nicht auf).
 
 Schlägt ein Schritt fehl, entsteht kein Release; nach der Korrektur den Tag löschen und neu setzen
 (`git tag -d v0.3.0 && git push origin :refs/tags/v0.3.0`). Zum Testen ohne Release: Actions › „Windows-Installer“.

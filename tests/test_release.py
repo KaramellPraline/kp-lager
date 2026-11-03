@@ -37,18 +37,20 @@ def test_version_visible_in_app(client: TestClient) -> None:
 
 def test_bump_updates_all_places(tmp_path: Path) -> None:
     root = _copy(tmp_path)
-    release.bump("0.3.0", root, today=date(2026, 12, 1))
-    assert release.current(root) == release.pyproject_version(root) == "0.3.0"
+    major, minor, _ = map(int, __version__.split("."))
+    nxt = f"{major}.{minor + 1}.0"
+    release.bump(nxt, root, today=date(2026, 12, 1))
+    assert release.current(root) == release.pyproject_version(root) == nxt
     log = (root / "CHANGELOG.md").read_text("utf-8")
-    assert log.index("## [0.3.0] – 2026-12-01") < log.index("## [0.2.0]")
+    assert log.index(f"## [{nxt}] – 2026-12-01") < log.index(f"## [{__version__}]")
     with pytest.raises(SystemExit):  # leerer Changelog-Text darf nicht veröffentlicht werden
-        release.notes("0.3.0", root)
-    assert release.check("v0.3.0", root) == "0.3.0"
+        release.notes(nxt, root)
+    assert release.check(f"v{nxt}", root) == nxt
     with pytest.raises(SystemExit):
-        release.check("v0.2.0", root)  # Tag passt nicht zur Version im Code
+        release.check(f"v{__version__}", root)  # Tag passt nicht zur Version im Code
 
 
-@pytest.mark.parametrize("bad", ["1.2", "v1.2.3", "0.1.0", "0.2.0", "x"])
+@pytest.mark.parametrize("bad", ["1.2", "v1.2.3", "0.1.0", __version__, "x"])
 def test_bump_rejects_bad_or_lower_versions(bad: str, tmp_path: Path) -> None:
     with pytest.raises(SystemExit):
         release.bump(bad, _copy(tmp_path))
