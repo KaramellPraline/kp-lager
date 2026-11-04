@@ -45,3 +45,4 @@ Draufsicht mit Einsätzen, Schnelleingabe im Kasten, Inhaltsetiketten, Bin-Gener
 ## Betrieb
 
 Tägliches Backup, Statusseite (`/status`), Massenbearbeitung (`/auswahl`), Einstellungen (`/settings`), REST/CLI/MCP.
+- Einsätze (BIN) mit Rastermaß und Teilung unter Hinzufügen › Behälter anlegen, im Sortierkasten als vorhandene Einsätze wählbar (M53, `docs/BINS.md`).

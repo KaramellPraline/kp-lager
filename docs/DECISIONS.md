@@ -82,3 +82,4 @@
 - 2026-11-04: API-Schreibschlüssel per Einstellung abschaltbar (`api_write_key`, Standard an). Warum: Debuggen von CLI/MCP ohne Schlüsselverwaltung.
 - 2026-11-04 (1.3.0): Schrift Roboto wird mitgeliefert. Warum: das Docker-Image hat keine Systemschriften, Pillow-Standardschrift kennt keine Umlaute/ß.
 - 2026-11-04: A4-Etiketten sind frei gestaltbar (Typ `layout`: Zeilen mit Farbe, QR, Rahmen) und übernehmen Name/Code aus dem Behälter. Warum: gleiche Konfigurierbarkeit wie das kleine Etikett.
+- 2026-11-04 (1.4.0): Einsätze können lose (ohne Sortierkasten) angelegt werden und werden später im Kasten eingesetzt. Warum: Einsätze entstehen oft vor dem Kasten bzw. werden getauscht; Rastermaß (size) und Teilung (grid) sind die gleichen Felder wie bei im Kasten angelegten Einsätzen.

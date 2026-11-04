@@ -15,7 +15,7 @@ def test_item_categories_on_start(client: TestClient) -> None:
     assert "Projekt" not in page
     kind_page = client.get("/neu/behaelter").text
     assert "art=toolbox" in kind_page and "art=machine" in kind_page
-    assert "art=compartment" not in kind_page and "art=bin" not in kind_page
+    assert "art=compartment" not in kind_page and "art=bin" in kind_page  # Einsatz seit M53
     shelf = _shelf(client)
     client.post(
         "/quickadd", data={"mode": "item", "text": "5 m NYM-J Kabel", "target": shelf, "cat": "CBL"}

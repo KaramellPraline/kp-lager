@@ -3,6 +3,12 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.4.0] – 2026-11-04
+
+### Neu
+- Hinzufügen › Behälter › **Einsatz (BIN)**: Einsätze mit **Rastermaß** (Zellen im Sortierkasten, L×K) und **Teilung** (Fächer) anlegen, auch mit eigenem Maß. Name leer = „Einsatz 2x1 · 3x1“, BIN-Code wird automatisch vergeben.
+- Im Sortierkasten unter „Einsatz einsetzen“ lassen sich **vorhandene Einsätze wählen**; angeboten werden nur Einsätze, die irgendwo frei hinpassen, mit den passenden Zellen. Griff und belegte Zellen werden wie beim Neuanlegen geprüft.
+
 ## [1.3.1] – 2026-11-04
 
 ### Behoben

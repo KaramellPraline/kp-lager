@@ -136,6 +136,65 @@ def place_bin(
     )
 
 
+def loose_bins(conn: sqlite3.Connection) -> list[Row]:
+    """Angelegte Einsätze (mit Rastermaß), die noch in keinem Sortierkasten stecken."""
+    return conn.execute(
+        "SELECT b.* FROM container b LEFT JOIN container p ON p.id = b.parent_id"
+        " WHERE b.kind = 'bin' AND COALESCE(b.size, '') != ''"
+        " AND (p.id IS NULL OR p.model IS NULL) ORDER BY b.code, b.id"
+    ).fetchall()
+
+
+def fitting_cells(conn: sqlite3.Connection, kasten: Row, bin_row: Row) -> list[str]:
+    """Freie Zellen, ab denen der Einsatz (oben links) in den Kasten passt."""
+    model = model_of(kasten)
+    if model is None:
+        return []
+    taken = occupied(conn, kasten["id"])
+    out = []
+    for cell in free_cells(conn, kasten):
+        try:
+            check_place(model, taken, cell, bin_row["size"])
+        except LagerError:
+            continue
+        out.append(cell)
+    return out
+
+
+def loose_choices(conn: sqlite3.Connection, kasten: Row) -> list[dict[str, Any]]:
+    """Auswahl 'Vorhandenen Einsatz einsetzen': nur Einsätze, die irgendwo passen."""
+    out = []
+    for b in loose_bins(conn):
+        cells = fitting_cells(conn, kasten, b)
+        if cells:
+            out.append({"id": b["id"], "code": b["code"] or "", "name": b["name"],
+                        "size": b["size"], "grid": b["grid"] or "1x1", "cells": cells})  # fmt: skip
+    return out
+
+
+def place_existing(conn: sqlite3.Connection, kasten_id: int, bin_id: int, pos: str) -> str:
+    """Bereits angelegten Einsatz (Rastermaß + Teilung) in einen Sortierkasten einsetzen."""
+    kasten = repo.get_container(conn, kasten_id)
+    model = model_of(kasten) if kasten else None
+    if kasten is None or model is None:
+        raise LagerError("Kein Sortierkasten mit Modell")
+    b = repo.get_container(conn, bin_id)
+    if b is None or b["kind"] != "bin" or not b["size"]:
+        raise LagerError("Das ist kein Einsatz mit Rastermaß")
+    if b["parent_id"] and (p := repo.get_container(conn, b["parent_id"])) and p["model"]:
+        raise LagerError("Der Einsatz steckt schon in einem Sortierkasten")
+    pos = pos.strip().upper()
+    check_place(model, occupied(conn, kasten_id), pos, b["size"])
+    name = f"Einsatz {pos}" if b["name"].startswith("Einsatz ") else b["name"]
+    with conn:
+        conn.execute(
+            "UPDATE container SET parent_id = ?, position = ?, name = ?, label_printed = 0,"
+            " updated_at = datetime('now') WHERE id = ?",
+            (kasten_id, pos, name, bin_id),
+        )
+    return pos
+
+
 def free_cells(conn: sqlite3.Connection, kasten: Row) -> list[str]:
     model = model_of(kasten)
     if model is None:

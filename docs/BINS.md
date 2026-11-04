@@ -43,3 +43,10 @@ uv run --group cad python cad/norb_bins.py --file bins.json --out out/bins
 
 ## Seitenetiketten
 Siehe `docs/A4.md` (Bin-Etikett-Editor, A4-Warteschlange).
+
+## Einsätze vorab anlegen (M53)
+Hinzufügen › Behälter › **Einsatz**: Rastermaß (L×K Zellen, x = lange Seite) und Teilung (Fächer Spalten×Zeilen)
+wählen oder frei eintragen. Der Einsatz bekommt einen BIN-Code und liegt zunächst lose (optional „Wohin?“).
+Im Sortierkasten (`/n/{id}`) unter „Einsatz einsetzen › Vorhandenen Einsatz wählen“ wird er in eine freie Zelle
+gesetzt (`kasten.place_existing`, Route `POST /n/{id}/bins/existing`). Angeboten werden nur Einsätze, die in
+dieser Größe irgendwo frei hinpassen (`kasten.loose_choices`). Prüfung wie beim Neuanlegen: Griff, belegt, passt nicht.

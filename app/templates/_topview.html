@@ -56,6 +56,32 @@
 
 <section id="einsetzen" class="card">
   <h2>Einsatz einsetzen</h2>
+  {% if loose %}
+  <form method="post" action="/n/{{ node.id }}/bins/existing" class="stack" id="bin-existing">
+    <h3 style="margin:0">Vorhandenen Einsatz wählen</h3>
+    <div class="row">
+      <label>Einsatz
+        <select name="bin_id" id="ex-bin">{% for b in loose %}<option value="{{ b.id }}" data-cells="{{ b.cells|tojson|forceescape }}">{{ b.code }} · {{ b.name }} · {{ b.size }} · Teilung {{ b.grid }}</option>{% endfor %}</select>
+      </label>
+      <label>Zelle (oben links)
+        <select name="position" id="ex-pos">{% for c in loose[0].cells %}<option {% if c == place %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <button class="primary">Einsatz einsetzen</button>
+  </form>
+  <script>
+  (function () {
+    var b = document.getElementById("ex-bin"), p = document.getElementById("ex-pos");
+    if (!b || !p) return;
+    b.addEventListener("change", function () {
+      var cells = JSON.parse(b.selectedOptions[0].dataset.cells || "[]");
+      p.innerHTML = "";
+      cells.forEach(function (c) { var o = document.createElement("option"); o.textContent = c; p.appendChild(o); });
+    });
+  })();
+  </script>
+  <h3 style="margin:.6rem 0 0">Neuen Einsatz anlegen</h3>
+  {% endif %}
   {% if free %}
   <form method="post" action="/n/{{ node.id }}/bins" class="stack">
     <div class="row">

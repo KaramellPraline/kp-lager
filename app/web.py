@@ -389,7 +389,7 @@ def create_app(settings: Settings) -> FastAPI:
     @app.get("/neu/behaelter", response_class=HTMLResponse)
     def add_container_page(request: Request, conn: Conn, art: str = "") -> HTMLResponse:
         """Hinzufügen › Behälter: wie der Teile-Katalog (Art links, Felder rechts)."""
-        offered = [(g, [k for k in ks if k not in ("compartment", "bin", "level")])
+        offered = [(g, [k for k in ks if k not in ("compartment", "level")])
                    for g, ks in kinds.KIND_GROUPS]  # fmt: skip
         flat = [k for _, ks in offered for k in ks]
         key = art if art == "neu" else (kinds.resolve(art) if art else None)
@@ -405,6 +405,8 @@ def create_app(settings: Settings) -> FastAPI:
             "neu_behaelter.html",
             groups=[(g, ks) for g, ks in offered if ks],
             art=key,
+            sizes=kasten.SIZES,
+            divs=kasten.DIVS,
             targets=repo.all_paths(conn),
             target=last_target(request),
             recent=recent_rows,
@@ -670,6 +672,7 @@ def create_app(settings: Settings) -> FastAPI:
             topview=kasten.topview(conn, node, rot),
             targets=kasten.quick_targets(conn, node) if node["model"] else [],
             free=kasten.free_cells(conn, node),
+            loose=kasten.loose_choices(conn, node) if node["model"] else [],
             place=request.query_params.get("place", ""),
             sizes=kasten.SIZES,
             divs=kasten.DIVS,
@@ -1481,11 +1484,14 @@ def create_app(settings: Settings) -> FastAPI:
     def create_container(
         request: Request,
         conn: Conn,
-        name: Annotated[str, Form()],
         kind: Annotated[str, Form()],
+        name: Annotated[str, Form()] = "",
         parent_id: Annotated[str, Form()] = "",
         code: Annotated[str, Form()] = "",
         grid: Annotated[str, Form()] = "",
+        grid_custom: Annotated[str, Form()] = "",
+        size: Annotated[str, Form()] = "",
+        size_custom: Annotated[str, Form()] = "",
         position: Annotated[str, Form()] = "",
         model: Annotated[str, Form()] = "",
         dims: Annotated[str, Form()] = "",
@@ -1498,19 +1504,31 @@ def create_app(settings: Settings) -> FastAPI:
         d30_print: Annotated[str, Form()] = "",
         back: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
-        if not name.strip():
-            raise LagerError("Name fehlt")
         if kind == "neu":
             kind = kinds.create(conn, new_kind, new_prefix)
         kind = kinds.resolve(kind) or kind
+        size_val: str | None = None
+        grid = (grid_custom or grid).strip()
+        if kind == "bin":  # Einsatz mit Rastermaß und Teilung, später im Sortierkasten wählbar
+            size_val = (size_custom or size or "1x1").strip().lower()
+            kasten.parse_size(size_val)
+            grid = "" if grid in ("", "1x1") else grid
+            if not name.strip():
+                name = f"Einsatz {size_val}" + (f" · {grid}" if grid else "")
+        if not name.strip():
+            raise LagerError("Name fehlt")
         model_key = model if kind == "sortingbox" and model in kasten.MODELS else None
+        code_val = container_code(code)
+        if kind == "bin" and not code_val:
+            code_val = codes.reserve(conn, "BIN", 1)[0]
         cid = repo.create_container(
             conn,
             name.strip(),
             kind,
             parent_id=opt_int(parent_id),
-            code=container_code(code),
-            grid=None if model_key else (grid.strip() or None),
+            code=code_val,
+            size=size_val,
+            grid=None if model_key else (grid or None),
             position=position.strip() or None,
             model=model_key,
             dims=pick_dims(dims, dims_custom, dims_other),
@@ -1557,6 +1575,20 @@ def create_app(settings: Settings) -> FastAPI:
         if queue:
             labels.enqueue(conn, node["code"], *labels.container_label(conn, node))
         return redirect(f"/n/{node_id}", f"Einsatz {node['code']} ({size}) bei {node['position']}")
+
+    @app.post("/n/{node_id}/bins/existing")
+    def place_existing_bin(
+        node_id: int,
+        conn: Conn,
+        bin_id: Annotated[int, Form()],
+        position: Annotated[str, Form()],
+    ) -> RedirectResponse:
+        """Vorhandenen Einsatz (Rastermaß + Teilung) in diesen Sortierkasten einsetzen."""
+        pos = kasten.place_existing(conn, node_id, bin_id, position)
+        node = need_node(conn, bin_id)
+        return redirect(
+            f"/n/{node_id}", f"Einsatz {node['code']} ({node['size']}) bei {pos} eingesetzt"
+        )
 
     @app.post("/n/{node_id}/bins/{bin_id}/move")
     def move_bin(

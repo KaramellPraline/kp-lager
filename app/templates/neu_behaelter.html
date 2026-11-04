@@ -32,8 +32,21 @@
       {% endif %}
       <div class="nf">
         <label for="name">Name</label>
-        <input id="name" name="name" placeholder="{% if art == 'room' %}z. B. Werkstatt{% elif art == 'shelf' %}z. B. Regal links{% else %}z. B. Werkzeugkiste blau{% endif %}" required autocomplete="off">
+        <input id="name" name="name" placeholder="{% if art == 'bin' %}leer = „Einsatz 2x1 · 3x1“ (aus Rastermaß und Teilung){% elif art == 'room' %}z. B. Werkstatt{% elif art == 'shelf' %}z. B. Regal links{% else %}z. B. Werkzeugkiste blau{% endif %}" {% if art != 'bin' %}required{% endif %} autocomplete="off">
       </div>
+      {% if art == 'bin' %}
+      <div class="frow">
+        <label class="nf">Rastermaß L×K <span class="meta">(Zellen im Sortierkasten, x = lange Seite)</span>
+          <select name="size" id="bin-size">{% for s in sizes %}<option>{{ s }}</option>{% endfor %}</select></label>
+        <label class="nf">Teilung <span class="meta">(Fächer Spalten×Zeilen)</span>
+          <select name="grid" id="bin-grid">{% for d in divs %}<option>{{ d }}</option>{% endfor %}</select></label>
+      </div>
+      <div class="frow">
+        <label class="nf">Anderes Rastermaß <input name="size_custom" placeholder="z. B. 3x2" autocomplete="off"></label>
+        <label class="nf">Andere Teilung <input name="grid_custom" placeholder="z. B. 4x2" autocomplete="off"></label>
+      </div>
+      <p class="meta">Der Einsatz bekommt einen BIN-Code und kann danach im Sortierkasten unter „Einsatz einsetzen“ gewählt werden.</p>
+      {% endif %}
       {% set dims_for = dims_kinds %}
       {% include "_dims.html" %}
       {% if art == 'sortingbox' %}
