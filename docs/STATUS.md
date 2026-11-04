@@ -113,3 +113,15 @@ Stand: 2026-11-03
 - Handy-Test (CA, Bedienung Katalog/Baum), D30: Papier-Test des neuen Etikettenlayouts über die App, Bin-Testdruck, echter Creality-Print-Export, Vision-Test.
 - Autostart (geplanter Task) nur mit ausdrücklichem OK; Umzug auf Pi (Docker) vorbereitet, ungetestet.
 - Ideen: Maschinen-Wartung, Inventur-Scan, Etikett nachdrucken, Letzten Eintrag kopieren, Harz-Ablaufwarnung, Backup auf zweites Medium.
+
+## Backlog 2026-11-04 (Wunschliste M46+, nach Themen gebündelt)
+Erledigt: kein Auto-Fokus beim Typwechsel, Feld bleibt beim Tippen sichtbar (scrollIntoView), CNS/RAW/CMP nicht mehr als Kategorie-Kacheln (nur noch Katalog), Druck-Agent als eigenes Repo `kp-print-agent` (BLE auch am Pi).
+- **A Navigation/Layout**: Tab „Kabel & Material“ auflösen (CBL/PSU/FIL/RES in den Katalog `/neu`), „Darin anlegen“ und „Teil in Behälter eintragen“ entfernen, Icon-Leiste Drucken/Foto/Umlagern/Bearbeiten über Inhalt, Mini-Kopfzeile (Name+Code) beim Scrollen, Seitenleiste mit Kategoriesprung, Aktionen-Anzeige, Admin-Einstellungen sortieren, Einsatz-Menü für Sortierkisten.
+- **B Katalog**: mehr Arten/Kategorien, Stern-Favoriten (oben je Kategorie), viel mehr Tags + automatische Vergabe aus Feldern, mehrere Kartentypen je Artikel, „Standalone“-Haken (Teil ohne eigenes Etikett, nur Tag; im Sortierkisten-Editor je Fach wählbar), Sets mit einem Etikett (z. B. Bohrersatz), optionales Leer-/Artikelgewicht für Mengenermittlung, Zu-sortieren-Schnellwahl (Favoriten zuletzt), Box of Shame.
+- **C Etiketten/Druck**: Regel „40x12 automatisch drucken“, Druckverlauf mit Wiederholung/Batch, Druckmodi Sammel/Warteschlange/Einzel (Drucker-Symbol), Vorlagen-Preset „Alles“, Symbolbibliothek (im Agenten: Homelab/DIY-Icons, erweiterbar).
+- **D System**: Rückgängig/Wiederholen aller Aktionen (Symbol oben links), Export: Lager-JSON oder Gesamtarchiv inkl. Einstellungen, Nummernvergabe/Einzelentnahme in Einstellungen, Sortierkisten-Typenliste (18 Stück), Gridfinity-Support.
+- **E Doku**: MCP-Anbindung erklären (Chat → Artikel anlegen).
+
+### M46 erledigt (2026-11-04, Branch feat/m46-bedienung)
+Icon-Leiste + Sticky-Kopf an Teil/Behälter, Eintragen/„Darin anlegen“ entfernt, Katalog: Favoriten (Stern), Sprungleiste, 10 neue Typen (u. a. Gridfinity, Set/Sortiment, Kabel), Auto-Tags, „Kein eigenes Etikett“, Zielwahl mit Zu-sortieren-Knopf (Box of Shame), Tab „Kabel & Material“ entfernt, globales Rückgängig/Wiederholen (Kopfzeile), Gesamtarchiv `/export.zip`, Druckverlauf (`/verlauf?tab=druck`, Wiederholung/Batch), Regel „neue Teile automatisch drucken“.
+**Noch offen aus Backlog:** Symbolbibliothek (Agent), Druckmodi-Menü, Vorlagen-Preset „Alles“, Standalone-Teile im Sortierkisten-Editor je Fach, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Sortierkisten-Typenliste (18), Einsatz-Menü, Behälter-Leergewicht (Spalte `container.tare` angelegt, noch ohne UI), Kategorie-Codes CNS/RAW/CMP komplett aus dem Schema.

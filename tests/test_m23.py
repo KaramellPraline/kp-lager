@@ -10,7 +10,7 @@ def _shelf(client: TestClient) -> int:
 
 def test_item_categories_on_start(client: TestClient) -> None:
     page = client.get("/neu/material").text
-    for p in ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "CMP", "PPE"):
+    for p in ("ART", "TOL", "FIL", "RES", "CBL", "PPE"):
         assert f'name="cat" value="{p}"' in page
     assert "Projekt" not in page
     kind_page = client.get("/neu/behaelter").text

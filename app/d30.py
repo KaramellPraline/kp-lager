@@ -157,13 +157,33 @@ def print_labels(rows: list[labels.Label]) -> int:
     return len(rows)
 
 
+def _log(conn: sqlite3.Connection, codes_: list[str], ok: bool, error: str = "") -> None:
+    with conn:
+        conn.execute(
+            "INSERT INTO label_job (codes, n, ok, error) VALUES (?, ?, ?, ?)",
+            (" ".join(codes_), len(codes_), int(ok), error[:160]),
+        )
+
+
+def history(conn: sqlite3.Connection, limit: int = 50) -> list[sqlite3.Row]:
+    return conn.execute("SELECT * FROM label_job ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
+
+
 def print_codes(conn: sqlite3.Connection, base_url: str, codes_: list[str]) -> int:
-    """Etiketten dieser Codes drucken, als gedruckt markieren und aus der Warteschlange nehmen."""
+    """Etiketten dieser Codes drucken, als gedruckt markieren und aus der Warteschlange nehmen.
+
+    Jeder Versuch landet im Druckverlauf (Wiederholung, falls der Drucker z. B. ohne Papier
+    „erfolgreich“ meldete)."""
     rows = []
     for code in dict.fromkeys(codes_):
         if label := labels.find(conn, base_url, code):
             rows.append(label)
-    print_labels(rows)
+    try:
+        print_labels(rows)
+    except LagerError as exc:
+        _log(conn, [r.code for r in rows], False, str(exc))
+        raise
+    _log(conn, [r.code for r in rows], True)
     done = [(r.code,) for r in rows]
     with conn:
         conn.executemany("UPDATE container SET label_printed = 1 WHERE code = ?", done)

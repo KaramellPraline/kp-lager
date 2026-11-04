@@ -6,22 +6,24 @@
   <aside class="neu-types" aria-label="Teile-Typen">
     <input type="search" id="type-filter" placeholder="Typ suchen … (z. B. Schraube)" aria-label="Typ suchen">
     {% for g, types in groups %}
-    <details class="grp" data-g="{{ g }}" {% if ctype in types %}open{% endif %}>
+    <details class="grp" id="g{{ loop.index }}" data-g="{{ g }}" {% if ctype in types or loop.first and g == 'Favoriten' %}open{% endif %}>
     <summary>{{ g }} <span class="meta">{{ types|length }}</span></summary>
     <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
     </details>
     {% endfor %}
-    <p class="meta">Kabel, Netzteile, Filament und Harz: Reiter <a href="/neu/material">Kabel &amp; Material</a>.</p>
+    <p class="meta">Filament und Harz (mit Spulen-/Flaschendaten): <a href="/neu/material">hier anlegen</a>.</p>
   </aside>
+  <nav class="jump-bar" aria-label="Zu Kategorie springen">{% for g, types in groups %}<a href="#g{{ loop.index }}" data-jump="g{{ loop.index }}" title="{{ g }}">{{ g[:2] }}</a>{% endfor %}</nav>
 
   <section class="neu-main">
     <form method="post" action="/neu" id="neu-form" class="card stack" data-typ="{{ ctype.key }}">
-      <h1 style="margin:0">{{ ctype.label }}</h1>
+      <div class="title-row"><h1 style="margin:0">{{ ctype.label }}</h1>
+        <button type="submit" class="star fav-star {% if ctype.key in favs %}on{% endif %}" formaction="/neu/favorit" formnovalidate aria-label="Typ als Favorit {{ 'lösen' if ctype.key in favs else 'markieren' }}" title="Favorit">{{ icon('content.star') }}</button></div>
       <input type="hidden" name="typ" value="{{ ctype.key }}">
       {% for f in ctype.fields %}
       <div class="nf">
         <label for="f_{{ f.key }}">{{ f.label }}{% if f.unit %} <span class="meta">({{ f.unit }})</span>{% endif %}</label>
-        <input id="f_{{ f.key }}" name="f_{{ f.key }}" {% if f.options %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" autocomplete="off" {% if loop.first %}autofocus{% endif %}>
+        <input id="f_{{ f.key }}" name="f_{{ f.key }}" {% if f.options %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" autocomplete="off">
         {% if f.options %}
         <datalist id="dl_{{ f.key }}">{% for o in f.options %}<option value="{{ o }}">{% endfor %}</datalist>
         <div class="chips">{% for o in f.options[:18] %}<button type="button" class="chip" data-for="f_{{ f.key }}">{{ o }}</button>{% endfor %}</div>
@@ -36,18 +38,24 @@
       </div>
       <div class="nf">
         <label for="target">Wohin?</label>
-        <select id="target" name="target">
-          <option value="">Zu sortieren (später einräumen)</option>
-          {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+        <div class="row"><select id="target" name="target" class="grow">
+          <option value="">Zu sortieren (Box of Shame)</option>
+          {% if recent_targets %}<optgroup label="Zuletzt">{% for p in recent_targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</optgroup>{% endif %}
+          <optgroup label="Alle Orte">{% for p in targets %}<option value="{{ p.id }}" {% if p.id == target and not recent_targets %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</optgroup>
+          {% if fav_targets %}<optgroup label="Favoriten">{% for p in fav_targets %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}</optgroup>{% endif %}
         </select>
+        <button type="button" class="icon-btn" data-set="target" data-val="" title="Zu sortieren (Box of Shame)" aria-label="Zu sortieren">{{ icon('content.inbox') }}</button></div>
         <div class="chips place-sugg" data-select="target" aria-label="Platz-Vorschläge"></div>
       </div>
-      {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+      <label class="meta"><input type="checkbox" name="no_label" value="1"> Kein eigenes Etikett (nur Tags, Fachinhalt)</label>
+      {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" {% if auto_print %}checked{% endif %} disabled>
         <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
       <div class="row"><button class="primary" id="neu-submit">{{ icon('action.add', size='sm') }} Anlegen</button>
         <span class="meta">Enter legt an · danach bleibt dieser Typ mit leeren Feldern offen</span></div>
     </form>
 
+    {% if D30 %}<form method="post" action="/neu/autodruck" class="row"><input type="hidden" name="on" value="{{ '0' if auto_print else '1' }}"><input type="hidden" name="back" value="/neu">
+      <button class="link">{{ 'Automatisch drucken ausschalten' if auto_print else 'Neue Teile automatisch drucken (40x12)' }}</button></form>{% endif %}
     {% if recent %}
     <h2>Zuletzt angelegt</h2>
     <ul class="list">{% for r in recent %}<li><a href="/items/{{ r.id }}"><span class="name">{{ r.name }}</span><span class="meta">{{ r.code }} · {{ r.place }}{% if r.qty is not none %} · {{ r.qty }}×{% endif %}</span></a></li>{% endfor %}</ul>

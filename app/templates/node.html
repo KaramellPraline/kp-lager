@@ -7,7 +7,8 @@
 
 <div class="layout-2">
 <div>
-  <div class="card head-card">
+  <div class="sticky-mini" aria-hidden="true"><b>{{ node.name }}</b>{% if node.code %}<span class="code">{{ node.code }}</span>{% endif %}</div>
+  <div class="card head-card" id="head-card">
     {% if node.photo %}<a href="/photos/{{ node.photo }}"><img class="photo-thumb" src="/photos/thumb_{{ node.photo }}" alt="Foto {{ node.name }}"></a>{% endif %}
     <div class="grow">
       <div class="title-row">
@@ -27,13 +28,15 @@
     </div>
   </div>
 
-  {% if not node.model %}
-  <form method="post" action="/n/{{ node.id }}/items" class="add-item card" aria-label="Teil eintragen">
-    <input name="name" placeholder="Teil eintragen, z. B. 3 Rollen Lötzinn" required id="add-name" autocomplete="off">
-    <input name="qty" placeholder="Anz." inputmode="numeric" class="short" aria-label="Anzahl">
-    <button class="primary" aria-label="Eintragen">{{ icon('action.add') }}</button>
-  </form>
-  {% endif %}
+  <div class="icon-row" role="toolbar" aria-label="Schnellaktionen">
+    {% if node.code %}<form method="post" action="/labels/queue/node/{{ node.id }}"><button title="Etikett drucken" aria-label="Etikett drucken">{{ icon('action.print') }}</button></form>{% endif %}
+    <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
+      <label class="file-btn" title="Foto" aria-label="Foto">{{ icon('media.camera') }}
+        <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
+    </form>
+    {% if node.kind != 'compartment' %}<form method="post" action="/carry/node/{{ node.id }}"><button title="Umlagern" aria-label="Umlagern">{{ icon('action.move') }}</button></form>{% endif %}
+    <button type="button" data-open="edit-box" title="Bearbeiten" aria-label="Bearbeiten">{{ icon('action.edit') }}</button>
+  </div>
 
   {% if topview %}{% include "_topview.html" %}{% endif %}
 
@@ -69,20 +72,13 @@
       {% if items or kids %}
       <a class="button" href="/auswahl?node={{ node.id }}">{{ icon('action.edit') }} Mehrere bearbeiten</a>
       {% endif %}
-      {% if node.kind != 'compartment' %}
-      <form method="post" action="/carry/node/{{ node.id }}"><button>{{ icon('action.move') }} Umlagern</button></form>
-      {% endif %}
-      <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
-        <label class="file-btn">{{ icon('media.camera') }} Foto
-          <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
-      </form>
     </div>
     {% if node.kind == 'bin' %}
     <p class="meta">3D-Druck dieses Einsatzes:<br><code>{{ cad }}</code></p>
     {% endif %}
   </div>
 
-  <details>
+  <details id="edit-box">
     <summary>Bearbeiten</summary>
     <form method="post" action="/n/{{ node.id }}/edit" class="stack">
       <label>Name <input name="name" value="{{ node.name }}" required></label>
@@ -95,22 +91,6 @@
     </form>
   </details>
 
-  {% if node.kind not in ('compartment', 'bin') %}
-  <details>
-    <summary>Darin anlegen</summary>
-    <form method="post" action="/containers" class="stack">
-      <input type="hidden" name="parent_id" value="{{ node.id }}">
-      <input name="name" placeholder="Name" required>
-      {% include "_kind_select.html" %}
-      {% include "_dims.html" %}
-      <input name="code" placeholder="Code, z. B. EUR-001 (optional)" autocapitalize="characters">
-      <input name="position" placeholder="Position, z. B. Ebene 2 (optional)">
-      {% include "_model_select.html" %}
-      <input name="grid" placeholder="Eigenes Raster, z. B. 6x8 (ohne Modell)">
-      <button class="primary">Anlegen</button>
-    </form>
-  </details>
-  {% endif %}
 
 </aside>
 </div>

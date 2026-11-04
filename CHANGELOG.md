@@ -3,6 +3,21 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [0.5.0] – 2026-11-04
+
+### Neu
+- Katalog: Favoriten (Stern, je Kategorie oben), Sprungleiste, zehn neue Typen (Gridfinity, Set/Sortiment, Kabel u. a.), automatische Tags, „Kein eigenes Etikett“, Ziel-Auswahl mit Zu-sortieren-Knopf.
+- Felder: Insert (Außendurchmesser), Scheibe (Dicke, Außendurchmesser); Netzwerk- und Netzteil-Typen im Katalog; Etikettenfelder frei wählbar; Etikett-Layout-Vorschau.
+- Behälter/Teil: Icon-Leiste (Drucken, Foto, Umlagern, Bearbeiten), mitlaufende Namenszeile, Rückgängig/Wiederholen in der Kopfzeile.
+- Kiste drehen in der Draufsicht; Größe „x = lange Seite“.
+- Druck per MQTT (Druck-Agent im eigenen Repo `kp-print-agent`), Druckverlauf mit Wiederholung/Batch, Regel „neue Teile automatisch drucken“.
+- Gesamtarchiv-Export (Daten, Fotos, Einstellungen); Einstellungen im JSON-Export und in der Wiederherstellung.
+
+### Geändert
+- Kein Auto-Fokus mehr beim Typwechsel; Eingabefelder bleiben mit Handy-Tastatur sichtbar.
+- Kategorien CNS/RAW/CMP nicht mehr als Kacheln; Tab „Kabel & Material“ entfällt (Filament/Harz per Link im Katalog).
+- „Teil eintragen“ und „Darin anlegen“ auf der Behälterseite entfernt (Anlegen nur unter Hinzufügen).
+
 ## [0.4.0] – 2026-11-04
 
 ### Neu

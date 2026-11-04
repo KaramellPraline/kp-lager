@@ -371,7 +371,13 @@ def create_app(settings: Settings) -> FastAPI:
             target=last_target(request),
             fav_targets=repo.favorites(conn)[:10],
             recent_targets=repo.containers_by_ids(conn, recent_targets(request))[:3],
-            cats=ordered(kinds.ITEM_CATS_SHORT, recent_list(request, "qa_cats"), lambda c: c[0]),
+            cats=[
+                c
+                for c in ordered(
+                    kinds.ITEM_CATS_SHORT, recent_list(request, "qa_cats"), lambda c: c[0]
+                )  # fmt: skip
+                if c[0] not in ("CNS", "RAW", "CMP")  # nur noch über den Katalog (Typ + Tags)
+            ],
             spec_forms=choices.forms(conn),
         )
 
@@ -786,6 +792,35 @@ def create_app(settings: Settings) -> FastAPI:
         done = commit and not report.errors
         return render(request, conn, "import.html", report=report, text=text, done=done)
 
+    @app.get("/export.zip")
+    def export_archive(conn: Conn) -> Response:
+        """Gesamtarchiv: JSON-Export, Datenbank-Kopie (inkl. Einstellungen) und Fotos."""
+        import io
+        import json
+        import tempfile
+        import zipfile
+
+        buf = io.BytesIO()
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z,
+        ):
+            copy = Path(tmp) / "lager.db"
+            dst = sqlite3.connect(copy)
+            with dst:
+                conn.backup(dst)
+            dst.close()
+            z.write(copy, "lager.db")
+            z.writestr("lager-export.json", json.dumps(importer.export(conn), ensure_ascii=False))
+            for folder in ("photos", "datasheets"):
+                for f in (settings.data_dir / folder).glob("**/*"):
+                    if f.is_file():
+                        z.write(f, f"{folder}/{f.relative_to(settings.data_dir / folder)}")
+        return Response(
+            buf.getvalue(), media_type="application/zip",
+            headers={"Content-Disposition": 'attachment; filename="lager-archiv.zip"'},
+        )  # fmt: skip
+
     @app.get("/export.json")
     def export(conn: Conn) -> JSONResponse:
         return JSONResponse(
@@ -1144,6 +1179,16 @@ def create_app(settings: Settings) -> FastAPI:
         back = request.headers.get("referer", "/").split("?")[0]
         return redirect(back, msg)
 
+    @app.post("/undo-last")
+    def undo_last(request: Request, conn: Conn) -> RedirectResponse:
+        back = request.headers.get("referer", "/").split("?")[0]
+        return redirect(back, repo.undo_last(conn))
+
+    @app.post("/redo-last")
+    def redo_last(request: Request, conn: Conn) -> RedirectResponse:
+        back = request.headers.get("referer", "/").split("?")[0]
+        return redirect(back, repo.redo_last(conn))
+
     @app.get("/verlauf", response_class=HTMLResponse)
     def history_page(request: Request, conn: Conn, tab: str = "aktionen") -> HTMLResponse:
         recent = repo.containers_by_ids(conn, recent_ids(request))
@@ -1151,10 +1196,26 @@ def create_app(settings: Settings) -> FastAPI:
             request,
             conn,
             "history.html",
-            tab="gesehen" if tab == "gesehen" else "aktionen",
+            tab=tab if tab in ("gesehen", "druck") else "aktionen",
+            jobs=d30.history(conn) if tab == "druck" else [],
             events=repo.recent_events(conn),
             undoable=repo.UNDOABLE,
             recent=recent[: prefs.number(conn, "home_recent")],
+        )
+
+    @app.post("/druck/wiederholen")
+    async def print_repeat(request: Request, conn: Conn) -> RedirectResponse:
+        """Druckaufträge aus dem Verlauf erneut drucken (ein Auftrag oder mehrere als Batch)."""
+        form = await request.form()
+        ids = [int(v) for v in form.getlist("job") if isinstance(v, str) and v.isdigit()]
+        marks = ",".join("?" * len(ids))
+        rows = conn.execute(f"SELECT codes FROM label_job WHERE id IN ({marks})", ids).fetchall()
+        wanted = list(dict.fromkeys(c for r in rows for c in r["codes"].split()))
+        if not wanted:
+            raise LagerError("Keinen Auftrag gewählt")
+        n = d30.print_codes(conn, settings.base_url, wanted)
+        return redirect(
+            "/verlauf?tab=druck", f"{n} Etikett{'en' if n != 1 else ''} erneut gedruckt"
         )
 
     @app.get("/verliehen", response_class=HTMLResponse)

@@ -461,3 +461,15 @@ html.is-offline .topbar::after { content: "offline"; font: 12px var(--font-mono)
 .layout-line .row input { flex: 1 1 0; min-width: 0; }
 .layout-line .row select { flex: 1 1 0; min-width: 0; }
 .layout-line .row button { flex: 0 0 48px; }
+
+/* M46: Schnellaktionen als Icon-Reihe, schmale Kopfzeile beim Scrollen */
+.icon-row{display:flex;gap:8px;margin:8px 0}
+.icon-row form{margin:0}
+.icon-row button,.icon-row .file-btn{width:44px;height:44px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:12px}
+.sticky-mini{position:sticky;top:0;z-index:5;display:none;gap:8px;align-items:baseline;padding:6px 12px;background:var(--bg,#fff);border-bottom:1px solid var(--line,#ddd);opacity:.92;font-size:.9rem}
+.sticky-mini.show{display:flex}
+.sticky-mini .code{font-family:monospace;opacity:.6}
+.fav-star{background:none;border:0;padding:2px 6px;font-size:1.1rem;cursor:pointer}
+.jump-bar{position:fixed;right:2px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:2px;z-index:6}
+.jump-bar a{font-size:.65rem;padding:3px 5px;background:var(--bg,#fff);border:1px solid var(--line,#ddd);border-radius:8px;text-decoration:none;opacity:.85}
+.undo-form{margin:0;display:inline-flex}

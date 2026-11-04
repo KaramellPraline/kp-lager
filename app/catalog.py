@@ -872,6 +872,125 @@ TYPES: tuple[Type, ...] = (
         (("{kind}",), ("{form}",), ("{size}",)),
     ),
     Type(
+        "kabel",
+        GROUPS[3],
+        "Kabel (USB, Strom, Audio, Meterware)",
+        "ART",
+        (
+            F(
+                "kind",
+                "Art",
+                "USB-Kabel|Stromkabel|Verlängerung|HDMI|Audio|Lautsprecher|Litze|Meterware",
+            ),
+            F("ends", "Stecker", "", hint="z. B. USB-C auf USB-A"),
+            F("length", "Länge", "0.5|1|2|3|5|10", "m"),
+        ),
+        (("{kind}",), ("{ends}",), ("{length}m",)),
+    ),
+    Type(
+        "gridfinity",
+        GROUPS[6],
+        "Gridfinity (Bin / Baseplate)",
+        "ART",
+        (
+            F("kind", "Art", "Bin|Baseplate|Deckel|Teiler|Magnet-Einsatz|Eckverbinder"),
+            F("size", "Raster", "1x1|2x1|2x2|3x2|3x3|4x2|4x3|4x4", hint="Zellen, z. B. 2x1"),
+            F("height", "Höhe", "3u|4u|5u|6u|7u|9u", hint="Einheiten à 7 mm"),
+            F("color", "Farbe", "Schwarz|Weiß|Grau|Rot|Blau|Grün|Orange|Gelb"),
+        ),
+        (("Gridfinity {kind}",), ("{size}",), ("{height}",), ("{color}",)),
+    ),
+    Type(
+        "bohrersatz",
+        GROUPS[5],
+        "Set / Sortiment (ein Etikett für viele)",
+        "ART",
+        (
+            F("kind", "Art", "Bohrersatz|Bitset|Schlüsselsatz|Feilensatz|Sortiment|Kabelset"),
+            F("detail", "Inhalt", "", hint="z. B. 1–10 mm, 25 Teile"),
+            F("brand", "Hersteller"),
+        ),
+        (("{kind}",), ("{detail}",), ("{brand}",)),
+    ),
+    Type(
+        "heissleim",
+        GROUPS[1],
+        "Heißkleber / Epoxid / Dichtmasse",
+        "ART",
+        (
+            F(
+                "kind",
+                "Art",
+                "Heißklebesticks|2K-Epoxid|Silikon|Acryl|Sekundenkleber|Montagekleber",
+            ),
+            F("size", "Größe", "", hint="z. B. 11 mm, 25 ml"),
+        ),
+        (("{kind}",), ("{size}",)),
+    ),
+    Type(
+        "farbe",
+        GROUPS[1],
+        "Farbe / Lack / Spray",
+        "ART",
+        (
+            F("kind", "Art", "Sprühlack|Acrylfarbe|Primer|Klarlack|Beize|Öl|Lasur"),
+            F("color", "Farbe"),
+            F("size", "Menge", "", hint="z. B. 400 ml"),
+        ),
+        (("{kind}",), ("{color}",), ("{size}",)),
+    ),
+    Type(
+        "kabelbinder",
+        GROUPS[3],
+        "Kabelbinder / Kabelkanal / Schlauch",
+        "ART",
+        (
+            F(
+                "kind",
+                "Art",
+                "Kabelbinder|Klettband|Kabelkanal|Wellrohr|Spiralschlauch|Zugentlastung",
+            ),
+            F("size", "Maße", "", hint="z. B. 200x3,6 mm"),
+            F("color", "Farbe", "Schwarz|Weiß|Natur|Rot|Blau"),
+        ),
+        (("{kind}",), ("{size}",), ("{color}",)),
+    ),
+    Type(
+        "akku",
+        GROUPS[4],
+        "Akku / Ladegerät / Powerbank",
+        "ART",
+        (
+            F("kind", "Art", "LiPo|Li-Ion 18650|NiMH|Bleigel|Powerbank|Ladegerät|BMS"),
+            F("cap", "Kapazität", "", hint="z. B. 2000 mAh"),
+            F("volt", "Spannung", "3.7V|7.4V|11.1V|12V|24V"),
+        ),
+        (("{kind}",), ("{cap}",), ("{volt}",)),
+    ),
+    Type(
+        "gehaeuse",
+        GROUPS[4],
+        "Gehäuse / Halter / Montage",
+        "ART",
+        (
+            F(
+                "kind",
+                "Art",
+                "Gehäuse|Hutschienen-Gehäuse|Abstandshalter|Platinenhalter|Lüfter|Kühlkörper",
+            ),
+            F("size", "Maße", "", hint="z. B. 80x60x30"),
+        ),
+        (("{kind}",), ("{size}",)),
+    ),
+    Type(
+        "buero",
+        GROUPS[1],
+        "Büro / Haushalt / Sonstiges Verbrauch",
+        "ART",
+        (F("name", "Bezeichnung", "", hint="z. B. Handschuhe, Isolierband"),),
+        (("{name}",),),
+    ),
+    Type(
         "allgemein",
         GROUPS[7],
         "Sonstiges (freier Name)",
@@ -889,11 +1008,28 @@ CUSTOM_GROUP = "Eigene Typen"
 
 def grouped(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
     out = [(g, [t for t in TYPES if t.group == g]) for g in GROUPS]
-    if conn is not None:
-        mine = custom_types(conn)
-        groups = list(dict.fromkeys(t.group for t in mine))
-        out += [(g, [t for t in mine if t.group == g]) for g in groups]
-    return out
+    if conn is None:
+        return out
+    mine = custom_types(conn)
+    groups = list(dict.fromkeys(t.group for t in mine))
+    out += [(g, [t for t in mine if t.group == g]) for g in groups]
+    favs = favorite_keys(conn)  # Favoriten: je Gruppe ganz oben, dazu eine Gruppe „Favoriten“
+    out = [(g, sorted(ts, key=lambda t: t.key not in favs)) for g, ts in out]
+    top = [t for _g, ts in out for t in ts if t.key in favs]
+    return ([("Favoriten", top)] if top else []) + out
+
+
+def favorite_keys(conn: sqlite3.Connection) -> set[str]:
+    return {k for k in codes.get_setting(conn, "fav_types", "").split(",") if k}
+
+
+def toggle_favorite(conn: sqlite3.Connection, key: str) -> bool:
+    """Typ als Favorit markieren oder wieder lösen; liefert den neuen Zustand."""
+    favs = favorite_keys(conn)
+    on = key not in favs
+    favs = favs | {key} if on else favs - {key}
+    codes.set_setting(conn, "fav_types", ",".join(sorted(favs)))
+    return on
 
 
 # --- Eigene Typen ------------------------------------------------------------------------
@@ -1021,6 +1157,7 @@ def create(
     values: dict[str, str],
     container_id: int,
     qty: int | None = None,
+    standalone: bool = True,
 ) -> int:
     t = lookup(conn, type_key)
     if t is None:
@@ -1030,12 +1167,17 @@ def create(
     if not text:
         raise LagerError(f"Bitte mindestens ein Feld für „{t.label}“ ausfüllen")
     code = (
-        codes.new_item_code(conn)
+        None
+        if not standalone  # Fachinhalt ohne eigenes Etikett: nur Tags, kein Code
+        else codes.new_item_code(conn)
         if t.cat == codes.ITEM_PREFIX
         else codes.reserve(conn, t.cat, 1)[0]
     )
-    tags = " ".join(v.lower() for v in (t.label, *clean.values()) if v)
+    tags = auto_tags(t, clean)
     item_id = repo.add_item(conn, container_id, text, qty=qty, code=code, tags=tags)
+    if not standalone:
+        with conn:
+            conn.execute("UPDATE item SET standalone = 0 WHERE id = ?", (item_id,))
     store(conn, item_id, t.key, clean)
     if t.cmp:
         form = {
@@ -1046,6 +1188,46 @@ def create(
         form["spec_function"] = " ".join(p for p in (t.label, clean.get("kind", "")) if p)
         materials.save_specs(conn, item_id, "cmp", form)
     return item_id
+
+
+GROUP_TAGS = {
+    "Schrauben & Befestigung": "befestigung verbindung",
+    "Klebstoff & Verbrauch": "verbrauchsmaterial",
+    "Mechanik & Pneumatik": "mechanik",
+    "Kabel & Elektrik": "elektrik kabel",
+    "Elektronik": "elektronik bauteil",
+    "Werkzeug": "werkzeug",
+    "Druckerteile & Laser": "3d-druck laser drucker",
+    "Material & Holz": "rohmaterial",
+    "Netzwerk": "netzwerk lan it",
+}
+# Wert (Teilstring, klein) -> zusätzliche Tags
+VALUE_TAGS = (
+    (("edelstahl", "a2", "a4", "v2a"), "edelstahl rostfrei"),
+    (("verzinkt", "zink"), "verzinkt"),
+    (("messing",), "messing metall"),
+    (("alu",), "aluminium metall"),
+    (("nylon", "pa6", "pa12"), "kunststoff"),
+    (("petg", "pla", "abs", "asa", "tpu"), "filament 3d-druck"),
+    (("12v", "24v", "5v", "3.3v", "3,3v"), "spannung"),
+    (("usb",), "usb"),
+    (("rj45", "cat5", "cat6", "cat7"), "ethernet netzwerk"),
+    (("led",), "beleuchtung led"),
+    (("torx", "tx"), "torx"),
+    (("innensechskant", "imbus"), "innensechskant imbus"),
+    (("senk",), "senkkopf"),
+)
+
+
+def auto_tags(t: Type, values: dict[str, str]) -> str:
+    """Tags automatisch: Typ, Gruppe, Feldwerte und Stichwort-Regeln (ohne Doppelte)."""
+    words = [t.label.lower(), GROUP_TAGS.get(t.group, t.group.lower())]
+    words += [v.lower() for v in values.values() if v]
+    blob = " ".join(words)
+    for needles, extra in VALUE_TAGS:
+        if any(n in blob for n in needles):
+            words.append(extra)
+    return " ".join(dict.fromkeys(" ".join(words).split()))
 
 
 def quick_options() -> list[tuple[str, list[tuple[str, str]]]]:

@@ -15,10 +15,10 @@ def _items(c: TestClient, box: int) -> list[dict]:  # type: ignore[type-arg]
 
 def test_recent_categories_and_kinds_come_first(client: TestClient) -> None:
     box = _box(client, "Regal", "toolbox")
-    client.post("/quickadd", data={"mode": "item", "cat": "CMP", "target": box, "text": "ESP32"})
+    client.post("/quickadd", data={"mode": "item", "cat": "TOL", "target": box, "text": "Zange"})
     page = client.get("/neu/material").text
     cats = page.split('aria-label="Kategorie"')[1].split("</div>")[0]
-    assert cats.index('value="CMP"') < cats.index('value="ART"')
+    assert cats.index('value="TOL"') < cats.index('value="ART"')
     kind_page = client.get("/neu/behaelter").text
     assert 'name="kind" value="toolbox"' in kind_page  # zuletzt verwendet = vorbelegt
 

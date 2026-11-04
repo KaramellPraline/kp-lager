@@ -49,3 +49,6 @@ auch zum Lesen einen Schlüssel (empfohlen, sobald das Lager von außen erreichb
 `uv run --group mcp python tools/lager_mcp.py` (Vorlage `docs/mcp.example.json`) bietet dieselben Funktionen als
 Werkzeuge für KI-Assistenten (`LAGER_URL`, `LAGER_API_KEY`). Mit Lese-Schlüssel funktionieren alle Abfragen;
 Schreibwerkzeuge melden dann „403: Dieser Schlüssel darf nur lesen“.
+
+## MCP: Artikel aus einem Chat anlegen
+`tools/lager_mcp.py` ist ein MCP-Server (Tools: suchen, Behälter/Teile lesen, Teile anlegen, ein-/auslagern). In Claude Desktop (oder jedem MCP-Client) den Eintrag aus `docs/mcp.example.json` in die MCP-Konfiguration übernehmen, `--directory` auf diesen Ordner setzen, `LAGER_URL=https://lager.home.lan` und `LAGER_API_KEY` (Schreib-Schlüssel aus Einstellungen › Admin) eintragen; Voraussetzung `uv sync --group mcp`. Danach reicht im Chat z. B. „Lege 50 M3x10 Zylinderkopfschrauben ins Fach Elektro“. Der Schlüssel bleibt lokal und wird nie committet.

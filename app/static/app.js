@@ -164,8 +164,14 @@
   }
   document.addEventListener("change", function (ev) {
     if (!ev.target.matches(".add-anything input[name=cat]")) return;
-    var active = syncCable(ev.target.form);
-    if (active) active.querySelector("input").focus();
+    syncCable(ev.target.form);  // kein Auto-Fokus: Tastatur soll nicht ungefragt aufgehen
+  });
+
+  // Eingabefeld beim Antippen sichtbar halten (Handy-Tastatur verdeckt sonst das Feld)
+  document.addEventListener("focusin", function (ev) {
+    var el = ev.target;
+    if (!el.matches || !el.matches("input:not([type=checkbox]):not([type=radio]):not([type=hidden]), textarea, select")) return;
+    setTimeout(function () { el.scrollIntoView({ block: "center", behavior: "smooth" }); }, 300);
   });
 
   // Startseite „Hinzufügen“: Teil / Behälter / Typ umschalten
@@ -186,7 +192,6 @@
     form.querySelectorAll("[data-for]").forEach(function (el) {
       el.hidden = el.dataset.for.split(" ").indexOf(b.dataset.mode) < 0;
     });
-    form.querySelector("#quick-home").focus();
   });
 
   // Behälter: Art (Kacheln oder Liste) -> passende Größen zur Auswahl, Airtight nur bei Boxen
@@ -609,3 +614,35 @@
     });
   });
 })();
+
+// M46: Bearbeiten-Symbol öffnet den Bearbeiten-Block; Namenszeile haftet beim Runterscrollen
+(function () {
+  document.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-open]");
+    if (!b) return;
+    var d = document.getElementById(b.dataset.open);
+    if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
+  });
+  document.addEventListener("DOMContentLoaded", function () {
+    var mini = document.querySelector(".sticky-mini"), head = document.getElementById("head-card");
+    if (!mini || !head || !window.IntersectionObserver) return;
+    new IntersectionObserver(function (e) { mini.classList.toggle("show", !e[0].isIntersecting); }).observe(head);
+  });
+})();
+
+// M46: Sprungleiste im Katalog öffnet die Kategorie und scrollt hin
+document.addEventListener("click", function (ev) {
+  var a = ev.target.closest("[data-jump]");
+  if (!a) return;
+  ev.preventDefault();
+  var d = document.getElementById(a.dataset.jump);
+  if (d) { d.open = true; d.scrollIntoView({ block: "start", behavior: "smooth" }); }
+});
+
+// M46: Schnellknopf setzt ein Auswahlfeld (z. B. Ziel = Zu sortieren)
+document.addEventListener("click", function (ev) {
+  var b = ev.target.closest("[data-set]");
+  if (!b) return;
+  var el = document.getElementById(b.dataset.set);
+  if (el) { el.value = b.dataset.val; el.dispatchEvent(new Event("change", { bubbles: true })); }
+});

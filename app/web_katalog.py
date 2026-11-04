@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import catalog, d30, kasten, labels, repo
+from app import catalog, codes, d30, kasten, labels, repo
 from app.config import Settings
 from app.repo import LagerError
 
@@ -63,11 +63,33 @@ def register(
             conn,
             "katalog.html",
             groups=catalog.grouped(conn),
+            favs=catalog.favorite_keys(conn),
+            auto_print=codes.get_setting(conn, "auto_print", "0") == "1",
             ctype=current,
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
+            recent_targets=[
+                {"id": p["id"], "label": repo.path_label(conn, p["id"])}
+                for p in repo.containers_by_ids(conn, last)[:3]
+            ],
+            fav_targets=[
+                {"id": f["id"], "label": repo.path_label(conn, f["id"])}
+                for f in repo.favorites(conn)[:10]
+            ],
             recent=recent,
         )
+
+    @app.post("/neu/favorit")
+    def katalog_favorite(conn: Conn, form: Form) -> RedirectResponse:
+        key = form.get("typ", "")
+        if catalog.lookup(conn, key):
+            catalog.toggle_favorite(conn, key)
+        return RedirectResponse(f"/neu?typ={key}", status_code=303)
+
+    @app.post("/neu/autodruck")
+    def katalog_auto_print(conn: Conn, form: Form) -> RedirectResponse:
+        codes.set_setting(conn, "auto_print", "1" if form.get("on") == "1" else "0")
+        return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
     @app.get("/neu/vorschau")
     def katalog_preview(request: Request, typ: str, conn: Conn) -> JSONResponse:
@@ -95,10 +117,13 @@ def register(
                     {**dict(d), "path": repo.path_label(conn, d["container_id"])} for d in dupes
                 ],
             )  # fmt: skip
-        item_id = catalog.create(conn, typ, values, target, qty)
+        item_id = catalog.create(
+            conn, typ, values, target, qty, standalone=not form.get("no_label")
+        )
         item = repo.get_item(conn, item_id)
-        msg = f"„{item['name']}“ angelegt ({item['code']})"
-        if form.get("d30_print") and settings.d30:
+        msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"
+        auto = codes.get_setting(conn, "auto_print", "0") == "1"  # Regel: 40x12 sofort drucken
+        if (form.get("d30_print") or auto) and settings.d30 and item["code"]:
             msg += print_now(conn, [item["code"]])
         # gleicher Typ nochmal, Felder zurückgesetzt (Ziel bleibt)
         resp = redirect(f"/neu?typ={typ}", msg)
