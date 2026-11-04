@@ -11,8 +11,9 @@
 </div>
 <div id="take-qty" class="add-item" hidden><label style="flex:1">Menge je Scan <input id="take-n" value="1" inputmode="numeric"></label></div>
 <p class="meta" id="hint">QR-Code ins Bild halten – öffnet Behälter oder Teil.</p>
+<p class="meta" id="focus-hint">Gescannt wird nur der Ausschnitt im Quadrat · aufs Bild tippen = dorthin scharfstellen.</p>
 <div id="target" class="carry" hidden><span>Ziel: <b id="target-name"></b></span><button type="button" id="target-clear">Anderes Ziel</button></div>
-<video id="cam" playsinline muted></video>
+<div id="cam-box" class="cam-box"><video id="cam" playsinline muted></video><div class="cam-frame" aria-hidden="true"></div><div id="cam-ring" class="cam-ring" hidden></div></div>
 <p id="cam-error" class="msg" hidden>Kamera nicht verfügbar – sie braucht HTTPS (https://lager.home.lan). Code unten eintippen geht immer.</p>
 <form id="manual" class="add-item">
   <input id="manual-code" placeholder="Code eintippen, z. B. EUR-001" autocapitalize="characters">
@@ -36,6 +37,8 @@
   var mode = project ? "project" : "open", target = null, last = "", lastAt = 0;
   var video = document.getElementById("cam"), log = document.getElementById("log");
   var hint = document.getElementById("hint");
+  var camBox = document.getElementById("cam-box"), ring = document.getElementById("cam-ring"), track = null;
+  var SCAN_MAX = 640;  // Kantenlänge des gescannten Quadrats in Pixeln
   var canvas = document.createElement("canvas"), ctx = canvas.getContext("2d", { willReadFrequently: true });
   var detector = ("BarcodeDetector" in window) ? new BarcodeDetector({ formats: ["qr_code"] }) : null;
   var putBtn = document.querySelector('.seg button[data-mode="put"]');
@@ -223,20 +226,54 @@
     }).finally(function () { btn.disabled = false; });
   };
 
+  // Nur das mittlere Quadrat des Kamerabilds (= der sichtbare Ausschnitt) wird gescannt
   function tick() {
-    if (video.readyState >= 2) {
+    if (video.readyState >= 2 && video.videoWidth) {
+      var vw = video.videoWidth, vh = video.videoHeight, side = Math.min(vw, vh);
+      var out = Math.min(side, SCAN_MAX);
+      canvas.width = out; canvas.height = out;
+      ctx.drawImage(video, (vw - side) / 2, (vh - side) / 2, side, side, 0, 0, out, out);
       if (detector) {
-        detector.detect(video).then(function (codes) { if (codes.length) handle(codeOf(codes[0].rawValue)); });
+        detector.detect(canvas).then(function (codes) { if (codes.length) handle(codeOf(codes[0].rawValue)); })
+          .catch(function () { /* nächster Versuch */ });
       } else if (window.jsQR) {
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0);
-        var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        var hit = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+        var img = ctx.getImageData(0, 0, out, out);
+        var hit = jsQR(img.data, out, out, { inversionAttempts: "dontInvert" });
         if (hit) handle(codeOf(hit.data));
       }
     }
     setTimeout(tick, 250);
   }
+
+  // Tippen aufs Bild = dorthin scharfstellen (Fokuspunkt in Bildkoordinaten des vollen Kamerabilds)
+  var focusNoted = false, focusTimer = null;
+  function focusAt(ev) {
+    clearTimeout(focusTimer);  // alter Nachführ-Timer darf den neuen Punkt nicht überschreiben
+    var r = camBox.getBoundingClientRect();
+    var fx = Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width));
+    var fy = Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height));
+    ring.hidden = true; void ring.offsetWidth;
+    ring.style.left = (fx * 100) + "%"; ring.style.top = (fy * 100) + "%"; ring.hidden = false;
+    if (!track || !video.videoWidth) return;
+    var vw = video.videoWidth, vh = video.videoHeight, side = Math.min(vw, vh);
+    var poi = [{ x: ((vw - side) / 2 + fx * side) / vw, y: ((vh - side) / 2 + fy * side) / vh }];
+    var caps = track.getCapabilities ? track.getCapabilities() : {};
+    var modes = caps.focusMode || [];
+    if (!modes.length) {
+      if (!focusNoted) { focusNoted = true; note("Dieses Gerät erlaubt kein Scharfstellen per Tippen", false); }
+      return;
+    }
+    var first = modes.indexOf("single-shot") >= 0 ? "single-shot" : "continuous";
+    track.applyConstraints({ advanced: [{ focusMode: first, pointsOfInterest: poi }] }).then(function () {
+      // danach weiter nachführen, aber um den getippten Punkt
+      if (first === "single-shot" && modes.indexOf("continuous") >= 0) {
+        focusTimer = setTimeout(function () {
+          track.applyConstraints({ advanced: [{ focusMode: "continuous", pointsOfInterest: poi }] }).catch(function () {});
+        }, 1200);
+      }
+    }).catch(function () {});
+  }
+  camBox.addEventListener("click", focusAt);
 
   document.querySelectorAll(".seg button").forEach(function (b) {
     b.onclick = function () {
@@ -261,11 +298,11 @@
   };
 
   if (navigator.mediaDevices && window.isSecureContext) {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-      .then(function (s) { video.srcObject = s; video.play(); tick(); })
-      .catch(function () { document.getElementById("cam-error").hidden = false; video.hidden = true; });
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1280 }, height: { ideal: 720 } } })
+      .then(function (s) { track = s.getVideoTracks()[0]; video.srcObject = s; video.play(); tick(); })
+      .catch(function () { document.getElementById("cam-error").hidden = false; camBox.hidden = true; });
   } else {
-    document.getElementById("cam-error").hidden = false; video.hidden = true;
+    document.getElementById("cam-error").hidden = false; camBox.hidden = true;
   }
 })();
 </script>

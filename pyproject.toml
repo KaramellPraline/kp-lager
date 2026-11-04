@@ -1,6 +1,6 @@
 [project]
 name = "sortiersystem"
-version = "1.4.0"
+version = "1.4.1"
 description = "Selbst gehostetes Lager-Inventar mit QR-Codes"
 requires-python = ">=3.12"
 dependencies = [

@@ -149,3 +149,5 @@ Umlaute/ß auf dem Pi (Roboto mitgeliefert, `labelimg.BUNDLED_FONT`); A4-Gestalt
 
 ### M53 erledigt (2026-11-04) – Release 1.4.0
 Einsatz (BIN) mit Rastermaß und Teilung im Behälter-Katalog; im Sortierkasten vorhandene Einsätze wählbar (`kasten.loose_bins/place_existing`). Lokal committet und getaggt, noch nicht gepusht/deployt.
+### M54 (Scanner) – Branch `feat/m54-scanner-quadrat`, unveröffentlicht
+`/scan`: quadratischer Scan-Ausschnitt (nur das mittlere Quadrat des Kamerabilds), Tippen aufs Bild = Fokus (`pointsOfInterest`, Chrome/Android; iOS Safari unterstützt es nicht).

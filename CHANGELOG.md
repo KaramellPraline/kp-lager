@@ -3,6 +3,12 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.4.1] – 2026-11-04
+
+### Neu
+- Scanner (`/scan`): Die Kamera zeigt und scannt nur ein **quadratisches** Mittelfeld (Rahmen in der Akzentfarbe) – das ist schneller und erfasst keine fremden Codes am Bildrand.
+- **Tippen aufs Kamerabild** stellt dorthin scharf (Fokuspunkt, danach Nachführen um diesen Punkt; Ring als Rückmeldung). Geräte ohne Fokussteuerung melden das einmal.
+
 ## [1.4.0] – 2026-11-04
 
 ### Neu
