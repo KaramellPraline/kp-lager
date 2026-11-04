@@ -121,3 +121,7 @@ Erledigt: kein Auto-Fokus beim Typwechsel, Feld bleibt beim Tippen sichtbar (scr
 - **C Etiketten/Druck**: Regel „40x12 automatisch drucken“, Druckverlauf mit Wiederholung/Batch, Druckmodi Sammel/Warteschlange/Einzel (Drucker-Symbol), Vorlagen-Preset „Alles“, Symbolbibliothek (im Agenten: Homelab/DIY-Icons, erweiterbar).
 - **D System**: Rückgängig/Wiederholen aller Aktionen (Symbol oben links), Export: Lager-JSON oder Gesamtarchiv inkl. Einstellungen, Nummernvergabe/Einzelentnahme in Einstellungen, Sortierkisten-Typenliste (18 Stück), Gridfinity-Support.
 - **E Doku**: MCP-Anbindung erklären (Chat → Artikel anlegen).
+
+### M46 erledigt (2026-11-04, Branch feat/m46-bedienung)
+Icon-Leiste + Sticky-Kopf an Teil/Behälter, Eintragen/„Darin anlegen“ entfernt, Katalog: Favoriten (Stern), Sprungleiste, 10 neue Typen (u. a. Gridfinity, Set/Sortiment, Kabel), Auto-Tags, „Kein eigenes Etikett“, Zielwahl mit Zu-sortieren-Knopf (Box of Shame), Tab „Kabel & Material“ entfernt, globales Rückgängig/Wiederholen (Kopfzeile), Gesamtarchiv `/export.zip`, Druckverlauf (`/verlauf?tab=druck`, Wiederholung/Batch), Regel „neue Teile automatisch drucken“.
+**Noch offen aus Backlog:** Symbolbibliothek (Agent), Druckmodi-Menü, Vorlagen-Preset „Alles“, Standalone-Teile im Sortierkisten-Editor je Fach, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Sortierkisten-Typenliste (18), Einsatz-Menü, Behälter-Leergewicht (Spalte `container.tare` angelegt, noch ohne UI), Kategorie-Codes CNS/RAW/CMP komplett aus dem Schema.

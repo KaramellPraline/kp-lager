@@ -22,22 +22,22 @@ def test_auto_tags_and_no_label(client: TestClient) -> None:
     box = _box(client)
     client.post("/neu", data={"typ": "schraube", "f_thread": "M3", "f_length": "10",
                               "f_finish": "A2 Edelstahl", "target": str(box)})  # fmt: skip
-    r = client.get("/api/v1/containers/%d" % box).json()["items"][0]
+    r = client.get(f"/api/v1/containers/{box}").json()["items"][0]
     assert "edelstahl" in r["tags"] and "befestigung" in r["tags"]
     client.post("/neu", data={"typ": "mutter", "f_kind": "Sechskantmutter", "f_size": "M3",
                               "no_label": "1", "target": str(box)})  # fmt: skip
-    items = client.get("/api/v1/containers/%d" % box).json()["items"]
+    items = client.get(f"/api/v1/containers/{box}").json()["items"]
     assert any(not i["code"] for i in items)
 
 
 def test_global_undo_redo(client: TestClient) -> None:
     box = _box(client)
     client.post(f"/n/{box}/items", data={"name": "Zange", "qty": "5"})
-    iid = client.get("/api/v1/containers/%d" % box).json()["items"][0]["id"]
+    iid = client.get(f"/api/v1/containers/{box}").json()["items"][0]["id"]
     client.post(f"/items/{iid}/take", data={"qty": "2"})
 
     def qty() -> int:
-        return int(client.get("/api/v1/containers/%d" % box).json()["items"][0]["qty"])
+        return int(client.get(f"/api/v1/containers/{box}").json()["items"][0]["qty"])
 
     before = qty()
     client.post("/undo-last")
@@ -61,7 +61,7 @@ def test_print_history_and_repeat(client: TestClient, monkeypatch) -> None:  # t
     client.post(
         "/neu", data={"typ": "schraube", "f_thread": "M4", "f_length": "8", "target": str(box)}
     )
-    code = client.get("/api/v1/containers/%d" % box).json()["items"][0]["code"]
+    code = client.get(f"/api/v1/containers/{box}").json()["items"][0]["code"]
     conn_codes = [code]
     from app.config import load_settings
 

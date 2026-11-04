@@ -877,7 +877,11 @@ TYPES: tuple[Type, ...] = (
         "Kabel (USB, Strom, Audio, Meterware)",
         "ART",
         (
-            F("kind", "Art", "USB-Kabel|Stromkabel|Verlängerung|HDMI|Audio|Lautsprecher|Litze|Meterware"),
+            F(
+                "kind",
+                "Art",
+                "USB-Kabel|Stromkabel|Verlängerung|HDMI|Audio|Lautsprecher|Litze|Meterware",
+            ),
             F("ends", "Stecker", "", hint="z. B. USB-C auf USB-A"),
             F("length", "Länge", "0.5|1|2|3|5|10", "m"),
         ),
