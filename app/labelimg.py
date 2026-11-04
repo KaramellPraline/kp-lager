@@ -5,6 +5,7 @@ darunter die ID groß und mittig.
 """
 
 import io
+from pathlib import Path
 
 import segno
 from PIL import Image, ImageDraw, ImageFont
@@ -18,7 +19,9 @@ MARGIN = 8  # 1 mm Spaltmaß links und rechts (8 px bei 203 dpi)
 NAME_MAX, NAME_MIN = 28, 10
 ID_MAX, ID_MIN = 40, 14
 
+BUNDLED_FONT = Path(__file__).parent / "static" / "fonts" / "Roboto-Regular.ttf"  # Apache 2.0
 _FONTS = (
+    str(BUNDLED_FONT),  # immer vorhanden, kennt Umlaute, ß, €, °, µ
     "Roboto-Regular.ttf",
     "DejaVuSans.ttf",
     "arial.ttf",

@@ -46,6 +46,58 @@ def register(
             else default
         )
 
+    def container_choices(conn: sqlite3.Connection) -> list[dict[str, Any]]:
+        """Alle Behälter mit Name und Code – Auswahl übernimmt beides ins Etikett."""
+        out = []
+        for p in repo.all_paths(conn):
+            node = repo.get_container(conn, p["id"])
+            if node is not None:
+                out.append({"id": node["id"], "label": p["label"], "name": node["name"],
+                            "code": node["code"] or ""})  # fmt: skip
+        return out
+
+    def layout_job(conn: sqlite3.Connection, f: dict[str, str] | Any) -> dict[str, Any]:
+        """Frei gestaltetes Etikett aus dem Formular; {name} {code} {inhalt} {ort} kommen aus dem Behälter."""
+        ctx = {"name": "", "code": codes.normalize(f.get("code", "")) or "" if f.get("code", "").strip() else "",
+               "inhalt": "", "ort": ""}  # fmt: skip
+        if str(f.get("container", "")).isdigit():
+            node = repo.get_container(conn, int(f["container"]))
+            if node is None:
+                raise LagerError("Behälter nicht gefunden")
+            names = list(dict.fromkeys(i["name"] for i in repo.items_in(conn, node["id"])))
+            ctx.update({"name": node["name"], "code": ctx["code"] or node["code"] or "",
+                        "inhalt": ", ".join(names[:8]), "ort": repo.path_label(conn, node["id"])})  # fmt: skip
+        cfg = []
+        for i in range(4):
+            text = f.get(f"t_{i}", "")
+            for key, val in ctx.items():
+                text = text.replace("{" + key + "}", val)
+            if text.strip():
+                cfg.append({"t": text.strip(), "w": f.get(f"w_{i}", "1"), "a": f.get(f"a_{i}", "center"),
+                            "c": f.get(f"c_{i}", "black")})  # fmt: skip
+        if not cfg:
+            raise LagerError("Bitte einen Behälter wählen oder Text eintragen")
+        qrpos = f.get("qrpos", "left")
+        return {
+            "type": "layout", "w": f.get("w", ""), "h": f.get("h", ""), "color": f.get("color", "red"),
+            "frame": f.get("frame", "round"), "qrpos": qrpos, "cfg": cfg,
+            "title": cfg[0]["t"], "code": ctx["code"],
+            "qr": labels.qr_content(settings.base_url, ctx["code"]) if ctx["code"] and qrpos != "none" else "",
+        }  # fmt: skip
+
+    @app.get("/a4/layout.png")
+    def a4_layout_png(request: Request, conn: Conn) -> Response:
+        """Live-Vorschau des Formulars (noch nicht in der Warteschlange)."""
+        try:
+            job = layout_job(conn, request.query_params)
+        except LagerError:
+            job = {"type": "layout", "w": request.query_params.get("w", ""), "h": request.query_params.get("h", ""),
+                   "cfg": [{"t": "Behälter wählen oder Text eintragen", "w": 1, "a": "center", "c": "red"}],
+                   "frame": request.query_params.get("frame", "round")}  # fmt: skip
+        return Response(
+            a4.png(a4.render(job)), media_type="image/png", headers={"Cache-Control": "no-store"}
+        )
+
     # --- Warteschlange ------------------------------------------------------------------------
 
     @app.get("/a4", response_class=HTMLResponse)
@@ -57,12 +109,16 @@ def register(
             n_pages = 0
         return render(
             request, conn, "a4.html", queue=queue, pages=n_pages, printer=printer(conn),
-            types=a4.TYPES, colors=a4.COLOR_NAMES, containers=repo.all_paths(conn),
+            types=a4.TYPES, colors=a4.COLOR_NAMES, containers=container_choices(conn),
+            presets=a4.LAYOUT_PRESETS, max_lines=4,
         )  # fmt: skip
 
     @app.post("/a4/add")
     def a4_add(conn: Conn, form: Form) -> RedirectResponse:
-        """Freies Etikett (z. B. Box-Label mit Maßen) in die Warteschlange."""
+        """Etikett in die Warteschlange: frei gestaltet (t_0 …) oder klassisch (title/lines)."""
+        if "t_0" in form:
+            a4.enqueue(conn, layout_job(conn, form))
+            return redirect("/a4", "Etikett in der A4-Warteschlange")
         code = codes.normalize(form.get("code", "")) if form.get("code", "").strip() else ""
         lines = [x.strip() for x in form.get("lines", "").splitlines() if x.strip()]
         title = form.get("title", "").strip()

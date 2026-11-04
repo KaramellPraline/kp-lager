@@ -80,3 +80,5 @@
 - 2026-11-04 (1.2.0): Gescheiterter Druck legt Etiketten automatisch in die Warteschlange. Warum: nichts geht verloren, wenn der Agent offline ist.
 - 2026-11-04: Filament/Harz sind Einzelstücke (`Type.single`); Kunststoffanteil = 100 − Zusatz. Warum: jede Spule eigener Code/Restgewicht; weniger Eingabe.
 - 2026-11-04: API-Schreibschlüssel per Einstellung abschaltbar (`api_write_key`, Standard an). Warum: Debuggen von CLI/MCP ohne Schlüsselverwaltung.
+- 2026-11-04 (1.3.0): Schrift Roboto wird mitgeliefert. Warum: das Docker-Image hat keine Systemschriften, Pillow-Standardschrift kennt keine Umlaute/ß.
+- 2026-11-04: A4-Etiketten sind frei gestaltbar (Typ `layout`: Zeilen mit Farbe, QR, Rahmen) und übernehmen Name/Code aus dem Behälter. Warum: gleiche Konfigurierbarkeit wie das kleine Etikett.

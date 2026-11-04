@@ -29,23 +29,81 @@
 
 <section class="card">
   <h2 style="margin-top:0">Neues Etikett</h2>
+  <p class="meta">Wie beim kleinen Etikett: Zeilen mit Höhe, Ausrichtung und Farbe, QR und Rahmen. Mit einem Behälter werden <code>{name}</code>, <code>{code}</code>, <code>{inhalt}</code> und <code>{ort}</code> automatisch eingesetzt.</p>
+  <div class="label-stage"><img id="a4-live" class="a4-live" alt="Vorschau" src="/a4/layout.png"></div>
   <form method="post" action="/a4/add" class="stack" id="a4-add">
-    <label>Typ
-      <select name="type" id="a4-type">{% for k, t in types.items() if k != 'bin_side' %}<option value="{{ k }}" data-w="{{ t[2][0] }}" data-h="{{ t[2][1] }}" {% if k == 'box' %}selected{% endif %}>{{ t[0] }} – {{ t[1] }}</option>{% endfor %}</select></label>
-    <label>Aus Behälter <span class="meta">(optional – übernimmt Name und Code)</span>
-      <select name="container" id="a4-container"><option value="">– selbst eintragen –</option>{% for c in containers %}<option value="{{ c.id }}">{{ c.label }}</option>{% endfor %}</select></label>
-    <label class="check"><input type="checkbox" name="contents" value="1"> Inhalt (Teile im Behälter) als Zeilen</label>
-    <label>Titel <span class="meta">(leer = Behältername)</span> <input name="title" placeholder="z. B. Schrauben M3"></label>
+    <div class="chips" aria-label="Vorlage">{% for k, p in presets.items() %}<button type="button" class="chip a4-preset" data-preset="{{ p|tojson|forceescape }}">{{ p.name }}</button>{% endfor %}</div>
+    <label>Aus Behälter <span class="meta">(Name und Code werden übernommen)</span>
+      <select name="container" id="a4-container"><option value="">– selbst eintragen –</option>{% for c in containers %}<option value="{{ c.id }}" data-name="{{ c.name }}" data-code="{{ c.code }}">{{ c.label }}{% if c.code %} · {{ c.code }}{% endif %}</option>{% endfor %}</select></label>
+    <div class="frow">
+      <label class="nf">Name <input id="a4-name" placeholder="aus Behälter" readonly></label>
+      <label class="nf">Code <input name="code" id="a4-code" placeholder="aus Behälter / eigener" autocapitalize="characters"></label>
+    </div>
     <div class="frow">
       <label class="nf">Länge (mm) <input name="w" id="a4-w" inputmode="decimal" value="100"></label>
       <label class="nf">Breite (mm) <input name="h" id="a4-h" inputmode="decimal" value="60"></label>
-      <label class="nf">Farbe <select name="color">{% for k, n in colors.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
     </div>
-    <label>Code <span class="meta">(optional, für QR und Kennung)</span> <input name="code" placeholder="z. B. EUR-001" autocapitalize="characters"></label>
-    <label class="check"><input type="checkbox" name="qr" value="1" checked> QR-Code zum Code</label>
-    <label>Weitere Zeilen <textarea name="lines" rows="2" placeholder="je Zeile ein Text"></textarea></label>
+    <div class="frow">
+      <label class="nf">QR-Code <select name="qrpos" id="a4-qrpos"><option value="right">rechts</option><option value="left">links</option><option value="none">ohne</option></select></label>
+      <label class="nf">Rahmen <select name="frame" id="a4-frame"><option value="round">abgerundet</option><option value="square">eckig</option><option value="none">keiner</option></select></label>
+      <label class="nf">Rahmenfarbe <select name="color" id="a4-color">{% for k, n in colors.items() %}<option value="{{ k }}" {% if k == 'red' %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+    </div>
+    {% for i in range(max_lines) %}
+    <div class="layout-line">
+      <input name="t_{{ i }}" id="a4-t{{ i }}" placeholder="{% if i == 0 %}z. B. {name}{% else %}Zeile {{ i + 1 }} (leer = nicht drucken){% endif %}" aria-label="Zeile {{ i + 1 }}" autocomplete="off" data-keep-comma>
+      <div class="frow">
+        <select name="w_{{ i }}" id="a4-w{{ i }}" aria-label="Höhe Zeile {{ i + 1 }}">{% for v, lb in ((1, 'klein'), (2, 'mittel'), (3, 'groß'), (4, 'sehr groß')) %}<option value="{{ v }}">Höhe: {{ lb }}</option>{% endfor %}</select>
+        <select name="a_{{ i }}" id="a4-a{{ i }}" aria-label="Ausrichtung Zeile {{ i + 1 }}"><option value="center">mittig</option><option value="left">linksbündig</option><option value="right">rechtsbündig</option></select>
+        <select name="c_{{ i }}" id="a4-c{{ i }}" aria-label="Farbe Zeile {{ i + 1 }}">{% for k, n in colors.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select>
+      </div>
+    </div>
+    {% endfor %}
+    <div class="chips"><span class="meta">Feld einfügen:</span>{% for tok in ('{name}', '{code}', '{inhalt}', '{ort}') %}<button type="button" class="chip a4-token" data-token="{{ tok }}">{{ tok }}</button>{% endfor %}</div>
     <button class="primary">In die A4-Warteschlange</button>
   </form>
-  <script>document.getElementById('a4-type').addEventListener('change',function(e){var o=e.target.selectedOptions[0];document.getElementById('a4-w').value=o.dataset.w;document.getElementById('a4-h').value=o.dataset.h;});</script>
 </section>
+<script>
+(function () {
+  var form = document.getElementById("a4-add"), img = document.getElementById("a4-live"), timer = null, lastLine = "a4-t0";
+  function preview() {
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      var q = new URLSearchParams(new FormData(form));
+      img.src = "/a4/layout.png?" + q.toString();
+    }, 150);
+  }
+  function setPreset(p) {
+    document.getElementById("a4-w").value = p.w; document.getElementById("a4-h").value = p.h;
+    document.getElementById("a4-qrpos").value = p.qrpos; document.getElementById("a4-frame").value = p.frame;
+    document.getElementById("a4-color").value = p.color;
+    for (var i = 0; i < 4; i++) {
+      var l = p.lines[i];
+      document.getElementById("a4-t" + i).value = l ? l[0] : "";
+      document.getElementById("a4-w" + i).value = l ? l[1] : 1;
+      document.getElementById("a4-a" + i).value = l ? l[2] : "center";
+      document.getElementById("a4-c" + i).value = l ? l[3] : "black";
+    }
+    preview();
+  }
+  form.querySelectorAll(".a4-preset").forEach(function (b) {
+    b.addEventListener("click", function () { setPreset(JSON.parse(b.dataset.preset)); });
+  });
+  form.querySelectorAll(".a4-token").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var t = document.getElementById(lastLine); t.value = (t.value + " " + b.dataset.token).trim(); preview();
+    });
+  });
+  form.addEventListener("focusin", function (e) { if (/^a4-t\d$/.test(e.target.id)) lastLine = e.target.id; });
+  // Behälter gewählt: Name und Code werden übernommen (Platzhalter in den Zeilen füllen sich automatisch)
+  document.getElementById("a4-container").addEventListener("change", function (e) {
+    var o = e.target.selectedOptions[0];
+    document.getElementById("a4-name").value = o.dataset.name || "";
+    document.getElementById("a4-code").value = o.dataset.code || "";
+    if (o.value && !document.getElementById("a4-t0").value.trim()) setPreset(JSON.parse(document.querySelector(".a4-preset").dataset.preset));
+    preview();
+  });
+  form.addEventListener("input", preview); form.addEventListener("change", preview);
+  setPreset(JSON.parse(document.querySelector(".a4-preset").dataset.preset));
+})();
+</script>
 {% endblock %}

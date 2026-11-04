@@ -143,3 +143,6 @@ Filament/Harz: Klassen (Presets, `preset`), Kunststoff + Zusatz mit %, Spulentyp
 ### M51 erledigt (2026-11-04) – Release 1.2.0
 Druckfehler → automatisch Warteschlange; Nav „Drucken“ mit Druckersymbol; Filament/Harz als Einzelstücke (+ Haken „Einzelteile" bei allen Typen, Duplizieren); Kunststoff = 100 − Zusatz (Migration 028); A4-Etikett aus Behälter; Einstellung `api_write_key`; MCP-Anlegen (stdio, mit/ohne Schlüssel) real getestet.
 **Offen:** wie M50 (echter A4-Druck, Standalone je Fach, ghcr privat, `/neu/material`, Pi-Bluetooth).
+
+### M52 erledigt (2026-11-04) – Release 1.3.0
+Umlaute/ß auf dem Pi (Roboto mitgeliefert, `labelimg.BUNDLED_FONT`); A4-Gestalter mit Behälter-Übernahme, Zeilenfarben Schwarz/Rot, QR/Rahmen/Größe, Live-Vorschau (`/a4/layout.png`).

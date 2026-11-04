@@ -3,6 +3,15 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.3.0] – 2026-11-04
+
+### Behoben
+- Umlaute, ß, €, ° und µ fehlten in Etiketten-Bildern auf dem Pi: Im Docker-Image gibt es keine Systemschriften. Jetzt wird Roboto (Apache 2.0) mitgeliefert (`app/static/fonts/Roboto-Regular.ttf`).
+
+### Neu
+- A4 „Neues Etikett“ ist ein Gestalter wie beim kleinen Etikett: Zeilen (bis 4) mit Höhe, Ausrichtung und **Farbe (Schwarz/Rot)**, QR links/rechts/ohne, Rahmen abgerundet/eckig/keiner, Rahmenfarbe, Größe in mm, Live-Vorschau.
+- Behälter wählen übernimmt **Name und Code automatisch** (Platzhalter `{name}`, `{code}`, `{inhalt}`, `{ort}`); Vorlagen Box-Label, Etikett mit QR, Inhaltsetikett, Großes Schild.
+
 ## [1.2.0] – 2026-11-04
 
 ### Neu

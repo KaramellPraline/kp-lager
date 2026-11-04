@@ -29,6 +29,7 @@ COLOR_NAMES = {"black": "Schwarz", "red": "Rot"}
 
 # Typ -> (Name, Beschreibung, Standardgröße mm)
 TYPES: dict[str, tuple[str, str, tuple[float, float]]] = {
+    "layout": ("Frei gestaltet", "Zeilen, QR, Rahmen und Farben selbst festlegen", (100.0, 60.0)),
     "tag": ("Etikett mit QR", "QR-Code, Name und Code (Teile, Behälter)", (50.0, 20.0)),
     "bin_side": (
         "Seitenetikett Bin",
@@ -38,6 +39,19 @@ TYPES: dict[str, tuple[str, str, tuple[float, float]]] = {
     "box": ("Box-Label", "Länge × Breite mit abgerundetem Rahmen", (100.0, 60.0)),
     "content": ("Inhaltsetikett", "Kennung und Text ohne QR", (60.0, 20.0)),
 }
+
+
+# Vorlagen im Formular „Neues Etikett“: Größe, QR, Rahmen und Zeilen (Text, Höhe, Ausrichtung, Farbe)
+LAYOUT_PRESETS: dict[str, dict[str, Any]] = {
+    "box": {"name": "Box-Label", "w": 100, "h": 60, "qrpos": "right", "frame": "round", "color": "red",
+            "lines": [("{name}", 3, "center", "red"), ("{inhalt}", 2, "center", "black"), ("{code}", 1, "center", "red")]},
+    "tag": {"name": "Etikett mit QR", "w": 50, "h": 20, "qrpos": "left", "frame": "none", "color": "red",
+            "lines": [("{name}", 2, "left", "black"), ("{code}", 1, "left", "red")]},
+    "content": {"name": "Inhaltsetikett", "w": 60, "h": 22, "qrpos": "none", "frame": "round", "color": "red",
+                "lines": [("{code}", 1, "left", "red"), ("{inhalt}", 3, "center", "black")]},
+    "schild": {"name": "Großes Schild", "w": 190, "h": 80, "qrpos": "left", "frame": "round", "color": "red",
+               "lines": [("{name}", 3, "center", "red"), ("{ort}", 1, "center", "black"), ("{code}", 2, "center", "red")]},
+}  # fmt: skip
 
 
 def mm(value: float) -> int:
@@ -65,8 +79,23 @@ def clean_job(raw: dict[str, Any]) -> dict[str, Any]:
         if isinstance(c, dict):
             lines = [str(x)[:60] for x in (c.get("lines") or []) if str(x).strip()][:8]
             cells.append({"title": str(c.get("title", ""))[:30], "lines": lines})
+    cfg = []
+    for c in raw.get("cfg") or []:
+        if isinstance(c, dict) and str(c.get("t", "")).strip():
+            try:
+                weight = max(1, min(4, int(c.get("w", 1))))
+            except (TypeError, ValueError):
+                weight = 1
+            cfg.append({
+                "t": str(c["t"])[:80], "w": weight,
+                "a": c.get("a") if c.get("a") in ("left", "center", "right") else "center",
+                "c": c.get("c") if c.get("c") in COLORS else "black",
+            })  # fmt: skip
     return {
         "type": kind,
+        "cfg": cfg[:4],
+        "frame": raw.get("frame") if raw.get("frame") in ("round", "square", "none") else "round",
+        "qrpos": raw.get("qrpos") if raw.get("qrpos") in ("left", "right", "none") else "left",
         "w": size("w", dw, PAGE_W - 2 * MARGIN),
         "h": size("h", dh, PAGE_H - 2 * MARGIN),
         "color": raw.get("color") if raw.get("color") in COLORS else "black",
@@ -131,6 +160,35 @@ def _rounded(
     )
 
 
+def _render_layout(img: Image.Image, draw: ImageDraw.ImageDraw, j: dict[str, Any]) -> None:
+    """Frei gestaltetes Etikett: Rahmen, QR links/rechts, bis 4 Zeilen mit Höhe, Ausrichtung, Farbe."""
+    w, h = img.size
+    color = COLORS[j["color"]]
+    if j["frame"] == "round":
+        _rounded(draw, w, h, color, 4.0 if min(w, h) > mm(30) else 2.5, 0.6)
+    elif j["frame"] == "square":
+        draw.rectangle((0, 0, w - 1, h - 1), outline=color, width=max(1, mm(0.6)))
+    pad = mm(3.0) if j["frame"] != "none" else mm(1.2)
+    x0, x1 = pad, w - pad
+    if j["qr"] and j["qrpos"] != "none":
+        side = min(h - 2 * pad, round(w * 0.42))
+        top = (h - side) // 2
+        if j["qrpos"] == "right":
+            img.paste(_qr(j["qr"], side), (w - pad - side, top))
+            x1 = w - pad - side - mm(2)
+        else:
+            img.paste(_qr(j["qr"], side), (pad, top))
+            x0 = pad + side + mm(2)
+    cfg = j["cfg"]
+    total = float(sum(c["w"] for c in cfg)) or 1.0
+    y = float(pad)
+    avail = h - 2 * pad
+    for c in cfg:
+        band = avail * c["w"] / total
+        _text(draw, (x0, round(y), x1, round(y + band)), c["t"], COLORS[c["c"]], c["a"])
+        y += band
+
+
 def render(job: dict[str, Any]) -> Image.Image:
     """Ein Etikett als RGB-Bild (300 dpi)."""
     j = clean_job(job)
@@ -140,7 +198,9 @@ def render(job: dict[str, Any]) -> Image.Image:
     color = COLORS[j["color"]]
     pad = mm(1.6)
     kind = j["type"]
-    if kind == "tag":
+    if kind == "layout":
+        _render_layout(img, draw, j)
+    elif kind == "tag":
         qr_side = h - 2 * pad
         if j["qr"]:
             img.paste(_qr(j["qr"], qr_side), (pad, pad))
