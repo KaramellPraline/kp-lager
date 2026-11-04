@@ -125,3 +125,21 @@ def test_api_write_key_can_be_turned_off(client: TestClient) -> None:
     assert r.status_code in (200, 201), r.text
     client.post("/settings", data={"api_write_key": "1"})
     assert client.post("/api/v1/items", json=body).status_code == 401
+
+
+def test_preview_print_keeps_type_layout(
+    printer_client: TestClient, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Druck aus der Vorschau/Warteschlange behält das gestaltete Etikett (nicht nur 2 Zeilen)."""
+    sent: list[object] = []
+    monkeypatch.setattr(d30, "print_labels", lambda rows: sent.extend(rows) or len(rows))
+    c = printer_client
+    c.post("/neu/druckmodus", data={"mode": "aus"})
+    c.post("/neu", data={"typ": "mutter", "f_thread": "M4", "target": str(box(c))})
+    conn = connect(tmp_path / "lager.db")
+    item = conn.execute("SELECT id FROM item").fetchone()
+    c.post(f"/items/{item['id']}/code")
+    code = conn.execute("SELECT code FROM item").fetchone()["code"]
+    assert code
+    c.post("/labels/export", data={"fmt": "d30", "code": code, "text": "M4", "extra": "x"})
+    assert sent and all(r.lines for r in sent)  # type: ignore[attr-defined]

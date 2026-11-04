@@ -3,6 +3,11 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.3.1] – 2026-11-04
+
+### Behoben
+- Druck aus der Etiketten-Vorschau/Warteschlange („Auf D30 drucken“) verlor das gestaltete Layout und druckte nur 2 Zeilen. Jetzt wird immer das Layout des Typs verwendet.
+
 ## [1.3.0] – 2026-11-04
 
 ### Behoben

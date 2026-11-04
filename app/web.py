@@ -955,8 +955,11 @@ def create_app(settings: Settings) -> FastAPI:
             try:
                 d30.print_labels(
                     [
-                        labels.Label(
-                            c, labels.qr_content(settings.base_url, c), t.strip(), e.strip()
+                        labels.with_layout(  # gestaltetes Etikett des Typs, nicht nur 2 Zeilen
+                            conn,
+                            labels.Label(
+                                c, labels.qr_content(settings.base_url, c), t.strip(), e.strip()
+                            ),
                         )
                         for raw, t, e in entries_
                         if (c := codes.normalize(raw))
