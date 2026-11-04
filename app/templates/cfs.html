@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}CFS-Platte {{ item.name }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>CFS-NFC-Platte</h1>
+<p class="meta"><a href="/items/{{ item.id }}">Zurück zu {{ item.name }}{% if item.code %} · {{ item.code }}{% endif %}</a></p>
+
+<section class="card" id="cfs-werte">
+  <h2 style="margin-top:0">1 · Werte für SpoolID</h2>
+  <table class="kv">
+    <tr><th>Hersteller</th><td>{{ s.brand or '–' }}</td></tr>
+    <tr><th>Material</th><td>{{ s.material or '–' }}{% if not s.material %} <span class="chip review">fehlt im Datenblatt</span>{% endif %}</td></tr>
+    <tr><th>Farbe</th><td>{% if s.color_hex %}<span style="display:inline-block;width:1em;height:1em;border:1px solid var(--border,#888);background:#{{ s.color_hex }};vertical-align:-.15em"></span> #{{ s.color_hex }}{% else %}<span class="chip review">Hex-Farbe fehlt</span>{% endif %} {{ s.color }}</td></tr>
+    <tr><th>Gewicht</th><td>{% if s.weight_g %}{{ s.weight_g }} g{% else %}<span class="chip review">fehlt</span>{% endif %}</td></tr>
+    <tr><th>Länge</th><td>{% if s.length_m %}≈ {{ s.length_m }} m{% else %}–{% endif %}</td></tr>
+    <tr><th>Seriennummer</th><td>{{ s.serial }}</td></tr>
+  </table>
+  <pre id="cfs-text" class="meta" style="white-space:pre-wrap">{{ text }}</pre>
+  <div class="row">
+    <button type="button" class="primary" id="cfs-open">Werte kopieren &amp; SpoolID öffnen</button>
+    <button type="button" id="cfs-copy">Nur kopieren</button>
+  </div>
+  <p class="meta" id="cfs-msg" aria-live="polite"></p>
+  <p class="meta">Fehlende Werte im <a href="/items/{{ item.id }}#datenblatt">Datenblatt</a> ergänzen (Material, „Farbe (Hex)“, Gewicht).
+  SpoolID gibt es im <a href="{{ play_url }}" target="_blank" rel="noopener">Play Store</a> („Cfs RFID“).</p>
+</section>
+
+<section class="card" id="cfs-ablauf">
+  <h2 style="margin-top:0">2 · Platte drucken &amp; Tag schreiben</h2>
+  <ol>
+    <li>Modell drucken: <a href="{{ stl }}" download>STL</a> · <a href="{{ step }}" download>STEP</a>
+      (Rückseite auf das Druckbett, 0,2 mm, PLA/PETG). Eigene Maße: <code>uv run --group cad python cad/cfs_tag.py --coin 25.4 --tab 20</code>.</li>
+    <li>Leeren <b>MIFARE-Classic-1K</b>-Coin-Tag (Ø 25 mm) in die Rückseiten-Tasche legen.</li>
+    <li>In SpoolID Werte eintragen, Handy an die Platte halten, <b>Schreiben</b>. Die Platte beschreibt man ein
+      Mal; bei neuer Füllung einfach neu schreiben.</li>
+    <li>Etikett in die Mulde kleben, dann die Klebelasche auf die Spulenflanke nahe dem CFS-Lesepunkt.</li>
+  </ol>
+  <form method="post" action="/labels/quick/item/{{ item.id }}">
+    <button class="primary">{{ icon('action.print', size='sm') }} Etikett für die Platte drucken (12 × 40)</button>
+  </form>
+</section>
+
+<script>
+(function () {
+  var text = document.getElementById("cfs-text").textContent, msg = document.getElementById("cfs-msg");
+  function copy() {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    var t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); } catch (e) {} t.remove(); return Promise.resolve();
+  }
+  document.getElementById("cfs-copy").addEventListener("click", function () {
+    copy().then(function () { msg.textContent = "Werte kopiert."; });
+  });
+  document.getElementById("cfs-open").addEventListener("click", function () {
+    if (window.KPLager && window.KPLager.openSpoolId) {  // Android-App: kopiert und startet SpoolID
+      msg.textContent = window.KPLager.openSpoolId(text) ? "Werte kopiert – SpoolID startet." : "SpoolID ist nicht installiert – Play Store wird geöffnet.";
+    } else {
+      copy().then(function () { msg.textContent = "Werte kopiert. Jetzt SpoolID öffnen (nur in der Android-App automatisch)."; });
+    }
+  });
+})();
+</script>
+{% endblock %}

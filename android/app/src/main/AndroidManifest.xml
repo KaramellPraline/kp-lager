@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
+    <queries>
+        <package android:name="dngsoftware.spoolid" />  <!-- SpoolID (CFS-Tags schreiben) -->
+    </queries>
+
     <application
         android:label="KP Lager"
         android:icon="@mipmap/ic_launcher"

@@ -6,7 +6,7 @@ from typing import Annotated, Any
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-from app import expiry, labels, materials, placement, repo, sortiment, typesettings, weighing
+from app import cfs, expiry, labels, materials, placement, repo, sortiment, typesettings, weighing
 from app.config import Settings
 from app.repo import LagerError
 
@@ -27,6 +27,20 @@ def register(
     redirect: Callable[..., RedirectResponse],
     settings: Settings,
 ) -> None:
+    @app.get("/items/{item_id}/cfs", response_class=HTMLResponse)
+    def cfs_page(request: Request, item_id: int, conn: Conn) -> HTMLResponse:
+        """CFS-NFC-Platte: Werte für SpoolID, 3D-Modell, Ablauf."""
+        item = repo.get_item(conn, item_id)
+        s = cfs.spec(item)
+        return render(
+            request, conn, "cfs.html", item=item, s=s, text=cfs.handoff_text(s),
+            stl=cfs.MODEL_STL, step=cfs.MODEL_STEP, play_url=cfs.PLAY_URL,
+        )  # fmt: skip
+
+    @app.get("/items/{item_id}/cfs.json")
+    def cfs_json(item_id: int, conn: Conn) -> JSONResponse:
+        return JSONResponse(cfs.for_item(conn, item_id))
+
     @app.get("/neu/platz")
     def place_suggestions(
         request: Request, conn: Conn, typ: str = "", cat: str = ""

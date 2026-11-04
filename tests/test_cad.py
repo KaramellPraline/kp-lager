@@ -73,3 +73,25 @@ def test_specs_from_bins_file(tmp_path: Path) -> None:
     specs = nb.specs_from_file(f)
     assert len(specs) == 2 and specs[0].wall == 1.6 and specs[0].div_x == 3 and not specs[0].label
     assert "wall1.6" in specs[0].name
+
+
+def test_cfs_plate_pocket_label_and_tab() -> None:
+    import cfs_tag as cfs
+
+    spec = cfs.CfsSpec()
+    part = cfs.build(spec)
+    bb = part.bounding_box()
+    assert part.is_valid and len(part.solids()) == 1
+    assert round(bb.size.X, 2) == spec.w + spec.tab_len and round(bb.size.Z, 2) == spec.t
+    assert not part.is_inside(Vector(0, spec.coin_y, 0.6))  # Tag-Tasche rückseitig leer
+    assert part.is_inside(Vector(0, spec.coin_y, spec.coin_depth + 0.3))  # Haut über dem Tag
+    assert not part.is_inside(Vector(0, spec.label_y, spec.t - 0.2))  # Etikettenmulde vorn leer
+    assert part.is_inside(Vector(spec.w / 2 + 10, 0, 0.4))  # Klebelasche bündig hinten
+    assert not part.is_inside(Vector(spec.w / 2 + 10, 0, 1.2))  # ... und dünn
+
+
+def test_cfs_plate_rejects_bad_sizes() -> None:
+    import cfs_tag as cfs
+
+    with pytest.raises(ValueError):
+        cfs.build(cfs.CfsSpec(coin_d=34))

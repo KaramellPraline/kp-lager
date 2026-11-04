@@ -84,3 +84,4 @@
 - 2026-11-04: A4-Etiketten sind frei gestaltbar (Typ `layout`: Zeilen mit Farbe, QR, Rahmen) und übernehmen Name/Code aus dem Behälter. Warum: gleiche Konfigurierbarkeit wie das kleine Etikett.
 - 2026-11-04 (1.4.0): Einsätze können lose (ohne Sortierkasten) angelegt werden und werden später im Kasten eingesetzt. Warum: Einsätze entstehen oft vor dem Kasten bzw. werden getauscht; Rastermaß (size) und Teilung (grid) sind die gleichen Felder wie bei im Kasten angelegten Einsätzen.
 - 2026-11-04: Scanner erkennt nur das sichtbare Quadrat und fokussiert per Tippen. Warum: schneller, weniger Fehlscans am Bildrand; Fokuspunkt ist die einzige Hilfe bei Nahaufnahmen kleiner Etiketten.
+- 2026-11-04 (1.5.0): CFS-Tags werden nicht vom Lager geschrieben, sondern über die App SpoolID (Zwischenablage-Übergabe, kein Intent-API). Warum: Format/Schlüssel sind Community-Reverse-Engineering, SpoolID ist gepflegt; weniger eigener Krypto-Code. Normales Etikett bleibt Standard.

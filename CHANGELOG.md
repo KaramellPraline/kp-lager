@@ -3,6 +3,13 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.5.0] – 2026-11-04
+
+### Neu
+- **CFS-NFC-Platte** für Filament (`/items/<id>/cfs`): Werte für den Tag (Material, Hex-Farbe, Gewicht, Länge, Seriennummer), 3D-Modell mit Tag-Tasche, Etikettenmulde und Klebelasche (`cad/cfs_tag.py`, STL/STEP zum Download) und Ablauf. Das normale Etikett bleibt Standard.
+- Android-App: Knopf „Werte kopieren & SpoolID öffnen“ übergibt die Werte an die App SpoolID, die den CFS-Tag beschreibt.
+- Filament-Datenblatt: neues Feld **Farbe (Hex)**.
+
 ## [1.4.1] – 2026-11-04
 
 ### Neu

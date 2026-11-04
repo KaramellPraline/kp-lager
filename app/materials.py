@@ -53,6 +53,7 @@ FIELDS: dict[str, tuple[Field, ...]] = {
         Field("brand", "base", "Hersteller", "Manufacturer", "", "Prusament, eSun, Sunlu …"),
         Field("material", "base", "Werkstoff", "Material", "", "PLA, PETG, ABS, ASA, TPU …"),
         Field("color", "base", "Farbe", "Color"),
+        Field("color_hex", "base", "Farbe (Hex)", "Color (hex)", "", "#FFFFFF – für CFS-Tag"),
         Field("diameter", "base", "Durchmesser", "Diameter", "mm", "1.75"),
         Field("weight", "base", "Netto-Gewicht je Spule", "Net weight per spool", "g", "1000"),
         Field("spool_type", "base", "Spulentyp", "Spool type", "", "Pappe, Plastik, Mehrweg …"),

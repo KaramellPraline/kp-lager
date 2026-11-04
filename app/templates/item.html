@@ -121,6 +121,14 @@
   {% endif %}
 
   {% if item.material == 'fil' %}
+  <div class="card" id="cfs">
+    <h2 style="margin-top:0">CFS-NFC-Platte</h2>
+    <p class="meta">Statt eines normalen Etiketts: 3D-gedruckte Platte mit Klebelasche und NFC-Tag für das Creality CFS.</p>
+    <a class="button" href="/items/{{ item.id }}/cfs">{{ icon('content.tag', size='sm') }} Platte &amp; Tag vorbereiten</a>
+  </div>
+  {% endif %}
+
+  {% if item.material == 'fil' %}
   <div class="card" id="trocknen">
     <h2 style="margin-top:0">Trocknen</h2>
     {% if dry_history %}<ul class="history">{% for h in dry_history %}<li>{{ h.started_at[:16] }} · {{ h.program }} {{ h.temp_c|round|int }} °C / {{ h.hours }} h{% if h.done_at %} · fertig{% elif h.ready %} · <b>fertig, entnehmen</b>{% else %} · läuft ({{ h.left }}){% endif %}

@@ -5,6 +5,8 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.DownloadManager;
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -18,6 +20,7 @@ import android.provider.MediaStore;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.webkit.CookieManager;
+import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
@@ -62,6 +65,29 @@ public class MainActivity extends Activity {
         }
     }
 
+    static final String SPOOLID = "dngsoftware.spoolid";
+
+    /** Brücke für die Web-App (window.KPLager): CFS-Werte kopieren und SpoolID starten. */
+    class Bridge {
+        /** Kopiert den Text in die Zwischenablage und startet SpoolID; ohne die App: Play Store. */
+        @JavascriptInterface
+        public boolean openSpoolId(String text) {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("CFS-Werte", text));
+            Intent launch = getPackageManager().getLaunchIntentForPackage(SPOOLID);
+            Intent go = launch != null ? launch : new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=" + SPOOLID));
+            runOnUiThread(() -> {
+                try {
+                    startActivity(go);
+                } catch (ActivityNotFoundException e) {
+                    Toast.makeText(MainActivity.this, "Werte kopiert", Toast.LENGTH_SHORT).show();
+                }
+            });
+            return launch != null;
+        }
+    }
+
     private SharedPreferences prefs() {
         return getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
@@ -92,6 +118,7 @@ public class MainActivity extends Activity {
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setAllowFileAccess(false);
         s.setUserAgentString(s.getUserAgentString() + " KPLagerApp/" + BuildConfig.VERSION_NAME);
+        view.addJavascriptInterface(new Bridge(), "KPLager");
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(view, false);
 
