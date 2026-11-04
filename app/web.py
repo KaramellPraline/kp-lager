@@ -1703,9 +1703,19 @@ def create_app(settings: Settings) -> FastAPI:
         name: Annotated[str, Form()],
         notes: Annotated[str, Form()] = "",
         code: Annotated[str, Form()] = "",
+        tare: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         node = need_node(conn, node_id)
         repo.update_container(conn, node_id, name, notes)
+        raw = tare.strip().replace(",", ".")
+        try:
+            grams = float(raw) if raw else None
+        except ValueError:
+            raise LagerError(f"„{tare}“ ist kein Gewicht in Gramm") from None
+        if grams is not None and grams < 0:
+            raise LagerError("Gewicht darf nicht negativ sein")
+        with conn:
+            conn.execute("UPDATE container SET tare = ? WHERE id = ?", (grams, node_id))
         new_code = container_code(code)
         if new_code != node["code"]:
             repo.assign_code(conn, node_id, new_code)

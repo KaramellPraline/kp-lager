@@ -124,4 +124,6 @@ Erledigt: kein Auto-Fokus beim Typwechsel, Feld bleibt beim Tippen sichtbar (scr
 
 ### M46 erledigt (2026-11-04, Branch feat/m46-bedienung)
 Icon-Leiste + Sticky-Kopf an Teil/Behälter, Eintragen/„Darin anlegen“ entfernt, Katalog: Favoriten (Stern), Sprungleiste, 10 neue Typen (u. a. Gridfinity, Set/Sortiment, Kabel), Auto-Tags, „Kein eigenes Etikett“, Zielwahl mit Zu-sortieren-Knopf (Box of Shame), Tab „Kabel & Material“ entfernt, globales Rückgängig/Wiederholen (Kopfzeile), Gesamtarchiv `/export.zip`, Druckverlauf (`/verlauf?tab=druck`, Wiederholung/Batch), Regel „neue Teile automatisch drucken“.
-**Noch offen aus Backlog:** Symbolbibliothek (Agent), Druckmodi-Menü, Vorlagen-Preset „Alles“, Standalone-Teile im Sortierkisten-Editor je Fach, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Sortierkisten-Typenliste (18), Einsatz-Menü, Behälter-Leergewicht (Spalte `container.tare` angelegt, noch ohne UI), Kategorie-Codes CNS/RAW/CMP komplett aus dem Schema.
+### M47 erledigt (2026-11-04)
+Etiketten-Vorlagen inkl. „Alles“ (+ „Für alle Typen“), Druckmodus-Menü (Aus/Einzeln/Sammeln, `print_mode`), Behälter-Leergewicht (UI am Behälter), 18 Sortierkasten-Modelle (NORB16 + 17 Raster), Symbolbibliothek im `kp-print-agent`.
+**Noch offen:** Standalone-Teile je Fach im Sortierkisten-Editor, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Einsatz-Menü, CNS/RAW/CMP komplett aus dem Schema, Pi zieht Image aus ghcr (Paket noch privat).

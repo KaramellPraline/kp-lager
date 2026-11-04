@@ -30,6 +30,29 @@ MODELS = {
     "norb16": Model("norb16", "Kistenberg NORB16", cols=5, rows=7,
                     blocked=frozenset({"C1", "D1", "E1"})),
 }  # fmt: skip
+# 17 allgemeine Raster-Kästen (Spalten×Zeilen) für Sortimentskästen, Schubladenblöcke u. Ä.
+for _c, _r in (
+    (2, 3),
+    (2, 4),
+    (3, 3),
+    (3, 4),
+    (3, 5),
+    (4, 4),
+    (4, 5),
+    (4, 6),
+    (5, 5),
+    (5, 6),
+    (6, 6),
+    (6, 8),
+    (8, 8),
+    (1, 6),
+    (1, 8),
+    (2, 6),
+    (3, 6),
+):
+    MODELS[f"raster{_c}x{_r}"] = Model(
+        f"raster{_c}x{_r}", f"Raster {_c}×{_r}", cols=_c, rows=_r, blocked=frozenset()
+    )
 SIZES = ("1x1", "2x1", "1x2", "2x2", "3x1", "4x1")
 DIVS = ("1x1", "2x1", "3x1", "4x1", "5x1", "1x2", "2x2", "3x2")
 

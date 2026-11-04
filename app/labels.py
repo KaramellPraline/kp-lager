@@ -44,6 +44,27 @@ DEFAULT_LAYOUT: Layout = {
 }
 
 
+# Vorlagen fürs Layout (Designer: Knöpfe; „Alles“ passt für jeden Typ, weil leere Felder wegfallen)
+PRESETS: dict[str, tuple[str, Layout]] = {
+    "alles": (
+        "Alles (Name · Maße · Ort)",
+        {
+            "qr": "left",
+            "lines": [
+                {"t": "{name}", "w": 3, "a": "left"},
+                {"t": "{thread}x{length} {value} {voltage} {size}", "w": 2, "a": "left"},
+                {"t": "{code} {ort}", "w": 1, "a": "left"},
+            ],
+        },
+    ),
+    "standard": ("Name + Code", DEFAULT_LAYOUT),
+    "gross": (
+        "Nur Name, groß",
+        {"qr": "none", "lines": [{"t": "{name}", "w": 4, "a": "center"}]},
+    ),
+}
+
+
 def default_layout() -> Layout:
     return copy.deepcopy(DEFAULT_LAYOUT)
 

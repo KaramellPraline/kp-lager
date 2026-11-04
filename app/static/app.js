@@ -600,6 +600,19 @@
       refresh();
     });
   });
+  form.querySelectorAll(".preset").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = JSON.parse(b.dataset.preset);
+      form.elements.qr.value = p.qr;
+      for (var i = 0; i < 4; i++) {
+        var ln = p.lines[i];
+        form.elements["t_" + i].value = ln ? ln.t : "";
+        form.elements["w_" + i].value = ln ? ln.w : "1";
+        form.elements["a_" + i].value = ln ? ln.a : "center";
+      }
+      refresh();
+    });
+  });
   // Zeile nach oben: Werte mit der Zeile darüber tauschen
   form.querySelectorAll(".line-up").forEach(function (b) {
     b.addEventListener("click", function () {

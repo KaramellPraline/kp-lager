@@ -83,6 +83,7 @@
     <form method="post" action="/n/{{ node.id }}/edit" class="stack">
       <label>Name <input name="name" value="{{ node.name }}" required></label>
       <label>Code <input name="code" value="{{ node.code or '' }}" placeholder="z. B. EUR-001" autocapitalize="characters"></label>
+      <label>Leergewicht <span class="meta">(g, optional – fürs Zählen per Waage)</span> <input name="tare" inputmode="decimal" value="{{ '%g'|format(node.tare) if node.tare is not none else '' }}"></label>
       <label>Notizen <textarea name="notes">{{ node.notes }}</textarea></label>
       <button class="primary">Speichern</button>
     </form>

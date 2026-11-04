@@ -160,7 +160,7 @@ def register(
         fields += [(f"{{{f}}}", lb) for f, lb in labels.EXTRA_FIELDS if f not in have]
         return render(
             request, conn, "etiketten_layout.html", kind=k, layout=layout, custom=bool(stored),
-            fields=fields, max_lines=labels.MAX_LINES, sample_code=code,
+            fields=fields, max_lines=labels.MAX_LINES, sample_code=code, presets=labels.PRESETS,
             preview=[(t, w, a) for t, w, a in labels.layout_lines(layout, values)],
         )  # fmt: skip
 
@@ -186,6 +186,11 @@ def register(
         if form.get("reset"):
             typesettings.save_layout(conn, key, None)
             return redirect(f"/etiketten/typ/{key}", "Standard-Layout wiederhergestellt")
+        if form.get("all"):
+            lay = layout_from(form)
+            for k in sortiment.kinds(conn):
+                typesettings.save_layout(conn, k.key, lay)
+            return redirect(f"/etiketten/typ/{key}", "Layout für alle Typen übernommen")
         typesettings.save_layout(conn, key, layout_from(form))
         return redirect(
             f"/etiketten/typ/{key}", "Layout gespeichert – gilt für neue Etiketten dieses Typs"

@@ -13,6 +13,12 @@ from app.repo import LagerError
 
 TARGET_COOKIE = "qa_targets"  # gleiche Liste wie die Schnelleingabe auf der Startseite
 TYPE_COOKIE = "kat_typ"
+# Druckmodus beim Anlegen: (Schlüssel, Name, Erklärung)
+PRINT_MODES = {
+    "aus": ("Aus", "nichts automatisch drucken"),
+    "einzel": ("Einzeln", "jedes neue Teil sofort auf den D30 (40x12)"),
+    "sammel": ("Sammeln", "neue Etiketten in die Warteschlange, später gemeinsam drucken"),
+}
 QTYS = ("10", "25", "50", "100", "200", "500")
 
 
@@ -64,7 +70,8 @@ def register(
             "katalog.html",
             groups=catalog.grouped(conn),
             favs=catalog.favorite_keys(conn),
-            auto_print=codes.get_setting(conn, "auto_print", "0") == "1",
+            print_mode=print_mode(conn),
+            print_modes=PRINT_MODES,
             ctype=current,
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
@@ -86,9 +93,21 @@ def register(
             catalog.toggle_favorite(conn, key)
         return RedirectResponse(f"/neu?typ={key}", status_code=303)
 
-    @app.post("/neu/autodruck")
+    def print_mode(conn: Conn) -> str:
+        mode = codes.get_setting(conn, "print_mode", "")
+        if mode in PRINT_MODES:
+            return mode
+        return "einzel" if codes.get_setting(conn, "auto_print", "0") == "1" else "aus"
+
+    @app.post("/neu/druckmodus")
+    def katalog_print_mode(conn: Conn, form: Form) -> RedirectResponse:
+        mode = form.get("mode", "aus")
+        codes.set_setting(conn, "print_mode", mode if mode in PRINT_MODES else "aus")
+        return RedirectResponse(form.get("back", "/neu"), status_code=303)
+
+    @app.post("/neu/autodruck")  # alt: an/aus -> Einzel/Aus
     def katalog_auto_print(conn: Conn, form: Form) -> RedirectResponse:
-        codes.set_setting(conn, "auto_print", "1" if form.get("on") == "1" else "0")
+        codes.set_setting(conn, "print_mode", "einzel" if form.get("on") == "1" else "aus")
         return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
     @app.get("/neu/vorschau")
@@ -122,9 +141,14 @@ def register(
         )
         item = repo.get_item(conn, item_id)
         msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"
-        auto = codes.get_setting(conn, "auto_print", "0") == "1"  # Regel: 40x12 sofort drucken
-        if (form.get("d30_print") or auto) and settings.d30 and item["code"]:
-            msg += print_now(conn, [item["code"]])
+        mode = print_mode(conn)  # Regel: einzel = sofort 40x12, sammel = in die Warteschlange
+        if item["code"]:
+            if (form.get("d30_print") or mode == "einzel") and settings.d30:
+                msg += print_now(conn, [item["code"]])
+            elif mode == "sammel":
+                label = labels.item_label(conn, settings.base_url, item)
+                labels.enqueue(conn, label.code, label.text, label.extra)
+                msg += " · in der Druck-Warteschlange"
         # gleicher Typ nochmal, Felder zurückgesetzt (Ziel bleibt)
         resp = redirect(f"/neu?typ={typ}", msg)
         resp.set_cookie(TYPE_COOKIE, typ, max_age=31_536_000, samesite="lax")

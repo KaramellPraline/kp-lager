@@ -3,6 +3,15 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [0.6.0] – 2026-11-04
+
+### Neu
+- Etiketten-Layout: Vorlagen („Alles“, Standard, Nur Name) und „Für alle Typen übernehmen“.
+- Druckmodus-Menü beim Anlegen: Aus · Einzeln (sofort 40x12) · Sammeln (Warteschlange).
+- Behälter-Leergewicht (Bearbeiten-Block am Behälter).
+- 17 weitere Sortierkasten-Raster (insgesamt 18 Modelle).
+- Druck-Agent (eigenes Repo): Symbolbibliothek für Homelab/DIY.
+
 ## [0.5.0] – 2026-11-04
 
 ### Neu

@@ -18,6 +18,11 @@
     </select>
   </div>
 
+  <div>
+    <span class="meta">Vorlage:</span>
+    <div class="chips">{% for k, p in presets.items() %}<button type="button" class="chip preset" data-preset="{{ p[1]|tojson|forceescape }}">{{ p[0] }}</button>{% endfor %}</div>
+  </div>
+
   <div id="lines" class="stack">
     {% for i in range(max_lines) %}{% set ln = layout.lines[i] if i < layout.lines|length else none %}
     <div class="layout-line" data-i="{{ i }}">
@@ -45,6 +50,7 @@
   <div class="row">
     <button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
     <button name="reset" value="1" {% if not custom %}disabled{% endif %}>Standard wiederherstellen</button>
+    <button name="all" value="1" title="Dieses Layout für alle Typen übernehmen">Für alle Typen</button>
   </div>
   <p class="meta" style="margin:0">Vorschau mit {{ sample_code }}. Das Layout gilt für das D30-Etikett (Direktdruck, Bild); XLSX und A4 nutzen weiter Name/Zusatz.</p>
 </form>
