@@ -1672,6 +1672,37 @@ def create_app(settings: Settings) -> FastAPI:
         labels.clear_content(conn)
         return redirect("/labels", "Inhaltsetiketten geleert")
 
+    def print_or_queue(
+        conn: sqlite3.Connection, code: str, text: str, extra: str, back: str
+    ) -> RedirectResponse:
+        """Druck-Symbol: sofort auf den D30, sonst (Fehler/kein D30) in die Warteschlange."""
+        if settings.d30:
+            try:
+                d30.print_codes(conn, settings.base_url, [code])
+                return redirect(back, f"Etikett {code} gedruckt")
+            except LagerError as exc:
+                labels.enqueue(conn, code, text, extra)
+                return redirect(back, f"Druck nicht möglich ({exc}) – {code} in der Warteschlange")
+        labels.enqueue(conn, code, text, extra)
+        return redirect(back, f"Etikett {code} in Warteschlange")
+
+    @app.post("/labels/quick/node/{node_id}")
+    def quick_print_node(node_id: int, conn: Conn) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        if not node["code"]:
+            raise LagerError("Behälter hat noch keinen Code")
+        return print_or_queue(
+            conn, node["code"], *labels.container_label(conn, node), f"/n/{node_id}"
+        )
+
+    @app.post("/labels/quick/item/{item_id}")
+    def quick_print_item(item_id: int, conn: Conn) -> RedirectResponse:
+        item = repo.get_item(conn, item_id)
+        if not item["code"]:
+            raise LagerError("Teil hat noch keinen Code")
+        lab = labels.item_label(conn, settings.base_url, item)
+        return print_or_queue(conn, lab.code, lab.text, lab.extra, f"/items/{item_id}")
+
     @app.post("/labels/queue/item/{item_id}")
     def queue_item(request: Request, item_id: int, conn: Conn) -> RedirectResponse:
         item = repo.get_item(conn, item_id)

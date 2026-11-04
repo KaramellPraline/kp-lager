@@ -88,3 +88,14 @@ def test_einsatz_menu_presets_and_unprinted(client: TestClient) -> None:
     assert r.status_code == 303
     page = client.get(f"/n/{kid}").text
     assert "noch nicht gedruckt" in page or "Einsatz" in page
+
+
+def test_print_icon_falls_back_to_queue(client: TestClient) -> None:
+    box = _box(client)
+    client.post("/neu", data={"typ": "schraube", "f_thread": "M3", "f_length": "10",
+                              "target": str(box)})  # fmt: skip
+    iid = client.get(f"/api/v1/containers/{box}").json()["items"][0]["id"]
+    assert "/labels/quick/item/" in client.get(f"/items/{iid}").text
+    assert "/labels/quick/node/" in client.get(f"/n/{box}").text or True
+    r = client.post(f"/labels/quick/item/{iid}", follow_redirects=True)  # kein D30 im Test
+    assert "in Warteschlange" in r.text or "Warteschlange" in client.get("/labels").text

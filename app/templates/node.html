@@ -29,7 +29,7 @@
   </div>
 
   <div class="icon-row" role="toolbar" aria-label="Schnellaktionen">
-    {% if node.code %}<form method="post" action="/labels/queue/node/{{ node.id }}"><button title="Etikett drucken" aria-label="Etikett drucken">{{ icon('action.print') }}</button></form>{% endif %}
+    {% if node.code %}<form method="post" action="/labels/quick/node/{{ node.id }}"><button title="Etikett drucken (sonst Warteschlange)" aria-label="Etikett drucken">{{ icon('action.print') }}</button></form>{% endif %}
     <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
       <label class="file-btn" title="Foto" aria-label="Foto">{{ icon('media.camera') }}
         <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>

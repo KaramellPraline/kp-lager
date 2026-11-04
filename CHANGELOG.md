@@ -3,6 +3,12 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [0.7.1] – 2026-11-04
+
+### Neu
+- Druck-Symbol an Teil und Behälter: sofort auf den D30 drucken, bei Fehler automatisch in die Warteschlange.
+- D30-Druck nutzt immer das aktuelle Etiketten-Layout des Artikeltyps.
+
 ## [0.7.0] – 2026-11-04
 
 ### Neu
