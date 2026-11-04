@@ -146,3 +146,6 @@ Druckfehler → automatisch Warteschlange; Nav „Drucken“ mit Druckersymbol; 
 
 ### M52 erledigt (2026-11-04) – Release 1.3.0
 Umlaute/ß auf dem Pi (Roboto mitgeliefert, `labelimg.BUNDLED_FONT`); A4-Gestalter mit Behälter-Übernahme, Zeilenfarben Schwarz/Rot, QR/Rahmen/Größe, Live-Vorschau (`/a4/layout.png`).
+
+### M54 (Scanner) – Branch `feat/m54-scanner-quadrat`, unveröffentlicht
+`/scan`: quadratischer Scan-Ausschnitt (nur das mittlere Quadrat des Kamerabilds), Tippen aufs Bild = Fokus (`pointsOfInterest`, Chrome/Android; iOS Safari unterstützt es nicht).

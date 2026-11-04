@@ -82,3 +82,4 @@
 - 2026-11-04: API-Schreibschlüssel per Einstellung abschaltbar (`api_write_key`, Standard an). Warum: Debuggen von CLI/MCP ohne Schlüsselverwaltung.
 - 2026-11-04 (1.3.0): Schrift Roboto wird mitgeliefert. Warum: das Docker-Image hat keine Systemschriften, Pillow-Standardschrift kennt keine Umlaute/ß.
 - 2026-11-04: A4-Etiketten sind frei gestaltbar (Typ `layout`: Zeilen mit Farbe, QR, Rahmen) und übernehmen Name/Code aus dem Behälter. Warum: gleiche Konfigurierbarkeit wie das kleine Etikett.
+- 2026-11-04: Scanner erkennt nur das sichtbare Quadrat und fokussiert per Tippen. Warum: schneller, weniger Fehlscans am Bildrand; Fokuspunkt ist die einzige Hilfe bei Nahaufnahmen kleiner Etiketten.
