@@ -71,8 +71,9 @@
         <button type="submit" formaction="/neu/pflicht" formnovalidate>Pflichtfelder speichern</button>
       </details>
       <div class="nf">
-        <label for="qty">Menge <span class="meta">(leer = ungezählt)</span></label>
-        <input id="qty" name="qty" inputmode="numeric" class="short" autocomplete="off">
+        <label for="qty">{% if ctype.single %}Anzahl{% else %}Menge{% endif %} <span class="meta">({% if ctype.single %}jede Spule/Flasche ein eigenes Teil{% else %}leer = ungezählt{% endif %})</span></label>
+        <div class="inrow"><input id="qty" name="qty" inputmode="numeric" class="grow" autocomplete="off">
+          <label class="keep single" title="Einzelteile: jedes Stück ein eigenes Teil mit eigenem Code und Etikett"><input type="checkbox" name="single" value="1" aria-label="Einzelteile" {% if ctype.single %}checked disabled{% endif %}> <span class="meta">Einzelteile</span></label></div>
         <div class="chips">{% for q in ('1', '5', '10', '25', '50', '100', '200', '500') %}<button type="button" class="chip" data-for="qty">{{ q }}</button>{% endfor %}</div>
       </div>
       <div class="nf">

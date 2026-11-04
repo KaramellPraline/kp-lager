@@ -77,3 +77,6 @@
 - 2026-11-04: Filament/Harz-Klassen als Presets (`preset`), manuell eingetragene Hersteller werden gemerkt; Werkstoff = Kunststoff + Zusatz mit Prozent. Warum: schnelles Anlegen von Spulen.
 - 2026-11-04: Dezimalzahlen systemweit mit Punkt (Komma→Punkt beim Tippen und serverseitig). Warum: Nutzerwunsch, einheitliche Daten.
 - 2026-11-04: Bin-Parameter in einer Datei `bins.json` (`kp-lager-bins/1`) für `cad/norb_bins.py --file`; Einsätze per Drag & Drop verschieben. Warum: parametrischer Druckgenerator braucht alle Einstellungen an einem Ort.
+- 2026-11-04 (1.2.0): Gescheiterter Druck legt Etiketten automatisch in die Warteschlange. Warum: nichts geht verloren, wenn der Agent offline ist.
+- 2026-11-04: Filament/Harz sind Einzelstücke (`Type.single`); Kunststoffanteil = 100 − Zusatz. Warum: jede Spule eigener Code/Restgewicht; weniger Eingabe.
+- 2026-11-04: API-Schreibschlüssel per Einstellung abschaltbar (`api_write_key`, Standard an). Warum: Debuggen von CLI/MCP ohne Schlüsselverwaltung.

@@ -3,6 +3,17 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.2.0] – 2026-11-04
+
+### Neu
+- Scheitert der Druck (MQTT/Agent/D30 offline), landen die Etiketten automatisch in der Druck-Warteschlange (Anlegen, Einsatz-Assistent, Druckvorschau).
+- Navigation: „Etiketten“ heißt jetzt „Drucken“ mit Druckersymbol.
+- Filament/Harz sind Einzelstücke: Anzahl N legt N Spulen/Flaschen mit eigenem Code an; bestehende lassen sich per „Duplizieren“ als Vorlage nutzen. Bei allen Typen: kleiner Haken „Einzelteile“ neben der Menge.
+- Kunststoff hat kein Anteilfeld mehr: Anteil = 100 − Zusatz („PA12 80% + CF 20%“).
+- A4-Warteschlange: neues Etikett aus einem Behälter wählen (Name, Code, optional Inhalt als Zeilen) oder alles selbst eintragen.
+- Einstellung „API: Schreiben nur mit Schlüssel“ (Betrieb): zum Debuggen abschaltbar. MCP-Anlegen von Teilen mit und ohne Schlüssel getestet.
+- Migration 028 (Presets ohne Kunststoffanteil).
+
 ## [1.1.0] – 2026-11-04
 
 ### Neu

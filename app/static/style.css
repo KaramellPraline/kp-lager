@@ -512,3 +512,5 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 .a4-job img { flex: none; width: 96px; height: auto; max-height: 56px; object-fit: contain; background: #fff; border-radius: 3px; }
 .a4-job .name { flex: 1 1 auto; min-width: 0; }
 .a4-job .name small { display: block; }
+
+.inrow > .keep.single { flex: 0 0 auto; width: auto; gap: 4px; white-space: nowrap; }

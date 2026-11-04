@@ -41,6 +41,7 @@ class Type:
     material: str = (
         ""  # fil/res/psu/cbl: Felder landen zusätzlich in den Materialdaten (Datenblatt)
     )
+    single: bool = False  # Einzelstücke: jede Spule/Flasche eigenes Teil mit eigenem Code
     label_lines: tuple[str, ...] = ()  # Etikett: Zeile 1 (Typ + Spezifikation), Zeile 2 (Maße)
 
 
@@ -1085,14 +1086,20 @@ TYPES: tuple[Type, ...] = (
         (
             F("brand", "Hersteller", "Prusament|eSun|Sunlu|Bambu Lab|Creality|Polymaker|Elegoo"),
             F("plastic", "Kunststoff", "PLA|PLA+|PETG|ABS|ASA|TPU|PA6|PA12|PC|PVA|PP", row="werk"),
-            F("plastic_pct", "Anteil", "100|90|85|80|75", "%", row="werk"),
             F(
                 "additive",
                 "Zusatz",
                 "Glasfaser|Carbonfaser|Kevlar|Holz|Metall|Glitzer|Marmor",
                 row="werk",
             ),
-            F("additive_pct", "Anteil", "5|10|15|20|25|30", "%", row="werk"),
+            F(
+                "additive_pct",
+                "Anteil",
+                "5|10|15|20|25|30",
+                "%",
+                hint="Kunststoff = 100 − Zusatz",
+                row="werk",
+            ),
             F("color", "Farbe", "Schwarz|Weiß|Grau|Rot|Blau|Grün|Gelb|Orange|Transparent|Natur"),
             F("diameter", "Durchmesser", "1.75|2.85", "mm", row="maß"),
             F("weight", "Gewicht je Spule", "0.25|0.5|0.75|1|2|3", "kg", row="maß"),
@@ -1107,6 +1114,7 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{brand}",), ("{material}",), ("{color}",)),
         material="fil",
+        single=True,
     ),
     Type(
         "harz",
@@ -1134,6 +1142,7 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{brand}",), ("{material}",), ("{color}",), ("{volume}ml",)),
         material="res",
+        single=True,
     ),
     Type(
         "steckernetzteil",
@@ -1499,13 +1508,18 @@ def derive(t: Type, values: dict[str, str]) -> dict[str, str]:
         return values
     plastic = values.get("plastic", "").strip()
     add = values.get("additive", "").strip()
+    pct_raw = values.get("additive_pct", "").strip().rstrip("%").strip()
+    try:
+        pct = float(pct_raw) if pct_raw else None
+    except ValueError:
+        pct = None
     text = plastic
-    if plastic and values.get("plastic_pct", "").strip():
-        text += f" {values['plastic_pct'].strip()}%"
     if add:
         short = ADDITIVE_SHORT.get(add.casefold(), add)
-        pct = values.get("additive_pct", "").strip()
-        text = f"{text} + {short}{' ' + pct + '%' if pct else ''}".strip(" +")
+        if pct is not None and plastic and 0 < pct < 100:  # Kunststoff = 100 − Zusatz
+            text = f"{plastic} {100 - pct:g}% + {short} {pct:g}%"
+        else:
+            text = f"{plastic} + {short}".strip(" +")
     return {**values, "material": text} if text else values
 
 

@@ -952,13 +952,28 @@ def create_app(settings: Settings) -> FastAPI:
         if fmt == "d30" and not bridge:  # erst drucken – nur Gedrucktes wird als gedruckt gebucht
             if not settings.d30:
                 raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
-            d30.print_labels(
-                [
-                    labels.Label(c, labels.qr_content(settings.base_url, c), t.strip(), e.strip())
+            try:
+                d30.print_labels(
+                    [
+                        labels.Label(
+                            c, labels.qr_content(settings.base_url, c), t.strip(), e.strip()
+                        )
+                        for raw, t, e in entries_
+                        if (c := codes.normalize(raw))
+                    ]
+                )
+            except LagerError as exc:  # Druck gescheitert: automatisch in die Warteschlange
+                queued = [
+                    (c, t.strip(), e.strip())
                     for raw, t, e in entries_
                     if (c := codes.normalize(raw))
                 ]
-            )
+                for c, t, e in queued:
+                    labels.enqueue(conn, c, t, e)
+                return redirect(
+                    "/labels",
+                    f"Druck nicht möglich ({exc}) – {len(queued)} Etikett(en) in der Warteschlange",
+                )
         rows = labels.finalize(conn, settings.base_url, entries_, bool(save_names))
         if not rows:
             raise LagerError("Keine gültigen Codes")

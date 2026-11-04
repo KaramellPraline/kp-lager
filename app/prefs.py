@@ -60,6 +60,9 @@ PREFS = (
          "NAS-Freigabe, USB oder Sync-Ordner. Leer = aus. Die tägliche Sicherung wird zusätzlich "
          "dorthin kopiert. Im Docker-Container den Ordner als Volume einbinden und den Pfad "
          "im Container eintragen (oder LAGER_BACKUP_EXTERN setzen)."),
+    Pref("api_write_key", "API: Schreiben nur mit Schlüssel", "bool", "1", "Betrieb",
+         "An (Standard): Schreiben per API/CLI/MCP braucht einen Schreib-Schlüssel. Aus: im LAN "
+         "ohne Schlüssel schreiben – nur zum Testen/Debuggen, danach wieder einschalten."),
     Pref("api_read_key", "API: auch Lesen nur mit Schlüssel", "bool", "0", "Betrieb",
          "Aus: Lesen im LAN offen, Schreiben nur mit Schlüssel. An: jede API-Anfrage braucht "
          "einen (Lese- oder Schreib-)Schlüssel – sinnvoll bei Zugriff von außen."),

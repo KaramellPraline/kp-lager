@@ -59,6 +59,7 @@ Ziele: **Auf D30 drucken**, **In Warteschlange** (D30) oder **In A4-Warteschlang
 - **Sortierkasten komplett:** Kastenseite › „Etiketten aller Teile drucken“ → ein Etikett pro Teil, fehlende ART-Codes werden vergeben.
 - **Alles Neue seit dem letzten Druck:** `Drucken › Noch nicht gedruckt`.
 - **Einzelnes Teil:** Druck-Symbol an Teil/Behälter (sofort, sonst Warteschlange).
+- **Druck scheitert** (Agent/MQTT/D30 offline): die Etiketten werden automatisch in die Warteschlange gelegt, die Meldung nennt den Grund.
 - **Satz:** Varianten-Reihe und „Alle Etiketten drucken (Satz)“ drucken mehrere Etiketten in einem Rutsch.
 
 ## A4 (Seiten-, Box-, Inhaltsetiketten)

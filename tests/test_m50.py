@@ -33,7 +33,6 @@ def test_filament_form_has_split_material_spool_price_and_presets(client: TestCl
     assert page.index('id="presets"') < page.index('id="f_brand"')  # oberste Reihe
     for key in (
         "plastic",
-        "plastic_pct",
         "additive",
         "additive_pct",
         "spool_type",
@@ -50,7 +49,7 @@ def test_filament_create_composes_material_price_and_spool(
 ) -> None:
     b = box(client)
     r = client.post("/neu", data={
-        "typ": "filament", "f_brand": "Fiberthex", "f_plastic": "PA12", "f_plastic_pct": "80",
+        "typ": "filament", "f_brand": "Fiberthex", "f_plastic": "PA12",
         "f_additive": "Carbonfaser", "f_additive_pct": "20", "f_color": "Schwarz",
         "f_weight": "0,5", "f_spool_type": "Pappe", "f_spool_weight": "150", "f_price": "24,90",
         "target": str(b),

@@ -32,7 +32,10 @@
   <form method="post" action="/a4/add" class="stack" id="a4-add">
     <label>Typ
       <select name="type" id="a4-type">{% for k, t in types.items() if k != 'bin_side' %}<option value="{{ k }}" data-w="{{ t[2][0] }}" data-h="{{ t[2][1] }}" {% if k == 'box' %}selected{% endif %}>{{ t[0] }} – {{ t[1] }}</option>{% endfor %}</select></label>
-    <label>Titel <input name="title" placeholder="z. B. Schrauben M3" required></label>
+    <label>Aus Behälter <span class="meta">(optional – übernimmt Name und Code)</span>
+      <select name="container" id="a4-container"><option value="">– selbst eintragen –</option>{% for c in containers %}<option value="{{ c.id }}">{{ c.label }}</option>{% endfor %}</select></label>
+    <label class="check"><input type="checkbox" name="contents" value="1"> Inhalt (Teile im Behälter) als Zeilen</label>
+    <label>Titel <span class="meta">(leer = Behältername)</span> <input name="title" placeholder="z. B. Schrauben M3"></label>
     <div class="frow">
       <label class="nf">Länge (mm) <input name="w" id="a4-w" inputmode="decimal" value="100"></label>
       <label class="nf">Breite (mm) <input name="h" id="a4-h" inputmode="decimal" value="60"></label>

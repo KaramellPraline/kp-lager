@@ -2,6 +2,7 @@
 
 import re
 import sqlite3
+from collections import Counter
 from collections.abc import Callable
 from typing import Annotated, Any
 
@@ -61,8 +62,10 @@ def register(
     def print_now(conn: sqlite3.Connection, codes_: list[str]) -> str:
         try:
             n = d30.print_codes(conn, settings.base_url, codes_)
-        except LagerError as exc:
-            return f" · nicht gedruckt: {exc}"
+        except (
+            LagerError
+        ) as exc:  # Druck gescheitert (Agent/MQTT/D30): automatisch in die Warteschlange
+            return f" · Druck nicht möglich ({exc}) –" + print_set_queue(conn, codes_)
         return f" · {n} Etikett{'en' if n != 1 else ''} gedruckt"
 
     def print_set_queue(conn: sqlite3.Connection, codes_: list[str]) -> str:
@@ -262,6 +265,10 @@ def register(
         ]  # fmt: skip
         if missing:
             raise LagerError("Pflichtfeld fehlt: " + ", ".join(missing))
+        single = t.single or bool(form.get("single"))  # Einzelteile: jedes Stück eigenes Teil
+        copies = qty if single and qty and qty > 1 else 1
+        if single:
+            qty = 1
         mode = print_mode(conn)  # Regel: einzel = sofort 40x12, sammel = in die Warteschlange
         wants_print = bool(form.get("d30_print") or mode == "einzel") and bool(settings.d30)
         note = form.get("note", "").strip()
@@ -272,20 +279,22 @@ def register(
                 cards.add(conn, "Links" if is_link else "Notiz", note,
                           "link" if is_link else "note", item_id=item_id)  # fmt: skip
 
-        if series:  # Varianten-Reihe: je Wert ein Teil, Etiketten als Satz
+        if series or copies > 1:  # Reihe/Einzelteile: je Stück ein Teil, Etiketten als Satz
             made_codes: list[str] = []
             names: list[str] = []
-            for v in series:
-                item_id = catalog.create(
-                    conn, typ, {**values, series_key: v}, target, qty,
-                    standalone=not form.get("no_label"),
-                )  # fmt: skip
-                add_note(item_id)
-                row = repo.get_item(conn, item_id)
-                names.append(row["name"])
-                if row["code"]:
-                    made_codes.append(row["code"])
-            msg = f"{len(names)} Teile angelegt: " + ", ".join(names)
+            for v in series or [""]:
+                for _ in range(copies):
+                    item_id = catalog.create(
+                        conn, typ, {**values, series_key: v} if v else values, target, qty,
+                        standalone=not form.get("no_label"),
+                    )  # fmt: skip
+                    add_note(item_id)
+                    row = repo.get_item(conn, item_id)
+                    names.append(row["name"])
+                    if row["code"]:
+                        made_codes.append(row["code"])
+            counted = ", ".join(f"{n}× {x}" if n > 1 else x for x, n in Counter(names).items())
+            msg = f"{len(names)} Teile angelegt: {counted}"
             if made_codes and wants_print:
                 msg += print_set(conn, made_codes)
             elif made_codes and mode == "sammel":
@@ -294,7 +303,7 @@ def register(
             resp.set_cookie(TYPE_COOKIE, typ, max_age=31_536_000, samesite="lax")
             remember_target(resp, request, target)
             return resp
-        dupes = [] if form.get("force") else catalog.duplicates(conn, typ, values)
+        dupes = [] if form.get("force") or single else catalog.duplicates(conn, typ, values)
         if dupes:  # gibt es schon: Menge dort erhöhen statt doppelt anlegen
             return render(
                 request, conn, "neu_dublette.html", ctype=t, form=form, qty=qty,

@@ -57,7 +57,7 @@ def register(
             n_pages = 0
         return render(
             request, conn, "a4.html", queue=queue, pages=n_pages, printer=printer(conn),
-            types=a4.TYPES, colors=a4.COLOR_NAMES,
+            types=a4.TYPES, colors=a4.COLOR_NAMES, containers=repo.all_paths(conn),
         )  # fmt: skip
 
     @app.post("/a4/add")
@@ -65,8 +65,20 @@ def register(
         """Freies Etikett (z. B. Box-Label mit Maßen) in die Warteschlange."""
         code = codes.normalize(form.get("code", "")) if form.get("code", "").strip() else ""
         lines = [x.strip() for x in form.get("lines", "").splitlines() if x.strip()]
+        title = form.get("title", "").strip()
+        if form.get("container", "").isdigit():  # aus einem vorhandenen Behälter
+            node = repo.get_container(conn, int(form["container"]))
+            if node is None:
+                raise LagerError("Behälter nicht gefunden")
+            title = title or node["name"]
+            code = code or node["code"] or ""
+            if form.get("contents"):
+                names = list(dict.fromkeys(i["name"] for i in repo.items_in(conn, node["id"])))
+                lines = lines + names[:6]
+        if not title:
+            raise LagerError("Bitte einen Titel eintragen oder einen Behälter wählen")
         a4.enqueue(conn, {
-            "type": form.get("type", "box"), "title": form.get("title", "").strip(),
+            "type": form.get("type", "box"), "title": title,
             "code": code or "", "lines": lines, "w": form.get("w", ""), "h": form.get("h", ""),
             "color": form.get("color", "black"),
             "qr": labels.qr_content(settings.base_url, code) if code and form.get("qr") else "",

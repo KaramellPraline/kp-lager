@@ -1,13 +1,15 @@
 # Verbrauchsmaterial: Filament & Harz (Workflow, seit 1.1.0)
 
 Spulen und Flaschen werden über **Hinzufügen → Teile → Filament & Harz** angelegt. Jede Spule/Flasche
-ist ein Einzelteil (FIL-/RES-Code, eigenes Etikett), die Restmenge wird per Wägung geführt.
+ist ein **Einzelstück** (FIL-/RES-Code, eigenes Etikett, Menge 1), die Restmenge wird per Wägung geführt.
+„Anzahl 3“ legt drei Spulen mit je eigenem Code an; **Duplizieren** (Symbol an der Spule) öffnet das
+Formular mit allen Angaben der bestehenden Spule als Vorlage.
 
 ## Felder Filament-Spule
 | Feld | Hinweis |
 |---|---|
 | Hersteller | Auswahl + freie Eingabe; neue Hersteller werden gemerkt (siehe unten) |
-| **Kunststoff** + Anteil % | z. B. PA12, 80 % |
+| **Kunststoff** | z. B. PA12 – **ohne Anteilfeld**: der Anteil ergibt sich als 100 − Zusatzanteil |
 | **Zusatz** + Anteil % | z. B. Carbonfaser 20 % (Glasfaser, Kevlar, Holz, Metall …) |
 | Farbe, Durchmesser (mm), Gewicht je Spule (kg) | |
 | **Spulentyp** | Pappe, Plastik, Mehrweg, Masterspool, Refill, Metall |
@@ -40,7 +42,7 @@ und in der Auswahl an – auch im Preset-Ersteller.
 2. Klasse antippen → Hersteller, Farbe, Preis eintragen (ggf. „merken“-Haken beim Hersteller setzen).
 3. Wohin? wählen (Standard: Zu sortieren / zuletzt benutzter Ort) → Anlegen.
 4. Etikett: je nach Druckmodus sofort (D30), Warteschlange oder gar nicht.
-5. Mehrere gleiche Spulen: **Varianten-Reihe** (z. B. Farben) legt sie in einem Schritt an.
+5. Mehrere gleiche Spulen: **Anzahl** eintragen (Einzelstücke) oder eine bestehende **duplizieren**; verschiedene Farben: **Varianten-Reihe**.
 6. Im Betrieb: wiegen (Teileseite) → Restmenge; Entnahme/Nachkauf wie bei allen Teilen, Einkaufsliste
    über Mindestbestand.
 

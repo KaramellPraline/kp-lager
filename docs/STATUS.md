@@ -139,3 +139,7 @@ Dreizeiliges Standard-Etikett für alle Typen (`catalog.default_label_layout`, `
 ### M50 erledigt (2026-11-04) – Release 1.1.0
 Filament/Harz: Klassen (Presets, `preset`), Kunststoff + Zusatz mit %, Spulentyp, Spulenleergewicht, Preis; Hersteller werden gemerkt. Anlegen: Merken-Haken klein, Eingaben lang, Pflichtfelder zuerst, Komma→Punkt. Sortierkasten: Drag & Drop, Druck-Parameter, `bins.json` (+ `norb_bins.py --file`). **A4 komplett neu** (`app/a4.py`): Typen Tag/Seitenetikett/Box/Inhalt, Rot, Warteschlange, Regalpackung, PDF, IPP-Druck nach Bestätigung, Bin-Etikett-Editor mit Tags; **XLSX entfernt**; Drucken-Menü neu geordnet. Migration 027. Docs: `docs/A4.md`, `docs/VERBRAUCH.md`, `docs/BINS.md`.
 **Offen:** echter A4-Druck am Netzwerkdrucker (nur gegen Fake-IPP getestet), Standalone-Teile je Fach im Sortierkisten-Editor, Pi zieht Image aus ghcr (Paket privat), `/neu/material` entfernen, Pi-Bluetooth zum D30.
+
+### M51 erledigt (2026-11-04) – Release 1.2.0
+Druckfehler → automatisch Warteschlange; Nav „Drucken“ mit Druckersymbol; Filament/Harz als Einzelstücke (+ Haken „Einzelteile" bei allen Typen, Duplizieren); Kunststoff = 100 − Zusatz (Migration 028); A4-Etikett aus Behälter; Einstellung `api_write_key`; MCP-Anlegen (stdio, mit/ohne Schlüssel) real getestet.
+**Offen:** wie M50 (echter A4-Druck, Standalone je Fach, ghcr privat, `/neu/material`, Pi-Bluetooth).
