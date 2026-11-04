@@ -69,7 +69,7 @@ from app.repo import LagerError
 APP_DIR = Path(__file__).parent
 APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
-ADD_TABS = ("/neu", "/neu/behaelter", "/neu/material", "/neu/bin")
+ADD_TABS = ("/neu", "/neu/behaelter", "/neu/bin")
 KIND_LABELS = kinds.KIND_LABELS
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
@@ -91,6 +91,7 @@ templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35",
                                       "DC 7,4x5,0", "MagSafe", "XT60", "KFZ", "Schraubklemmen",
                                       "Molex", "XLR"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
+templates.env.globals["CARD_KINDS"] = cards.KIND_INFO
 templates.env.globals["icon"] = icons.icon
 templates.env.globals["euro"] = value.euro
 templates.env.globals["EURO_DIMS"] = kinds.EURO_DIMS

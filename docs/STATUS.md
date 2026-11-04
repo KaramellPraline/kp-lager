@@ -127,3 +127,7 @@ Icon-Leiste + Sticky-Kopf an Teil/Behälter, Eintragen/„Darin anlegen“ entfe
 ### M47 erledigt (2026-11-04)
 Etiketten-Vorlagen inkl. „Alles“ (+ „Für alle Typen“), Druckmodus-Menü (Aus/Einzeln/Sammeln, `print_mode`), Behälter-Leergewicht (UI am Behälter), 18 Sortierkasten-Modelle (NORB16 + 17 Raster), Symbolbibliothek im `kp-print-agent`.
 **Noch offen:** Standalone-Teile je Fach im Sortierkisten-Editor, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Einsatz-Menü, CNS/RAW/CMP komplett aus dem Schema, Pi zieht Image aus ghcr (Paket noch privat).
+
+### M48 erledigt (2026-11-04)
+Katalog enthält jetzt Filament-Spule, UV-Harz-Flasche (250/500/1000 ml), Steckernetzteil, Kabel mit Steckern, Werkzeug (allgemein), PPE, Norb16-Bin (1x1/2x1/2x2, gedruckt/nicht gedruckt); Menü „Kabel & Material“ aus den Tabs entfernt (Route bleibt unverlinkt). Kartenarten: Notiz, Pinout, Eigenschaften, Checkliste, Links (Migration 025); Notiz/Link direkt beim Anlegen. Admin: Nummernvergabe nach Schema-Gruppen mit Filter. Einsatz-Assistent: Standardgrößen-Chips, „noch nicht gedruckt“. Kategorien CNS/RAW/CMP bleiben im Datenmodell. Pi: BLE-Scan klappt (bleak/BlueZ), D30 war nicht in Reichweite – echter Druck ungetestet.
+**Offen:** Standalone-Teile je Fach im Sortierkisten-Editor, Pi zieht Image aus ghcr (Paket privat), `/neu/material` ganz entfernen (Tests hängen dran).

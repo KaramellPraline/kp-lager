@@ -11,7 +11,7 @@ def node_of(r: httpx.Response) -> str:
 def test_admin_tab_lists_all_prefixes(client: TestClient) -> None:
     page = client.get("/settings/admin").text
     for p in ("RAU", "REG", "WBA", "TBX", "EUR", "KIS", "SOR", "BIN", "PPE", "ART"):
-        assert f">{p} · " in page
+        assert f"<b>{p}</b> · " in page
     assert 'href="/settings/admin" class="active"' in page
     assert 'href="/settings/admin"' in client.get("/settings").text
 

@@ -628,6 +628,21 @@
   });
 })();
 
+// Karte hinzufügen: Art bestimmt Hinweistext und Titelvorschlag
+(function () {
+  var f = document.getElementById("card-add");
+  if (!f) return;
+  var sel = f.elements.kind, title = f.elements.title, body = f.elements.body;
+  function apply() {
+    var o = sel.options[sel.selectedIndex];
+    body.placeholder = o.dataset.hint;
+    if (!title.value || title.dataset.auto) { title.value = o.dataset.title; title.dataset.auto = "1"; }
+  }
+  title.addEventListener("input", function () { delete title.dataset.auto; });
+  sel.addEventListener("change", apply);
+  apply();
+})();
+
 // M46: Bearbeiten-Symbol öffnet den Bearbeiten-Block; Namenszeile haftet beim Runterscrollen
 (function () {
   document.addEventListener("click", function (ev) {
@@ -659,3 +674,26 @@ document.addEventListener("click", function (ev) {
   var el = document.getElementById(b.dataset.set);
   if (el) { el.value = b.dataset.val; el.dispatchEvent(new Event("change", { bubbles: true })); }
 });
+
+// Admin: Zähler nach Präfix filtern
+(function () {
+  var f = document.getElementById("counter-filter");
+  if (!f) return;
+  f.addEventListener("input", function () {
+    var q = f.value.trim().toLowerCase();
+    document.querySelectorAll("details.counter").forEach(function (d) {
+      d.hidden = q !== "" && d.dataset.prefix.indexOf(q) < 0;
+    });
+  });
+})();
+
+// Einsatz-Assistent: Standardgrößen setzen Breite/Tiefe
+(function () {
+  document.querySelectorAll("[data-bin-size]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = b.dataset.binSize.split("x");
+      var x = document.getElementById("bin-x"), y = document.getElementById("bin-y");
+      if (x && y) { x.value = p[0]; y.value = p[1]; x.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+  });
+})();

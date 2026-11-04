@@ -35,6 +35,9 @@ class Type:
         tuple[str, ...], ...
     ]  # je Teil Alternativen, z. B. ("{thread}x{length}", "{thread}")
     cmp: bool = False  # Elektronik: Felder landen im Datenblatt (Profil „Elektronikbauteil“)
+    material: str = (
+        ""  # fil/res/psu/cbl: Felder landen zusätzlich in den Materialdaten (Datenblatt)
+    )
 
 
 def F(key: str, label: str, options: str = "", unit: str = "", hint: str = "") -> Field:
@@ -47,7 +50,7 @@ LENGTH = "4|5|6|8|10|12|16|20|25|30|35|40|50|60"
 GROUPS = (
     "Schrauben & Befestigung", "Klebstoff & Verbrauch", "Mechanik & Pneumatik",
     "Kabel & Elektrik", "Elektronik", "Werkzeug", "Druckerteile & Laser", "Material & Holz",
-    "Netzwerk",
+    "Netzwerk", "Filament & Harz", "Schutzausrüstung",
 )  # fmt: skip
 
 TYPES: tuple[Type, ...] = (
@@ -998,6 +1001,107 @@ TYPES: tuple[Type, ...] = (
         (F("name", "Bezeichnung", "", hint="z. B. Zahnrad 20 Zähne"),),
         (("{name}",),),
     ),
+    # --- Filament & Harz, Strom, Schutz, Bins (früher eigenes Menü „Kabel & Material“) -----
+    Type(
+        "filament",
+        GROUPS[9],
+        "Filament-Spule",
+        "FIL",
+        (
+            F("brand", "Hersteller", "Prusament|eSun|Sunlu|Bambu Lab|Creality|Polymaker|Elegoo"),
+            F("material", "Werkstoff", "PLA|PLA+|PETG|ABS|ASA|TPU|PA|PC|PVA|PLA-CF|PETG-CF|PA-CF"),
+            F("color", "Farbe", "Schwarz|Weiß|Grau|Rot|Blau|Grün|Gelb|Orange|Transparent|Natur"),
+            F("diameter", "Durchmesser", "1.75|2.85", "mm"),
+            F("weight", "Gewicht je Spule", "0.25|0.5|0.75|1|2|3", "kg"),
+        ),
+        (("{brand}",), ("{material}",), ("{color}",)),
+        material="fil",
+    ),
+    Type(
+        "harz",
+        GROUPS[9],
+        "UV-Harz-Flasche",
+        "RES",
+        (
+            F("brand", "Hersteller", "Elegoo|Anycubic|Siraya Tech|Phrozen|Formlabs"),
+            F(
+                "material",
+                "Harztyp",
+                "Standard|ABS-like|Tough|Flexibel|Wasserwaschbar|Hochtemperatur",
+            ),
+            F("color", "Farbe", "Grau|Schwarz|Weiß|Transparent|Klar|Rot|Blau|Grün"),
+            F("volume", "Inhalt je Flasche", "250|500|1000", "ml", hint="250 ml · 500 ml · 1 l"),
+            F("bottle_weight", "Leerflasche", "", "g"),
+        ),
+        (("{brand}",), ("{material}",), ("{color}",), ("{volume}ml",)),
+        material="res",
+    ),
+    Type(
+        "steckernetzteil",
+        GROUPS[3],
+        "Steckernetzteil (mit Eingang)",
+        "PSU",
+        (
+            F("volt", "Spannung", "3.3|5|9|12|19|24|48", "V"),
+            F("amp", "Strom", "0.5|1|2|3|5|10", "A"),
+            F("plug", "Stecker (Ausgang)", "DC 5,5x2,1|DC 5,5x2,5|DC 3,5x1,35|USB-C|USB-A|Klemmen"),
+            F("input", "Eingang", "230 V Kaltgerät|230 V Euro-Stecker|12 V|24 V"),
+        ),
+        (("Netzteil",), ("{volt}V",), ("{amp}A",), ("{plug}",)),
+        material="psu",
+    ),
+    Type(
+        "kabel_stecker",
+        GROUPS[3],
+        "Kabel mit Steckern (Länge, Stecker A/B)",
+        "CBL",
+        (
+            F("plug_a", "Stecker A", "USB-A|USB-C|Micro-USB|HDMI|DC 5,5x2,1|JST-XH|Dupont|RJ45"),
+            F("plug_b", "Stecker B", "USB-A|USB-C|Micro-USB|HDMI|DC 5,5x2,1|JST-XH|Dupont|RJ45"),
+            F("length", "Länge", "0.2|0.5|1|2|3|5|10", "m"),
+        ),
+        (("Kabel",), ("{plug_a}",), ("{plug_b}",), ("{length}m",)),
+        material="cbl",
+    ),
+    Type(
+        "werkzeug_allg",
+        GROUPS[5],
+        "Werkzeug (allgemein)",
+        "TOL",
+        (
+            F("kind", "Art", "Zange|Schraubendreher|Schlüssel|Feile|Säge|Messer|Bohrer|Messgerät"),
+            F("brand", "Hersteller", "Wera|Wiha|Knipex|Bosch|Makita|Würth|Stanley"),
+            F("size", "Größe / Maß", "", hint="z. B. 3 mm, PH2"),
+        ),
+        (("{kind}",), ("{brand}",), ("{size}",)),
+    ),
+    Type(
+        "ppe",
+        GROUPS[10],
+        "Schutzausrüstung (PPE)",
+        "PPE",
+        (
+            F(
+                "kind",
+                "Art",
+                "Handschuhe|Schutzbrille|Atemschutz FFP2|Gehörschutz|Schürze|Laserschutzbrille",
+            ),
+            F("size", "Größe", "S|M|L|XL"),
+            F("material", "Material", "Nitril|Latex|Leder|Stoff"),
+        ),
+        (("{kind}",), ("{size}",), ("{material}",)),
+    ),
+    Type(
+        "norb16_bin",
+        GROUPS[6],
+        "Norb16-Bin (3D-Druck)",
+        "ART",
+        (
+            F("size", "Größe", "1x1|2x1|2x2|3x1|4x1"),
+            F("state", "Zustand", "nicht gedruckt|gedruckt"),
+        ),
+        (("Norb16 Bin",), ("{size}",), ("({state})",)),
+    ),
 )
 
 BY_KEY = {t.key: t for t in TYPES}
@@ -1187,6 +1291,10 @@ def create(
         }
         form["spec_function"] = " ".join(p for p in (t.label, clean.get("kind", "")) if p)
         materials.save_specs(conn, item_id, "cmp", form)
+    if t.material:  # Filament/Harz/Netzteil/Kabel: Materialdaten fürs Datenblatt und Restmengen
+        keys = {f.key for f in materials.FIELDS[t.material]}
+        spec = {f"spec_{k}": v for k, v in clean.items() if v and k in keys}
+        materials.save_specs(conn, item_id, t.material, spec)
     return item_id
 
 

@@ -143,8 +143,8 @@ def test_add_tab_remembers_last_tab(client: TestClient) -> None:
     assert client.get("/neu/go", follow_redirects=False).headers["location"] == "/neu"
     client.get("/neu/behaelter")
     assert client.get("/neu/go", follow_redirects=False).headers["location"] == "/neu/behaelter"
-    client.get("/neu/material")
-    assert client.get("/neu/go", follow_redirects=False).headers["location"] == "/neu/material"
+    client.get("/neu/bin")
+    assert client.get("/neu/go", follow_redirects=False).headers["location"] == "/neu/bin"
 
 
 def test_migration_019_tables(tmp_path: Path) -> None:

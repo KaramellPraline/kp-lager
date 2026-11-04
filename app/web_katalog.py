@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import catalog, codes, d30, kasten, labels, repo
+from app import cards, catalog, codes, d30, kasten, labels, repo
 from app.config import Settings
 from app.repo import LagerError
 
@@ -140,6 +140,11 @@ def register(
             conn, typ, values, target, qty, standalone=not form.get("no_label")
         )
         item = repo.get_item(conn, item_id)
+        note = form.get("note", "").strip()
+        if note:  # optionale Karte: Links -> Linkkarte, sonst Notiz
+            is_link = note.startswith(("http://", "https://"))
+            cards.add(conn, "Links" if is_link else "Notiz", note, "link" if is_link else "note",
+                      item_id=item_id)  # fmt: skip
         msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"
         mode = print_mode(conn)  # Regel: einzel = sofort 40x12, sammel = in die Warteschlange
         if item["code"]:
@@ -225,6 +230,10 @@ def register(
             made += 1
         node = repo.get_container(conn, bin_id)
         assert node is not None
+        if form.get("unprinted"):
+            note = "Einsatz noch nicht gedruckt"
+            notes = f"{node['notes']}\n{note}".strip()
+            repo.update_container(conn, bin_id, node["name"], notes)
         if form.get("content"):
             labels.enqueue_content(conn, node)
         if form.get("queue"):

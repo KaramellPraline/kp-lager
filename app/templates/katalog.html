@@ -11,7 +11,6 @@
     <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
     </details>
     {% endfor %}
-    <p class="meta">Filament und Harz (mit Spulen-/Flaschendaten): <a href="/neu/material">hier anlegen</a>.</p>
   </aside>
   <nav class="jump-bar" aria-label="Zu Kategorie springen">{% for g, types in groups %}<a href="#g{{ loop.index }}" data-jump="g{{ loop.index }}" title="{{ g }}">{{ g[:2] }}</a>{% endfor %}</nav>
 
@@ -47,6 +46,8 @@
         <button type="button" class="icon-btn" data-set="target" data-val="" title="Zu sortieren (Box of Shame)" aria-label="Zu sortieren">{{ icon('content.inbox') }}</button></div>
         <div class="chips place-sugg" data-select="target" aria-label="Platz-Vorschläge"></div>
       </div>
+      <details class="nf"><summary>Notiz oder Datenblatt-Link <span class="meta">(optional, wird als Karte angelegt)</span></summary>
+        <textarea name="note" rows="2" aria-label="Notiz oder Link" placeholder="Text oder https://…"></textarea></details>
       <label class="meta"><input type="checkbox" name="no_label" value="1"> Kein eigenes Etikett (nur Tags, Fachinhalt)</label>
       {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" {% if print_mode == 'einzel' %}checked{% endif %} disabled>
         <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}

@@ -3,6 +3,14 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [0.7.0] – 2026-11-04
+
+### Neu
+- Katalog: Filament-Spule, UV-Harz-Flasche (250/500/1000 ml), Steckernetzteil, Kabel mit Steckern, Werkzeug, PPE, Norb16-Bin; Menü „Kabel & Material“ entfällt.
+- Mehr Kartenarten (Eigenschaften, Checkliste, Links); Notiz/Datenblatt-Link schon beim Anlegen.
+- Admin: Nummernvergabe nach Gruppen mit Filter.
+- Einsatz-Assistent: Standardgrößen 1x1/2x1/2x2/3x1/4x1, „noch nicht gedruckt“.
+
 ## [0.6.0] – 2026-11-04
 
 ### Neu
