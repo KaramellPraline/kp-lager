@@ -115,6 +115,8 @@ def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRou
         x_api_key: Annotated[str, Header()] = "",
         authorization: Annotated[str, Header()] = "",
     ) -> None:
+        if not prefs.flag(conn, "api_write_key"):  # Debug-Modus: Schreiben ohne Schlüssel
+            return
         key = presented(x_api_key, authorization)
         scope = apikeys.scope_of(conn, key)
         if scope is None:

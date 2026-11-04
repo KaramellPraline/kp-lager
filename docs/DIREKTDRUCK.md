@@ -1,7 +1,7 @@
 # Direktdruck auf den D30 – Machbarkeit (Stand 2026-10-29)
 
 **Ergebnis: technisch möglich, aber nur mit Aufwand und Einschränkungen. Noch nicht umgesetzt.**
-Der XLSX-Export (40×12) bleibt der verlässliche Weg.
+(Historisch; der XLSX-Export ist seit 1.1.0 entfernt, gedruckt wird direkt.)
 
 ## Was dafür spricht
 - Der D30 spricht Bluetooth LE mit einem bekannten, per Mitschnitt entschlüsselten Protokoll

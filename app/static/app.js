@@ -333,9 +333,78 @@
         form.querySelectorAll("input[name^=f_]").forEach(function (i) { q.set(i.name, i.value); });
         fetch("/neu/vorschau?" + q.toString()).then(function (r) { return r.json(); })
           .then(function (d) { np.textContent = d.name || "–"; }).catch(function () {});
+        var img = document.getElementById("label-img");
+        if (img) img.src = "/neu/etikett.png?" + q.toString();
       }, 120);
     }
     form.addEventListener("input", preview);
+    // Entwurf: Eingaben überleben den Abstecher in den Etikett-Editor (sessionStorage)
+    var dkey = "neu-draft-" + form.dataset.typ;
+    function saveDraft() {
+      var d = {};
+      form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
+        if (i.type === "checkbox") d[i.name] = i.checked; else d[i.name] = i.value;
+      });
+      try { sessionStorage.setItem(dkey, JSON.stringify(d)); } catch (e) {}
+    }
+    if (form.dataset.draft === "1") {
+      try {
+        var saved = JSON.parse(sessionStorage.getItem(dkey) || "null");
+        if (saved) form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
+          if (!(i.name in saved)) return;
+          if (i.type === "checkbox") i.checked = !!saved[i.name]; else i.value = saved[i.name];
+        });
+        sessionStorage.removeItem(dkey);
+      } catch (e) {}
+    }
+    var live = document.getElementById("label-live");
+    if (live) live.addEventListener("click", saveDraft);
+    form.addEventListener("click", function (e) {
+      var b = e.target.closest("button[formaction]");
+      if (b) saveDraft();
+    });
+    // Klassen-Presets: Klick füllt die hinterlegten Felder vor
+    form.querySelectorAll(".preset-chip").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var d = JSON.parse(b.dataset.preset || "{}");
+        Object.keys(d).forEach(function (k) {
+          var i = document.getElementById("f_" + k);
+          if (i) i.value = d[k];
+        });
+        preview();
+      });
+    });
+    // „Wie letztes Teil“: alle Felder des zuletzt angelegten Teils dieses Typs übernehmen
+    var last = document.getElementById("use-last");
+    if (last) last.addEventListener("click", function () {
+      var d = JSON.parse(last.dataset.last || "{}");
+      form.querySelectorAll("input[name^=f_]").forEach(function (i) { i.value = d[i.name.slice(2)] || ""; });
+      preview();
+    });
+    // Varianten-Reihe: Chips zum gewählten Feld, Klick hängt den Wert an
+    var sf = document.getElementById("series_field"), sv = document.getElementById("series_values");
+    function seriesChips() {
+      form.querySelectorAll("[data-series]").forEach(function (c) { c.hidden = c.dataset.series !== sf.value; });
+    }
+    if (sf) {
+      sf.addEventListener("change", seriesChips);
+      form.addEventListener("click", function (e) {
+        var c = e.target.closest("[data-add]");
+        if (!c) return;
+        sv.value = (sv.value.trim() ? sv.value.trim().replace(/,$/, "") + ", " : "") + c.dataset.add;
+      });
+      seriesChips();
+    }
+    // Pflichtfelder: bei aktiver Reihe ist das Reihenfeld kein Pflichtfeld mehr
+    function syncReq() {
+      var on = sf && sf.value && sv.value.trim();
+      form.querySelectorAll("input[data-req]").forEach(function (i) {
+        i.required = !(on && "f_" + sf.value === i.name);
+      });
+    }
+    form.addEventListener("input", syncReq);
+    form.addEventListener("change", syncReq);
+    syncReq();
     preview();
     var filter = document.getElementById("type-filter");
     if (filter) filter.addEventListener("input", function () {
@@ -600,6 +669,19 @@
       refresh();
     });
   });
+  form.querySelectorAll(".preset").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = JSON.parse(b.dataset.preset);
+      form.elements.qr.value = p.qr;
+      for (var i = 0; i < 4; i++) {
+        var ln = p.lines[i];
+        form.elements["t_" + i].value = ln ? ln.t : "";
+        form.elements["w_" + i].value = ln ? ln.w : "1";
+        form.elements["a_" + i].value = ln ? ln.a : "center";
+      }
+      refresh();
+    });
+  });
   // Zeile nach oben: Werte mit der Zeile darüber tauschen
   form.querySelectorAll(".line-up").forEach(function (b) {
     b.addEventListener("click", function () {
@@ -613,6 +695,21 @@
       refresh();
     });
   });
+})();
+
+// Karte hinzufügen: Art bestimmt Hinweistext und Titelvorschlag
+(function () {
+  var f = document.getElementById("card-add");
+  if (!f) return;
+  var sel = f.elements.kind, title = f.elements.title, body = f.elements.body;
+  function apply() {
+    var o = sel.options[sel.selectedIndex];
+    body.placeholder = o.dataset.hint;
+    if (!title.value || title.dataset.auto) { title.value = o.dataset.title; title.dataset.auto = "1"; }
+  }
+  title.addEventListener("input", function () { delete title.dataset.auto; });
+  sel.addEventListener("change", apply);
+  apply();
 })();
 
 // M46: Bearbeiten-Symbol öffnet den Bearbeiten-Block; Namenszeile haftet beim Runterscrollen
@@ -645,4 +742,94 @@ document.addEventListener("click", function (ev) {
   if (!b) return;
   var el = document.getElementById(b.dataset.set);
   if (el) { el.value = b.dataset.val; el.dispatchEvent(new Event("change", { bubbles: true })); }
+});
+
+// Admin: Zähler nach Präfix filtern
+(function () {
+  var f = document.getElementById("counter-filter");
+  if (!f) return;
+  f.addEventListener("input", function () {
+    var q = f.value.trim().toLowerCase();
+    document.querySelectorAll("details.counter").forEach(function (d) {
+      d.hidden = q !== "" && d.dataset.prefix.indexOf(q) < 0;
+    });
+  });
+})();
+
+// Einsatz-Assistent: Standardgrößen setzen Breite/Tiefe
+(function () {
+  document.querySelectorAll("[data-bin-size]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var p = b.dataset.binSize.split("x");
+      var x = document.getElementById("bin-x"), y = document.getElementById("bin-y");
+      if (x && y) { x.value = p[0]; y.value = p[1]; x.dispatchEvent(new Event("change", { bubbles: true })); }
+    });
+  });
+})();
+
+// Dezimalzahlen immer mit Punkt: „1,75“ wird beim Tippen zu „1.75“ (Komma zwischen Ziffern)
+document.addEventListener("input", function (e) {
+  var el = e.target;
+  if (!el || el.tagName !== "INPUT" || el.dataset.keepComma !== undefined) return;
+  if (["text", "search", "number", "tel", ""].indexOf(el.type) < 0) return;
+  if (!/\d,\d/.test(el.value)) return;
+  var pos = el.selectionStart;
+  el.value = el.value.replace(/(\d),(?=\d)/g, "$1.");
+  try { el.setSelectionRange(pos, pos); } catch (err) {}
+});
+
+// Sortierkasten-Draufsicht: Einsätze per Drag & Drop auf freie Zellen verschieben
+document.addEventListener("DOMContentLoaded", function () {
+  var svg = document.getElementById("topview");
+  if (!svg) return;
+  var toggle = document.getElementById("tv-move-toggle"), hint = document.getElementById("tv-move-hint");
+  var cells = JSON.parse(svg.dataset.cells || "[]"), unit = +svg.dataset.cell || 100;
+  var byXY = {};
+  cells.forEach(function (c) { byXY[c.x + "," + c.y] = c.cell; });
+  var on = false, drag = null, moved = false;
+  toggle.addEventListener("click", function () {
+    on = !on;
+    toggle.setAttribute("aria-pressed", on);
+    toggle.classList.toggle("on", on);
+    svg.classList.toggle("moving", on);
+    hint.hidden = !on;
+  });
+  function pt(e) {
+    var p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  svg.addEventListener("pointerdown", function (e) {
+    var g = e.target.closest(".tv-drag");
+    if (!on || !g) return;
+    var cs = g.dataset.bincells.split(",").map(function (n) {
+      var c = cells.filter(function (x) { return x.cell === n; })[0]; return c;
+    });
+    drag = { g: g, start: pt(e), cells: cs };
+    moved = false;
+    g.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  svg.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var p = pt(e), dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+    if (Math.abs(dx) + Math.abs(dy) > 8) moved = true;
+    drag.g.setAttribute("transform", "translate(" + dx + "," + dy + ")");
+    drag.g.classList.add("dragging");
+  });
+  svg.addEventListener("pointerup", function (e) {
+    if (!drag) return;
+    var p = pt(e), dx = Math.round((p.x - drag.start.x) / unit) * unit, dy = Math.round((p.y - drag.start.y) / unit) * unit;
+    var g = drag.g, cs = drag.cells;
+    drag = null;
+    g.removeAttribute("transform"); g.classList.remove("dragging");
+    if (!moved || (!dx && !dy)) return;
+    var names = cs.map(function (c) { return byXY[(c.x + dx) + "," + (c.y + dy)]; });
+    if (names.indexOf(undefined) >= 0) return;
+    var fd = new FormData(); fd.append("cells", names.join(","));
+    fetch("/n/" + svg.dataset.kasten + "/bins/" + g.dataset.bin + "/move", { method: "POST", body: fd })
+      .then(function (r) { location.href = r.url; });
+  });
+  svg.addEventListener("click", function (e) {
+    if (on) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
 });

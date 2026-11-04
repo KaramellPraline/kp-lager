@@ -69,3 +69,16 @@
 - 2026-10-30: D30-Direktdruck über Bluetooth-Seriell (COM) zuerst, BLE als Rückfall; USB des D30 ist nur Ladeanschluss (kein Datenweg gefunden). Trockner-Ablauf per Cookie (je Gerät/Handy), nicht serverweit.
 | 2026-11-03 | Alle KI-Bausteine entfernt (Whisper/Diktat, lokale KI, Foto-Erkennung, KI-Support, Freigaben, Haiku-Prompt); API markiert nichts mehr als „KI“ | Nutzerwunsch: System ohne KI, mehr Benutzerfreundlichkeit. Alte Spalten (`review`, `ai_backup`) und Tabelle `note` bleiben unberührt (Daten bleiben erhalten). |
 | 2026-11-03 | Start `/` = reiner Bestandsbrowser; Anlegen nur im Tab „Hinzufügen“ (`/neu`) mit Reitern Teile · Behälter · Kabel & Material · Einsatz | Ein Ort zum Anlegen; Behälter wie Teile nach dem Katalog-Prinzip (Art links, Felder rechts, Etikett-Option, bleibt für den nächsten offen). |
+
+- 2026-11-04 (1.0.0/1.1.0): Standard-Etikett dreizeilig (Typ+Spec · Maße · Code); Vorrang gespeichertes Layout > Haupt-/Zusatzzeile > Standard. Warum: einheitlich lesbar ohne Handarbeit je Typ.
+- 2026-11-04: **XLSX-Export entfernt** (D30 druckt direkt per Agent/BLE; `openpyxl` aus den Abhängigkeiten). Warum: nicht mehr gebraucht, ein Weg weniger.
+- 2026-11-04: **A4 nie automatisch**: immer Warteschlange `a4_job`, Anordnung per Regalpackung, Druck als PDF per IPP erst nach Bestätigung. Warum: Farbdrucker/Papierkosten, Kontrolle vor dem Druck.
+- 2026-11-04: A4-Typen `tag`, `bin_side`, `box` (abgerundeter Rahmen, Länge×Breite), `content`; Rot erlaubt. Warum: Seitenetiketten für Bins mit allen Fächern, Boxen mit Maßen.
+- 2026-11-04: Filament/Harz-Klassen als Presets (`preset`), manuell eingetragene Hersteller werden gemerkt; Werkstoff = Kunststoff + Zusatz mit Prozent. Warum: schnelles Anlegen von Spulen.
+- 2026-11-04: Dezimalzahlen systemweit mit Punkt (Komma→Punkt beim Tippen und serverseitig). Warum: Nutzerwunsch, einheitliche Daten.
+- 2026-11-04: Bin-Parameter in einer Datei `bins.json` (`kp-lager-bins/1`) für `cad/norb_bins.py --file`; Einsätze per Drag & Drop verschieben. Warum: parametrischer Druckgenerator braucht alle Einstellungen an einem Ort.
+- 2026-11-04 (1.2.0): Gescheiterter Druck legt Etiketten automatisch in die Warteschlange. Warum: nichts geht verloren, wenn der Agent offline ist.
+- 2026-11-04: Filament/Harz sind Einzelstücke (`Type.single`); Kunststoffanteil = 100 − Zusatz. Warum: jede Spule eigener Code/Restgewicht; weniger Eingabe.
+- 2026-11-04: API-Schreibschlüssel per Einstellung abschaltbar (`api_write_key`, Standard an). Warum: Debuggen von CLI/MCP ohne Schlüsselverwaltung.
+- 2026-11-04 (1.3.0): Schrift Roboto wird mitgeliefert. Warum: das Docker-Image hat keine Systemschriften, Pillow-Standardschrift kennt keine Umlaute/ß.
+- 2026-11-04: A4-Etiketten sind frei gestaltbar (Typ `layout`: Zeilen mit Farbe, QR, Rahmen) und übernehmen Name/Code aus dem Behälter. Warum: gleiche Konfigurierbarkeit wie das kleine Etikett.

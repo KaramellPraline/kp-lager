@@ -34,7 +34,8 @@ Keller (raum)
 - `app/repo.py`: Datenzugriff Behälter-Baum (Pfad, Umzug, Raster, Löschen), Items (Bestand), Protokoll, Suche
 - `app/migrations/`: `001_init` Schema, `002_fts` Volltextindex + Trigger, `003_meta` Zähler/Einstellungen, `004_codes` Item-Codes + Druckstatus, `005_alltag` Rückgängig/Verleihen/Einkauf/Favoriten, `006_einsaetze` Art „einsatz“, size/model, `label_queue`
 - `app/codes.py`: Code-Schema PRÄFIX-NNN, Normalisieren, Zähler je Präfix, Einstellungen (`meta`)
-- `app/labels.py`: QR-Inhalt (Großbuchstaben), XLSX für D30 (40×12), Etikettenlisten, `finalize()` (Export: Namen speichern, gedruckt markieren, Codes reservieren)
+- `app/a4.py`: A4-Etiketten (Typen, Rendering 300 dpi, `pack`, PDF, IPP, Queue `a4_job`) · `app/web_a4.py`: Routen dazu, Bin-Etikett-Editor, `bins.json` · `app/presets.py`: Klassen je Typ (`preset`)
+- `app/labels.py`: QR-Inhalt (Großbuchstaben), Layout je Typ, D30-Warteschlange, Etikettenlisten, `finalize()` (Export: Namen speichern, gedruckt markieren, Codes reservieren)
 - `app/importer.py`: Haiku-JSON parsen/validieren, Vorschau auf DB-Kopie, Export
 - `app/kasten.py`: Kastenmodelle (NORB16 5×7, Griff C1–E1), Einsätze platzieren/prüfen, Draufsicht-Daten, Schnelleingabe-Ziele
 - `app/prefs.py`: Einstellungsregister (Typ, Standard, Gruppe) → `/settings` generiert, Werte in `meta`
@@ -56,7 +57,7 @@ Keller (raum)
 
 ## Wichtige Routen
 - `/c/{code}` bzw. `/C/{code}` QR-Einstieg (Behälter oder Teil) · `/n/{id}` Behälter · `/items/{id}` Teil · `/suche?q=` · `/labels` · `/settings` · `/import` · `/export.json`
-- Etiketten: `POST /labels/preview` (source=blank|pending|container|item → editierbare Tabelle), `POST /labels/export` (fmt=xlsx|a8)
+- Etiketten: `POST /labels/preview` (source=blank|pending|container|item → editierbare Tabelle), `POST /labels/export` (fmt=d30|queue|a4q) · `/a4` (Warteschlange, `/a4/drucken` nur mit confirm) · `/n/<Einsatz>/etikett` · `/labels/bins.json`
 - Umlagern: `POST /carry/{item|node}/{id}` setzt Cookie, `POST /drop/{id}` legt ab.
 - Alltag: `POST /undo/{event}`, `/verlauf`, `/verliehen`, `/einkauf`, `/platz`, `/scan`, `/manifest.webmanifest`
 - JSON: `GET /api/code/{code}`, `POST /api/move` (Scan-Einräumen)

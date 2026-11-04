@@ -31,6 +31,10 @@
     <label data-in="cat" hidden>Kategorie
       <select name="value" disabled>{% for p, label in cats %}<option value="{{ p }}">{{ p }} · {{ label }}</option>{% endfor %}</select></label>
     <label data-in="number" hidden>Mindestbestand (leer = keiner) <input name="value" inputmode="numeric" disabled></label>
+    <label data-in="field" hidden>Feld
+      <select name="field">{% for k, lb in field_opts %}<option value="{{ k }}">{{ lb }} ({{ k }})</option>{% endfor %}</select>
+      <span class="meta">Wert (leer = Feld entfernen)</span> <input name="value" list="bulk-fieldvals" disabled>
+      <datalist id="bulk-fieldvals"></datalist></label>
     <label data-in="text" hidden>Wert <input name="value" disabled></label>
     <button class="primary" id="bulk-go">Auf <span id="bulk-n">0</span> anwenden</button>
   </div>

@@ -11,11 +11,18 @@
 </div>
 
 <form method="post" action="/etiketten/typ/{{ kind.key }}" class="card stack" id="layout-form" data-key="{{ kind.key }}">
+  {% if back and back.startswith('/neu') %}<input type="hidden" name="back" value="{{ back }}">
+  <p class="meta" style="margin:0">Du kommst vom Anlegen: Speichern bringt dich mit deinen Eingaben zurück. <a href="{{ back }}">Ohne Änderung zurück</a></p>{% endif %}
   <div class="nf">
     <label for="qr">QR-Code</label>
     <select id="qr" name="qr">
       {% for v, lb in (('left', 'links'), ('right', 'rechts'), ('none', 'ohne – ganze Breite für Text')) %}<option value="{{ v }}" {% if layout.qr == v %}selected{% endif %}>{{ lb }}</option>{% endfor %}
     </select>
+  </div>
+
+  <div>
+    <span class="meta">Vorlage:</span>
+    <div class="chips">{% for k, p in presets.items() %}<button type="button" class="chip preset" data-preset="{{ p[1]|tojson|forceescape }}">{{ p[0] }}</button>{% endfor %}</div>
   </div>
 
   <div id="lines" class="stack">
@@ -45,7 +52,8 @@
   <div class="row">
     <button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
     <button name="reset" value="1" {% if not custom %}disabled{% endif %}>Standard wiederherstellen</button>
+    <button name="all" value="1" title="Dieses Layout für alle Typen übernehmen">Für alle Typen</button>
   </div>
-  <p class="meta" style="margin:0">Vorschau mit {{ sample_code }}. Das Layout gilt für das D30-Etikett (Direktdruck, Bild); XLSX und A4 nutzen weiter Name/Zusatz.</p>
+  <p class="meta" style="margin:0">Vorschau mit {{ sample_code }}. Das Layout gilt für das D30-Etikett (Direktdruck, Bild); A4 hat eigene Etikettentypen (Drucken → A4).</p>
 </form>
 {% endblock %}

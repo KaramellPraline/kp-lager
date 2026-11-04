@@ -6,10 +6,11 @@ Teilename wie im Lager üblich („Zylinderkopfschraube M3x10“, „Holzinsert 
 schnelles Anlegen, nicht um exakte Erfassung – Details lassen sich am Teil nachtragen.
 """
 
+import contextlib
 import json
 import re
 import sqlite3
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from app import codes, materials, repo
 from app.repo import LagerError
@@ -22,6 +23,8 @@ class Field:
     options: tuple[str, ...] = ()
     unit: str = ""
     hint: str = ""
+    extra: bool = False  # optional: im Formular unter „Weitere Angaben“ eingeklappt
+    row: str = ""  # gleiche Zeilen-Kennung hintereinander = nebeneinander im Formular
 
 
 @dataclass(frozen=True)
@@ -35,10 +38,42 @@ class Type:
         tuple[str, ...], ...
     ]  # je Teil Alternativen, z. B. ("{thread}x{length}", "{thread}")
     cmp: bool = False  # Elektronik: Felder landen im Datenblatt (Profil „Elektronikbauteil“)
+    material: str = (
+        ""  # fil/res/psu/cbl: Felder landen zusätzlich in den Materialdaten (Datenblatt)
+    )
+    single: bool = False  # Einzelstücke: jede Spule/Flasche eigenes Teil mit eigenem Code
+    label_lines: tuple[str, ...] = ()  # Etikett: Zeile 1 (Typ + Spezifikation), Zeile 2 (Maße)
 
 
-def F(key: str, label: str, options: str = "", unit: str = "", hint: str = "") -> Field:
-    return Field(key, label, tuple(o.strip() for o in options.split("|") if o.strip()), unit, hint)
+def F(
+    key: str,
+    label: str,
+    options: str = "",
+    unit: str = "",
+    hint: str = "",
+    extra: bool = False,
+    row: str = "",
+) -> Field:
+    opts = tuple(o.strip() for o in options.split("|") if o.strip())
+    return Field(key, label, opts, unit, hint, extra, row)
+
+
+def default_label_layout(t: Type) -> dict[str, object]:
+    """Standard-Etikett, dreizeilig: Typ + Spezifikation · Maße · Code (QR links).
+
+    Typen ohne eigene `label_lines` leiten es aus der Namensvorlage ab: die ersten ein bis zwei
+    Teile (Art, Gewinde) oben, der Rest als Maße. Leere Felder lassen ihre Zeile entfallen."""
+    if t.label_lines:
+        first, second = t.label_lines
+    else:
+        tpl = [alts[0] if not isinstance(alts, str) else alts for alts in t.parts]
+        cut = 2 if len(tpl) >= 3 else 1
+        first, second = " ".join(tpl[:cut]), " ".join(tpl[cut:])
+    lines = [{"t": first, "w": 2, "a": "center"}]
+    if second:
+        lines.append({"t": second, "w": 2, "a": "center"})
+    lines.append({"t": "{code}", "w": 1, "a": "center"})
+    return {"qr": "left", "lines": lines}
 
 
 THREAD = "M2|M2.5|M3|M4|M5|M6|M8|M10|M12"
@@ -47,7 +82,7 @@ LENGTH = "4|5|6|8|10|12|16|20|25|30|35|40|50|60"
 GROUPS = (
     "Schrauben & Befestigung", "Klebstoff & Verbrauch", "Mechanik & Pneumatik",
     "Kabel & Elektrik", "Elektronik", "Werkzeug", "Druckerteile & Laser", "Material & Holz",
-    "Netzwerk",
+    "Netzwerk", "Filament & Harz", "Schutzausrüstung",
 )  # fmt: skip
 
 TYPES: tuple[Type, ...] = (
@@ -74,6 +109,7 @@ TYPES: tuple[Type, ...] = (
             ),
         ),
         (("{head}",), ("{thread}x{length}", "{thread}")),
+        label_lines=("{head} {thread}", "{length}mm {drive}"),
     ),
     Type(
         "mutter",
@@ -91,6 +127,7 @@ TYPES: tuple[Type, ...] = (
             F("finish", "Material", "Schwarz|Edelstahl|Verzinkt|Messing"),
         ),
         (("{kind}",), ("{thread}",)),
+        label_lines=("{kind} {thread}", "{finish}"),
     ),
     Type(
         "insert",
@@ -102,8 +139,48 @@ TYPES: tuple[Type, ...] = (
             F("thread", "Gewinde", THREAD),
             F("length", "Länge", "3|4|5|6|8|10|12", "mm"),
             F("od", "Außendurchmesser", "4|4.6|5|5.6|6|7|8|9|10|12", "mm"),
+            F(
+                "node",
+                "Node (Nut-Typ / Einbauort)",
+                "Nut 5|Nut 6|Nut 8|Nut 10|Profil 2020|Profil 3030|Profil 4040|Holz|"
+                "3D-Druckteil|Blech|Kunststoff",
+                hint="für welchen Node / welche Nut",
+            ),
+            F(
+                "material",
+                "Material",
+                "Messing|Edelstahl|Aluminium|Stahl verzinkt|Bronze",
+                extra=True,
+            ),
+            F(
+                "shape",
+                "Form",
+                "Rund|Sechskant|Rändel gerade|Rändel Diamant|Flansch|Konisch",
+                extra=True,
+            ),
+            F(
+                "mount",
+                "Einbau",
+                "Einschmelzen (Heat-Set)|Einpressen|Eindrehen|Einschlagen|Ultraschall|Einkleben",
+                extra=True,
+            ),
+            F("hole", "Bohrung / Aufnahme", "3|3.2|4|4.2|4.5|5|5.6|6|8", "mm", extra=True),
+            F("wall", "Mindest-Wandstärke", "", "mm", extra=True),
+            F("through", "Gewinde", "Durchgehend|Sackloch", extra=True),
+            F("pitch", "Steigung", "Regelgewinde|Feingewinde", extra=True),
+            F("pullout", "Auszugskraft", "", "N", extra=True),
+            F(
+                "standard",
+                "Norm / Serie",
+                "DIN 7965|DIN 16903|DIN 985|CNC Kitchen|Voron",
+                extra=True,
+            ),
+            F("color", "Farbe / Oberfläche", "Natur|Schwarz|Vernickelt|Eloxiert", extra=True),
+            F("brand", "Hersteller / Marke", extra=True),
+            F("source", "Bezugsquelle / Art.-Nr.", extra=True),
         ),
         (("{kind}",), ("{thread}",), ("L{length}",), ("Ø{od}",)),
+        label_lines=("{kind} {thread}", "{length} x {od}mm"),
     ),
     Type(
         "scheibe",
@@ -123,6 +200,7 @@ TYPES: tuple[Type, ...] = (
             F("finish", "Material", "Edelstahl|Verzinkt|Nylon|Messing"),
         ),
         (("{kind}",), ("{thread}",), ("Ø{od}",), ("{thickness}mm",)),
+        label_lines=("{kind} {thread}", "Ø{od} x {thickness}mm"),
     ),
     Type(
         "holzschraube",
@@ -137,6 +215,7 @@ TYPES: tuple[Type, ...] = (
             F("drive", "Antrieb", "Torx|Kreuz PZ"),
         ),
         (("{brand}",), ("{dia}x{length}",), ("{head}",)),
+        label_lines=("{brand} {head}", "{dia} x {length}mm"),
     ),
     Type(
         "duebel",
@@ -998,12 +1077,297 @@ TYPES: tuple[Type, ...] = (
         (F("name", "Bezeichnung", "", hint="z. B. Zahnrad 20 Zähne"),),
         (("{name}",),),
     ),
+    # --- Filament & Harz, Strom, Schutz, Bins (früher eigenes Menü „Kabel & Material“) -----
+    Type(
+        "filament",
+        GROUPS[9],
+        "Filament-Spule",
+        "FIL",
+        (
+            F("brand", "Hersteller", "Prusament|eSun|Sunlu|Bambu Lab|Creality|Polymaker|Elegoo"),
+            F("plastic", "Kunststoff", "PLA|PLA+|PETG|ABS|ASA|TPU|PA6|PA12|PC|PVA|PP", row="werk"),
+            F(
+                "additive",
+                "Zusatz",
+                "Glasfaser|Carbonfaser|Kevlar|Holz|Metall|Glitzer|Marmor",
+                row="werk",
+            ),
+            F(
+                "additive_pct",
+                "Anteil",
+                "5|10|15|20|25|30",
+                "%",
+                hint="Kunststoff = 100 − Zusatz",
+                row="werk",
+            ),
+            F("color", "Farbe", "Schwarz|Weiß|Grau|Rot|Blau|Grün|Gelb|Orange|Transparent|Natur"),
+            F("diameter", "Durchmesser", "1.75|2.85", "mm", row="maß"),
+            F("weight", "Gewicht je Spule", "0.25|0.5|0.75|1|2|3", "kg", row="maß"),
+            F(
+                "spool_type",
+                "Spulentyp",
+                "Pappe|Plastik|Mehrweg|Masterspool|Refill (ohne Spule)|Metall",
+                row="spule",
+            ),
+            F("spool_weight", "Spulenleergewicht", "150|200|250|300", "g", row="spule"),
+            F("price", "Preis je Spule", "", "€", row="spule"),
+        ),
+        (("{brand}",), ("{material}",), ("{color}",)),
+        material="fil",
+        single=True,
+    ),
+    Type(
+        "harz",
+        GROUPS[9],
+        "UV-Harz-Flasche",
+        "RES",
+        (
+            F("brand", "Hersteller", "Elegoo|Anycubic|Siraya Tech|Phrozen|Formlabs"),
+            F(
+                "material",
+                "Harztyp",
+                "Standard|ABS-like|Tough|Flexibel|Wasserwaschbar|Hochtemperatur",
+            ),
+            F("color", "Farbe", "Grau|Schwarz|Weiß|Transparent|Klar|Rot|Blau|Grün"),
+            F(
+                "volume",
+                "Inhalt je Flasche",
+                "250|500|1000",
+                "ml",
+                hint="250 ml · 500 ml · 1 l",
+                row="fl",
+            ),
+            F("bottle_weight", "Leerflasche", "", "g", row="fl"),
+            F("price", "Preis je Flasche", "", "€", row="fl"),
+        ),
+        (("{brand}",), ("{material}",), ("{color}",), ("{volume}ml",)),
+        material="res",
+        single=True,
+    ),
+    Type(
+        "steckernetzteil",
+        GROUPS[3],
+        "Steckernetzteil (mit Eingang)",
+        "PSU",
+        (
+            F("volt", "Spannung", "3.3|5|9|12|19|24|48", "V"),
+            F("amp", "Strom", "0.5|1|2|3|5|10", "A"),
+            F("plug", "Stecker (Ausgang)", "DC 5,5x2,1|DC 5,5x2,5|DC 3,5x1,35|USB-C|USB-A|Klemmen"),
+            F("input", "Eingang", "230 V Kaltgerät|230 V Euro-Stecker|12 V|24 V"),
+        ),
+        (("Netzteil",), ("{volt}V",), ("{amp}A",), ("{plug}",)),
+        material="psu",
+    ),
+    Type(
+        "kabel_stecker",
+        GROUPS[3],
+        "Kabel mit Steckern (Länge, Stecker A/B)",
+        "CBL",
+        (
+            F("plug_a", "Stecker A", "USB-A|USB-C|Micro-USB|HDMI|DC 5,5x2,1|JST-XH|Dupont|RJ45"),
+            F("plug_b", "Stecker B", "USB-A|USB-C|Micro-USB|HDMI|DC 5,5x2,1|JST-XH|Dupont|RJ45"),
+            F("length", "Länge", "0.2|0.5|1|2|3|5|10", "m"),
+        ),
+        (("Kabel",), ("{plug_a}",), ("{plug_b}",), ("{length}m",)),
+        material="cbl",
+    ),
+    Type(
+        "werkzeug_allg",
+        GROUPS[5],
+        "Werkzeug (allgemein)",
+        "TOL",
+        (
+            F("kind", "Art", "Zange|Schraubendreher|Schlüssel|Feile|Säge|Messer|Bohrer|Messgerät"),
+            F("brand", "Hersteller", "Wera|Wiha|Knipex|Bosch|Makita|Würth|Stanley"),
+            F("size", "Größe / Maß", "", hint="z. B. 3 mm, PH2"),
+        ),
+        (("{kind}",), ("{brand}",), ("{size}",)),
+    ),
+    Type(
+        "ppe",
+        GROUPS[10],
+        "Schutzausrüstung (PPE)",
+        "PPE",
+        (
+            F(
+                "kind",
+                "Art",
+                "Handschuhe|Schutzbrille|Atemschutz FFP2|Gehörschutz|Schürze|Laserschutzbrille",
+            ),
+            F("size", "Größe", "S|M|L|XL"),
+            F("material", "Material", "Nitril|Latex|Leder|Stoff"),
+        ),
+        (("{kind}",), ("{size}",), ("{material}",)),
+    ),
+    Type(
+        "norb16_bin",
+        GROUPS[6],
+        "Norb16-Bin (3D-Druck)",
+        "ART",
+        (
+            F("size", "Größe", "1x1|2x1|2x2|3x1|4x1"),
+            F("state", "Zustand", "nicht gedruckt|gedruckt"),
+        ),
+        (("Norb16 Bin",), ("{size}",), ("({state})",)),
+    ),
 )
+
+# --- Optionale Zusatzfelder (eingeklappt unter „Weitere Angaben“) ---------------------------
+_BRAND = F("brand", "Hersteller / Marke", extra=True)
+_SOURCE = F("source", "Bezugsquelle / Art.-Nr.", extra=True)
+_MATERIAL = F(
+    "material",
+    "Material",
+    "Stahl|Edelstahl A2|Edelstahl A4|Messing|Aluminium|Kunststoff|Holz",
+    extra=True,
+)
+_COLOR = F("color", "Farbe", "Schwarz|Weiß|Rot|Blau|Grün|Gelb|Natur|Transparent", extra=True)
+_STANDARD = F("standard", "Norm / Serie", extra=True)
+_PACK = F("pack", "Packungsgröße", "10|50|100|200|500|1000", "Stk", extra=True)
+_NODE = F("node", "Node (Nut-Typ / Einbauort)", hint="für welchen Node / welche Nut", extra=True)
+
+GROUP_EXTRAS: dict[str, tuple[Field, ...]] = {
+    GROUPS[0]: (
+        F(
+            "standard",
+            "Norm",
+            "DIN 912|DIN 933|DIN 7991|DIN 7380|DIN 934|DIN 985|DIN 125|ISO 4762|ISO 10642",
+            extra=True,
+        ),
+        F("strength", "Festigkeitsklasse", "4.6|5.8|8.8|10.9|12.9|A2-70|A4-80", extra=True),
+        F(
+            "coating",
+            "Beschichtung",
+            "Blank|Verzinkt|Schwarz oxidiert|Geomet|Vernickelt|Gelb chromatiert",
+            extra=True,
+        ),
+        F("pitch", "Steigung", "Regelgewinde|Feingewinde", extra=True),
+        F("threadlen", "Gewindelänge", "Vollgewinde|Teilgewinde", extra=True),
+        _PACK,
+        _NODE,
+        _BRAND,
+        _SOURCE,
+    ),
+    GROUPS[1]: (
+        F("content", "Inhalt", "5|10|20|50|100|250|500", "ml/g", extra=True),
+        F("cure", "Aushärtezeit", "5 min|30 min|24 h", extra=True),
+        F("temp", "Temperaturbereich", "", "°C", extra=True),
+        _COLOR,
+        _BRAND,
+        _SOURCE,
+    ),
+    GROUPS[2]: (
+        _MATERIAL,
+        F("load", "Belastbarkeit", "", "N", extra=True),
+        _STANDARD,
+        _BRAND,
+        _SOURCE,
+    ),
+    GROUPS[3]: (
+        _COLOR,
+        F("rated", "Nennstrom", "1|2|3|5|10|16", "A", extra=True),
+        F("rvolt", "Nennspannung", "5|12|24|48|230", "V", extra=True),
+        _BRAND,
+        _SOURCE,
+    ),
+    GROUPS[4]: (
+        F(
+            "package",
+            "Bauform / Gehäuse",
+            "THT|SMD 0603|SMD 0805|SMD 1206|SOT-23|SOIC-8|DIP-8|TO-220|TO-92",
+            extra=True,
+        ),
+        F("tolerance", "Toleranz", "1%|5%|10%|20%", extra=True),
+        F("rating", "Belastbarkeit", "", "W/V/A", extra=True),
+        _BRAND,
+        _SOURCE,
+    ),
+    GROUPS[5]: (F("size", "Größe", extra=True), _MATERIAL, _BRAND, _SOURCE),
+    GROUPS[6]: (
+        F(
+            "compat",
+            "Passend für",
+            "Voron|Bambu Lab|Prusa|Creality|Ender|Laser|Allgemein",
+            extra=True,
+        ),
+        _MATERIAL,
+        _BRAND,
+        _SOURCE,
+    ),
+    GROUPS[7]: (F("dims", "Maße", extra=True), _MATERIAL, _COLOR, _BRAND, _SOURCE),
+    GROUPS[8]: (_COLOR, _BRAND, _SOURCE),
+    GROUPS[9]: (_BRAND, _SOURCE),
+    GROUPS[10]: (_BRAND, _SOURCE),
+}
+
+
+def _with_extras(types: tuple[Type, ...]) -> tuple[Type, ...]:
+    out = []
+    for t in types:
+        have = {f.key for f in t.fields}
+        add = tuple(f for f in GROUP_EXTRAS.get(t.group, ()) if f.key not in have)
+        out.append(replace(t, fields=t.fields + add) if add else t)
+    return tuple(out)
+
+
+TYPES = _with_extras(TYPES)
+
 
 BY_KEY = {t.key: t for t in TYPES}
 
 
 CUSTOM_GROUP = "Eigene Typen"
+
+
+DEFAULT_NODES = (
+    "Nut 5", "Nut 6", "Nut 8", "Nut 10", "Profil 2020", "Profil 3030", "Profil 4040", "Holz",
+    "3D-Druckteil", "Blech", "Kunststoff",
+)  # fmt: skip
+
+
+def node_types(conn: sqlite3.Connection | None) -> list[str]:
+    """Eigene Node-Liste (Einstellungen -> Admin), sonst die Standardliste."""
+    raw = codes.get_setting(conn, "node_types", "") if conn is not None else ""
+    custom = [x.strip() for x in raw.splitlines() if x.strip()]
+    return custom or list(DEFAULT_NODES)
+
+
+def brands(conn: sqlite3.Connection | None, t: Type) -> list[str]:
+    """Hersteller-Auswahl: Katalogliste + alles, was je manuell eingetragen wurde."""
+    base = next((f.options for f in t.fields if f.key == "brand"), ())
+    raw = codes.get_setting(conn, f"brands_{t.key}", "") if conn is not None else ""
+    manual = [x.strip() for x in raw.split("|") if x.strip()]
+    return list(dict.fromkeys([*base, *manual]))
+
+
+def remember_brand(conn: sqlite3.Connection, t: Type, brand: str) -> None:
+    """Manuell eingetragener Hersteller wird künftig in Auswahl und Presets angeboten."""
+    brand = brand.strip()
+    if not brand or brand.casefold() in {b.casefold() for b in brands(conn, t)}:
+        return
+    if not any(f.key == "brand" for f in t.fields):
+        return
+    manual = [b for b in codes.get_setting(conn, f"brands_{t.key}", "").split("|") if b]
+    codes.set_setting(conn, f"brands_{t.key}", "|".join([*manual, brand]))
+
+
+def field_choices() -> list[tuple[str, str]]:
+    """Alle Feld-Schlüssel der Katalogtypen (für die Sammelbearbeitung)."""
+    seen: dict[str, str] = {}
+    for t in TYPES:
+        for f in t.fields:
+            seen.setdefault(f.key, f.label)
+    return sorted(seen.items(), key=lambda kv: kv[1].lower())
+
+
+def options_for(
+    conn: sqlite3.Connection | None, f: Field, t: Type | None = None
+) -> tuple[str, ...]:
+    if f.key == "node":
+        return tuple(node_types(conn))
+    if f.key == "brand" and t is not None:
+        return tuple(brands(conn, t))
+    return f.options
 
 
 def grouped(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
@@ -1135,8 +1499,49 @@ def field_lines(t: Type) -> str:
     )  # fmt: skip
 
 
+ADDITIVE_SHORT = {"glasfaser": "GF", "carbonfaser": "CF", "kohlefaser": "CF"}
+
+
+def derive(t: Type, values: dict[str, str]) -> dict[str, str]:
+    """Abgeleitete Werte: Filament-Werkstoff = „PA12 80 % + CF 20 %“ aus Kunststoff/Zusatz."""
+    if t.key != "filament":
+        return values
+    plastic = values.get("plastic", "").strip()
+    add = values.get("additive", "").strip()
+    pct_raw = values.get("additive_pct", "").strip().rstrip("%").strip()
+    try:
+        pct = float(pct_raw) if pct_raw else None
+    except ValueError:
+        pct = None
+    text = plastic
+    if add:
+        short = ADDITIVE_SHORT.get(add.casefold(), add)
+        if pct is not None and plastic and 0 < pct < 100:  # Kunststoff = 100 − Zusatz
+            text = f"{plastic} {100 - pct:g}% + {short} {pct:g}%"
+        else:
+            text = f"{plastic} + {short}".strip(" +")
+    return {**values, "material": text} if text else values
+
+
+def number(raw: str) -> str:
+    """Dezimalzahlen immer mit Punkt: „1,75“ -> „1.75“ (Komma zwischen Ziffern)."""
+    return re.sub(r"(?<=\d),(?=\d)", ".", raw)
+
+
+def field_rows(fields: list[Field] | tuple[Field, ...]) -> list[list[Field]]:
+    """Felder zu Formularzeilen: aufeinanderfolgende Felder mit gleicher `row` stehen nebeneinander."""
+    out: list[list[Field]] = []
+    for f in fields:
+        if out and f.row and out[-1][-1].row == f.row:
+            out[-1].append(f)
+        else:
+            out.append([f])
+    return out
+
+
 def name(t: Type, values: dict[str, str]) -> str:
     """Name aus den Vorlagen: pro Teil die erste Alternative, deren Felder alle ausgefüllt sind."""
+    values = derive(t, values)
     out = []
     for alts in t.parts:
         for alt in (alts,) if isinstance(alts, str) else alts:
@@ -1162,7 +1567,7 @@ def create(
     t = lookup(conn, type_key)
     if t is None:
         raise LagerError("Unbekannter Teile-Typ")
-    clean = {f.key: values.get(f.key, "").strip() for f in t.fields}
+    clean = derive(t, {f.key: number(values.get(f.key, "")).strip() for f in t.fields})
     text = name(t, clean)
     if not text:
         raise LagerError(f"Bitte mindestens ein Feld für „{t.label}“ ausfüllen")
@@ -1187,6 +1592,16 @@ def create(
         }
         form["spec_function"] = " ".join(p for p in (t.label, clean.get("kind", "")) if p)
         materials.save_specs(conn, item_id, "cmp", form)
+    if t.material:  # Filament/Harz/Netzteil/Kabel: Materialdaten fürs Datenblatt und Restmengen
+        keys = {f.key for f in materials.FIELDS[t.material]}
+        spec = {f"spec_{k}": v for k, v in clean.items() if v and k in keys}
+        if t.key == "filament" and spec.get("spec_weight"):  # Katalog in kg, Datenblatt in g
+            with contextlib.suppress(ValueError):
+                spec["spec_weight"] = f"{float(spec['spec_weight']) * 1000:g}"
+        materials.save_specs(conn, item_id, t.material, spec)
+    if clean.get("price"):
+        repo.update_item(conn, item_id, price=materials.parse_price(clean["price"]))
+    remember_brand(conn, t, clean.get("brand", ""))
     return item_id
 
 
@@ -1248,7 +1663,7 @@ def suggestions() -> dict[str, list[str]]:
     """Variantenvorschläge je Typ (zweites Feld mit Auswahl, z. B. Gewinde)."""
     out: dict[str, list[str]] = {}
     for t in TYPES:
-        extra = next((f for f in t.fields[1:] if f.options), None)
+        extra = next((f for f in t.fields[1:] if f.options and not f.extra), None)
         out[t.key] = list(extra.options) if extra else []
     return out
 

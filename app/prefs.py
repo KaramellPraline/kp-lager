@@ -7,7 +7,7 @@ import sqlite3
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from app import codes, quick
+from app import codes, kasten, quick
 
 
 @dataclass(frozen=True)
@@ -51,7 +51,8 @@ PREFS = (
     Pref("queue_on_place", "Neuer Einsatz → Etikett in die Warteschlange", "bool", "1",
          "Etiketten"),
     Pref("default_model", "Standard-Modell für neue Sortierkästen", "choice", "norb16",
-         "Sortierkästen", choices=(("", "Eigenes Raster"), ("norb16", "Kistenberg NORB16"))),
+         "Sortierkästen",
+         choices=(("", "Eigenes Raster"), *((k, m.name) for k, m in kasten.MODELS.items()))),
     Pref("backup_days", "Tägliche Backups aufbewahren (Tage)", "int", "30", "Betrieb",
          "Das Backup läuft automatisch einmal am Tag (Datenbank + Fotos) in data/backups.",
          min=3, max=365),
@@ -59,6 +60,9 @@ PREFS = (
          "NAS-Freigabe, USB oder Sync-Ordner. Leer = aus. Die tägliche Sicherung wird zusätzlich "
          "dorthin kopiert. Im Docker-Container den Ordner als Volume einbinden und den Pfad "
          "im Container eintragen (oder LAGER_BACKUP_EXTERN setzen)."),
+    Pref("api_write_key", "API: Schreiben nur mit Schlüssel", "bool", "1", "Betrieb",
+         "An (Standard): Schreiben per API/CLI/MCP braucht einen Schreib-Schlüssel. Aus: im LAN "
+         "ohne Schlüssel schreiben – nur zum Testen/Debuggen, danach wieder einschalten."),
     Pref("api_read_key", "API: auch Lesen nur mit Schlüssel", "bool", "0", "Betrieb",
          "Aus: Lesen im LAN offen, Schreiben nur mit Schlüssel. An: jede API-Anfrage braucht "
          "einen (Lese- oder Schreib-)Schlüssel – sinnvoll bei Zugriff von außen."),

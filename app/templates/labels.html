@@ -1,35 +1,39 @@
 {% extends "base.html" %}
-{% block title %}Etiketten · {{ APP_NAME }}{% endblock %}
+{% block title %}Drucken · {{ APP_NAME }}{% endblock %}
 {% block content %}
-<h1>Etiketten</h1>
-<p><a class="button" href="/etiketten/typ">{{ icon('action.edit', size='sm') }} Layout je Typ anordnen</a></p>
-<p class="meta">Export immer als XLSX für den D30 (40×12 mm): erst Vorschau (Texte bearbeitbar), dann Export.
-D30-Vorlage einmal anlegen: QR-Feld aus Spalte <b>QR</b>, Text aus <b>Code</b> und <b>Text</b>.</p>
-<p><a class="button" href="/labels/a4">{{ icon('action.print', size='sm') }} A4-Druck: Etiketten auswählen</a></p>
+<h1>Drucken</h1>
 
-<section>
-  <h2>Warteschlange ({{ queue|length }})</h2>
+<div class="tiles print-tiles">
+  <a class="tile" href="/labels/queue"><b>{{ queue|length }}</b><span>D30-Warteschlange</span></a>
+  <a class="tile" href="/a4"><b>{{ a4_count }}</b><span>A4-Warteschlange</span></a>
+  <a class="tile" href="/etiketten/typ"><b>{{ icon('action.edit') }}</b><span>Layout je Typ</span></a>
+  <a class="tile" href="/labels/bins.json"><b>{{ icon('action.download') }}</b><span>Bin-Druckdatei</span></a>
+</div>
+
+<section class="card">
+  <h2 style="margin-top:0">D30 · 40×12 mm</h2>
   {% if queue %}
-  <ul class="list">{% for l in queue[:10] %}<li class="item"><span class="name">{{ l.code }} · {{ l.text }}</span><small>{{ l.extra }}</small></li>{% endfor %}</ul>
+  <ul class="list">{% for l in queue[:8] %}<li class="item"><span class="name">{{ l.code }} · {{ l.text }}</span><small>{{ l.extra }}</small></li>{% endfor %}
+    {% if queue|length > 8 %}<li class="item"><small>… und {{ queue|length - 8 }} weitere</small></li>{% endif %}</ul>
   <p><a class="button primary" href="/labels/queue">Warteschlange drucken</a></p>
-  {% else %}<p class="empty">Leer. Etiketten per „In die Warteschlange“ an Teilen, Einsätzen und Kästen sammeln.</p>{% endif %}
+  {% else %}<p class="empty">Warteschlange leer – Etiketten per Druck-Symbol oder „In Warteschlange“ sammeln.</p>{% endif %}
+  {% if pending %}<form method="post" action="/labels/preview"><input type="hidden" name="source" value="pending"><button>Noch nicht gedruckt: {{ pending|length }} ansehen &amp; drucken</button></form>{% else %}<p class="meta">Alles gedruckt.</p>{% endif %}
 </section>
 
-<section>
-  <h2>Inhaltsetiketten ({{ content|length }})</h2>
-  <p class="meta">Vorne auf Bins und Fächern: Kennung + Inhalt, ohne QR. Oben auf dem Bin klebt nur der 40×12-Tag mit QR.</p>
+<section class="card">
+  <h2 style="margin-top:0">A4 · Seiten-, Box- und Inhaltsetiketten</h2>
+  <p class="meta">Nie automatisch: alles landet in der A4-Warteschlange, wird dort auf Seiten angeordnet und erst nach Bestätigung an den Netzwerkdrucker geschickt. Farbe/Rot ist möglich.</p>
+  <div class="row"><a class="button primary" href="/a4">A4-Warteschlange ({{ a4_count }})</a></div>
   {% if content %}
-  <ul class="list">{% for c in content[:10] %}<li class="item"><span class="name">{{ c.title }} · {{ c.text }}</span></li>{% endfor %}</ul>
-  <div class="row">
-    <a class="button primary" href="/labels/content.xlsx">{{ icon('action.download', size='sm') }} XLSX (D30)</a>
-    <a class="button" href="/labels/content/a4">{{ icon('action.print', size='sm') }} A4 drucken</a>
-    <form method="post" action="/labels/content/clear"><button>Leeren</button></form>
-  </div>
-  {% else %}<p class="empty">Leer. Kommt automatisch beim Einräumen in Bins/Fächer, oder per „Inhaltsetikett“ am Bin.</p>{% endif %}
+  <h3>Inhaltsetiketten vorgemerkt ({{ content|length }})</h3>
+  <ul class="list">{% for c in content[:6] %}<li class="item"><span class="name">{{ c.title }} · {{ c.text }}</span></li>{% endfor %}</ul>
+  <div class="row"><form method="post" action="/labels/content/a4q"><button class="primary">In A4-Warteschlange</button></form>
+    <form method="post" action="/labels/content/clear"><button>Leeren</button></form></div>
+  {% endif %}
 </section>
 
-<section>
-  <h2>Neue Codes auf Vorrat</h2>
+<details class="card">
+  <summary>Neue Codes auf Vorrat</summary>
   <p class="meta">Für Boxen, Kisten, Regale: Etikett aufkleben, scannen → Behälter wird angelegt.</p>
   <form method="post" action="/labels/preview" class="stack">
     <input type="hidden" name="source" value="blank">
@@ -38,28 +42,16 @@ D30-Vorlage einmal anlegen: QR-Feld aus Spalte <b>QR</b>, Text aus <b>Code</b> u
       <option value="{{ p }}" {% if p == 'EUR' %}selected{% endif %}>{{ p }} – {{ label }} (nächster {{ next_codes[p] }})</option>
       {% endfor %}
     </select>
-    <div class="row">
-      <input name="count" value="20" inputmode="numeric" aria-label="Anzahl">
-      <button class="primary">Vorschau</button>
-    </div>
+    <div class="row"><input name="count" value="20" inputmode="numeric" aria-label="Anzahl"><button class="primary">Vorschau</button></div>
   </form>
-</section>
+</details>
 
-<section>
-  <h2>Noch nicht gedruckt ({{ pending|length }})</h2>
-  {% if pending %}
-  <ul class="list">
-    {% for l in pending[:15] %}<li class="item"><span class="name">{{ l.code }} · {{ l.text }}</span><small>{{ l.extra }}</small></li>{% endfor %}
-    {% if pending|length > 15 %}<li class="item"><small>… und {{ pending|length - 15 }} weitere</small></li>{% endif %}
-  </ul>
-  <form method="post" action="/labels/preview"><input type="hidden" name="source" value="pending"><button class="primary">Vorschau &amp; drucken</button></form>
-  {% else %}<p class="empty">Alles gedruckt.</p>{% endif %}
-</section>
-
-<section>
-  <h2>Sortierkasten / Box komplett</h2>
-  <p class="meta">Auf der Seite des Behälters: „Etiketten aller Teile drucken“ – vergibt fehlende ART-Codes, ein Etikett pro Teil (QR + Name).</p>
-</section>
+<details class="card">
+  <summary>Dateien</summary>
+  <p class="meta"><b>Bin-Druckdatei</b> (<code>bins.json</code>): alle Sortierkästen und Einsätze mit Größe, Teilung, Position, Parametern und Fachinhalt – Eingabe für den parametrischen 3D-Generator. Kopie liegt auch in <code>data/druck/</code>.</p>
+  <div class="row"><a class="button" href="/labels/bins.json">{{ icon('action.download', size='sm') }} bins.json laden</a></div>
+  <p class="meta"><code>uv run --group cad python cad/norb_bins.py --file bins.json</code> erzeugt STEP/STL aller Einsätze.</p>
+</details>
 
 <p class="meta">Code-Schema und eigene Arten: <a href="/codes">Mehr → Codes</a></p>
 {% endblock %}

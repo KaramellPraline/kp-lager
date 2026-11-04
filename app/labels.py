@@ -1,11 +1,11 @@
-"""Etiketten: QR-Inhalt, XLSX für den D30-Etikettendrucker (40×12 mm) und A8-Bögen (A4 quer).
+"""Etiketten: QR-Inhalt, Texte, Layout je Typ und Warteschlange für den D30 (40×12 mm).
+A4-Etiketten: `app/a4.py`.
 
 QR-Inhalt komplett in Großbuchstaben (HTTP://LAGER.HOME.LAN/C/EUR-001): Dann nutzt der QR den
 Alphanumerik-Modus, wird eine Version kleiner und auf 10 mm besser scannbar. /C/ = /c/.
 """
 
 import copy
-import io
 import json
 import re
 import sqlite3
@@ -13,12 +13,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import segno
-from openpyxl import Workbook
 
 from app import codes, repo
 
 TEXT_MAX = 24  # Zeichen, die auf 40×12 mm neben den QR passen
-A8_PER_PAGE = 16  # A4 quer = 4×4 A8 quer (74×52 mm)
 
 
 @dataclass(frozen=True)
@@ -41,6 +39,27 @@ Layout = dict[str, Any]
 DEFAULT_LAYOUT: Layout = {
     "qr": "left",
     "lines": [{"t": "{name}", "w": 1, "a": "center"}, {"t": "{code}", "w": 1, "a": "center"}],
+}
+
+
+# Vorlagen fürs Layout (Designer: Knöpfe; „Alles“ passt für jeden Typ, weil leere Felder wegfallen)
+PRESETS: dict[str, tuple[str, Layout]] = {
+    "alles": (
+        "Alles (Name · Maße · Ort)",
+        {
+            "qr": "left",
+            "lines": [
+                {"t": "{name}", "w": 3, "a": "left"},
+                {"t": "{thread}x{length} {value} {voltage} {size}", "w": 2, "a": "left"},
+                {"t": "{code} {ort}", "w": 1, "a": "left"},
+            ],
+        },
+    ),
+    "standard": ("Name + Code", DEFAULT_LAYOUT),
+    "gross": (
+        "Nur Name, groß",
+        {"qr": "none", "lines": [{"t": "{name}", "w": 4, "a": "center"}]},
+    ),
 }
 
 
@@ -101,22 +120,6 @@ def short(text: str, limit: int = TEXT_MAX) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
 
 
-def to_xlsx(rows: list[Label], text_max: int = TEXT_MAX) -> bytes:
-    """Spalten für die D30-App: A Code, B QR-Inhalt, C Text (ohne Zusatz-Spalte)."""
-    wb = Workbook()
-    ws = wb.active
-    assert ws is not None
-    ws.title = "Etiketten"
-    ws.append(["Code", "QR", "Text"])
-    for r in rows:
-        ws.append([r.code, r.qr, short(r.text, text_max)])
-    for col, width in zip("ABC", (12, 40, 26), strict=True):
-        ws.column_dimensions[col].width = width
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()
-
-
 # --- Etikettenlisten ---------------------------------------------------------------
 
 
@@ -146,6 +149,12 @@ def fill(template: str, values: dict[str, str]) -> str:
         if keys and not all(values.get(k, "").strip() for k in keys):
             continue
         out.append(re.sub(r"{(\w+)}", lambda m: values.get(m.group(1), "").strip(), token))
+    seps = ("x", "×", "·", "-", "/")  # Trenner allein: weg, wenn ein Nachbar fehlt
+    while out and out[0] in seps:
+        out.pop(0)
+    while out and out[-1] in seps:
+        out.pop()
+    out = [t for i, t in enumerate(out) if not (t in seps and i and out[i - 1] in seps)]
     return " ".join(out).strip()
 
 
@@ -186,13 +195,25 @@ def item_values(conn: sqlite3.Connection, item: sqlite3.Row) -> dict[str, str]:
     return values
 
 
+def default_for(conn: sqlite3.Connection, key: str) -> Layout | None:
+    """Standard-Layout des Katalog-/eigenen Typs: dreizeilig (Typ+Spec · Maße · Code)."""
+    from app import catalog
+
+    t = catalog.lookup(conn, key) if key and not key.startswith("mat:") else None
+    return parse_layout(catalog.default_label_layout(t)) if t else None
+
+
 def type_layout(conn: sqlite3.Connection, item: sqlite3.Row) -> Layout | None:
-    """Gespeichertes Layout des Typs dieses Teils (None = Standarddarstellung)."""
+    """Layout des Typs dieses Teils: gespeichert, sonst dreizeilig; None = Name + Code."""
     from app import typesettings
 
     key = typesettings.key_of(item)
-    raw = typesettings.get(conn, key).get("label_layout") if key else ""
-    return parse_layout(raw) if raw else None
+    ts = typesettings.get(conn, key) if key else {}
+    if ts.get("label_layout"):
+        return parse_layout(ts["label_layout"])
+    if ts.get("label_main") or ts.get("label_extra"):  # eigene Haupt-/Zusatzzeile hat Vorrang
+        return None
+    return default_for(conn, key)
 
 
 def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> Label:
@@ -345,8 +366,6 @@ def finalize(
 
 # --- Warteschlange: Etiketten sammeln, später als Batch exportieren -------------------
 
-A4_COLS, A4_ROWS = 5, 22  # 40×12 mm auf A4 hoch (200 × 264 mm), Schnittlinien
-
 
 def enqueue(conn: sqlite3.Connection, code: str, text: str, extra: str = "") -> None:
     """Gleicher Code nochmal = Text aktualisieren (z. B. Bin-Inhalt geändert)."""
@@ -432,16 +451,3 @@ def content_queue(conn: sqlite3.Connection) -> list[dict[str, object]]:
 def clear_content(conn: sqlite3.Connection) -> None:
     with conn:
         conn.execute("DELETE FROM content_queue")
-
-
-def content_xlsx(rows: list[dict[str, object]], text_max: int = TEXT_MAX * 2) -> bytes:
-    """Inhaltsetiketten für den D30: A Code, B Text (kein QR – Platz zum Beschriften)."""
-    wb = Workbook()
-    ws = wb.active
-    assert ws is not None
-    ws.append(["Code", "Text"])
-    for r in rows:
-        ws.append([str(r["title"]), short(str(r["text"]), text_max)])
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()

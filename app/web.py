@@ -23,6 +23,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import (
     __version__,
+    a4,
     api,
     apikeys,
     backup,
@@ -54,6 +55,7 @@ from app import (
     status,
     typesettings,
     value,
+    web_a4,
     web_extra,
     web_katalog,
     web_lab,
@@ -69,7 +71,8 @@ from app.repo import LagerError
 APP_DIR = Path(__file__).parent
 APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
-ADD_TABS = ("/neu", "/neu/behaelter", "/neu/material", "/neu/bin")
+ADD_TABS = ("/neu", "/neu/behaelter", "/neu/bin")
+NL = chr(10)
 KIND_LABELS = kinds.KIND_LABELS
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
@@ -91,6 +94,7 @@ templates.env.globals["PSU_PLUGS"] = ["DC 5,5x2,1", "DC 5,5x2,5", "DC 3,5x1,35",
                                       "DC 7,4x5,0", "MagSafe", "XT60", "KFZ", "Schraubklemmen",
                                       "Molex", "XLR"]  # fmt: skip
 templates.env.globals["MODELS"] = kasten.MODELS
+templates.env.globals["CARD_KINDS"] = cards.KIND_INFO
 templates.env.globals["icon"] = icons.icon
 templates.env.globals["euro"] = value.euro
 templates.env.globals["EURO_DIMS"] = kinds.EURO_DIMS
@@ -281,6 +285,7 @@ def create_app(settings: Settings) -> FastAPI:
     # --- Seiten --------------------------------------------------------------
 
     web_ops.register(app, Conn, render, redirect, settings)
+    web_a4.register(app, Conn, render, redirect, settings)
     web_katalog.register(app, Conn, render, redirect, settings)
     web_lab.register(app, Conn, render, redirect, settings)
     web_sortiment.register(app, Conn, render, redirect, settings)
@@ -669,6 +674,8 @@ def create_app(settings: Settings) -> FastAPI:
             sizes=kasten.SIZES,
             divs=kasten.DIVS,
             cad=kasten.cad_command(node) if node["kind"] == "bin" else "",
+            cad_fields=kasten.CAD_FIELDS,
+            cad_values=kasten.cad_params(node) if node["kind"] == "bin" else {},
             cards=cards.for_container(conn, node_id),
         )
         if request.query_params.get("drehen") in ("0", "90", "180", "270"):
@@ -851,6 +858,7 @@ def create_app(settings: Settings) -> FastAPI:
             pending=labels.pending(conn, settings.base_url),
             queue=labels.queue(conn, settings.base_url),
             content=labels.content_queue(conn),
+            a4_count=a4.count(conn),
         )
 
     @app.get("/codes", response_class=HTMLResponse)
@@ -926,42 +934,6 @@ def create_app(settings: Settings) -> FastAPI:
             text_max=prefs.number(conn, "label_text_max"),
         )
 
-    @app.get("/labels/a4", response_class=HTMLResponse)
-    def labels_a4_page(request: Request, conn: Conn, q: str = "") -> HTMLResponse:
-        rows = labels.all_coded(conn, settings.base_url)
-        if q.strip():
-            needle = q.casefold()
-            rows = [r for r in rows if needle in f"{r.code} {r.text} {r.extra}".casefold()]
-        return render(request, conn, "labels_a4_select.html", rows=rows, aq=q)
-
-    @app.post("/labels/a4", response_model=None)
-    def labels_a4_print(
-        request: Request,
-        conn: Conn,
-        code: Annotated[list[str], Form()] = [],  # noqa: B006
-        fmt: Annotated[str, Form()] = "a4",
-    ) -> Response:
-        """Ausgewählte Etiketten auf A4 drucken (40×12-Bogen oder A8)."""
-        chosen = set(code)
-        rows = [r for r in labels.all_coded(conn, settings.base_url) if r.code in chosen]
-        if not rows:
-            raise LagerError("Nichts ausgewählt")
-        rows = labels.finalize(
-            conn, settings.base_url, [(r.code, r.text, r.extra) for r in rows], False
-        )
-        cells = [(r, labels.qr_svg(r.qr)) for r in rows]
-        if fmt == "a8":
-            per = labels.A8_PER_PAGE
-            pages = [cells[i : i + per] for i in range(0, len(cells), per)]
-            return templates.TemplateResponse(
-                request, "labels_a8.html", {"pages": pages, "rows": rows}
-            )
-        per = labels.A4_COLS * labels.A4_ROWS
-        pages = [cells[i : i + per] for i in range(0, len(cells), per)]
-        return templates.TemplateResponse(
-            request, "labels_a4.html", {"pages": pages, "rows": rows, "per": per}
-        )
-
     @app.post("/labels/export", response_model=None)
     def labels_export(
         request: Request,
@@ -980,13 +952,28 @@ def create_app(settings: Settings) -> FastAPI:
         if fmt == "d30" and not bridge:  # erst drucken – nur Gedrucktes wird als gedruckt gebucht
             if not settings.d30:
                 raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
-            d30.print_labels(
-                [
-                    labels.Label(c, labels.qr_content(settings.base_url, c), t.strip(), e.strip())
+            try:
+                d30.print_labels(
+                    [
+                        labels.Label(
+                            c, labels.qr_content(settings.base_url, c), t.strip(), e.strip()
+                        )
+                        for raw, t, e in entries_
+                        if (c := codes.normalize(raw))
+                    ]
+                )
+            except LagerError as exc:  # Druck gescheitert: automatisch in die Warteschlange
+                queued = [
+                    (c, t.strip(), e.strip())
                     for raw, t, e in entries_
                     if (c := codes.normalize(raw))
                 ]
-            )
+                for c, t, e in queued:
+                    labels.enqueue(conn, c, t, e)
+                return redirect(
+                    "/labels",
+                    f"Druck nicht möglich ({exc}) – {len(queued)} Etikett(en) in der Warteschlange",
+                )
         rows = labels.finalize(conn, settings.base_url, entries_, bool(save_names))
         if not rows:
             raise LagerError("Keine gültigen Codes")
@@ -1009,26 +996,13 @@ def create_app(settings: Settings) -> FastAPI:
             return redirect("/labels", f"{len(rows)} Etikett(en) an die PC-Bridge gesendet{marker}")
         if fmt == "d30":
             return redirect("/labels", f"{len(rows)} Etikett(en) auf dem D30 gedruckt")
-        if fmt == "a4":
-            cells = [(r, labels.qr_svg(r.qr)) for r in rows]
-            per = labels.A4_COLS * labels.A4_ROWS
-            pages = [cells[i : i + per] for i in range(0, len(cells), per)]
-            return templates.TemplateResponse(
-                request, "labels_a4.html", {"pages": pages, "rows": rows, "per": per}
-            )
-        if fmt == "a8":
-            cells = [(r, labels.qr_svg(r.qr)) for r in rows]
-            pages = [
-                cells[i : i + labels.A8_PER_PAGE] for i in range(0, len(cells), labels.A8_PER_PAGE)
-            ]
-            return templates.TemplateResponse(
-                request, "labels_a8.html", {"pages": pages, "rows": rows}
-            )
-        name = rows[0].code if len(rows) == 1 else f"{rows[0].code}_bis_{rows[-1].code}"
-        return Response(
-            labels.to_xlsx(rows, prefs.number(conn, "label_text_max")),
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f'attachment; filename="{name}.xlsx"'},
+        if fmt == "a4q":  # A4 nie automatisch: in die A4-Warteschlange legen
+            for r in rows:
+                tag = {"type": "tag", "title": r.text, "code": r.code, "qr": r.qr}
+                a4.enqueue(conn, {**tag, "lines": [r.extra] if r.extra else []})
+            return redirect("/a4", f"{len(rows)} Etikett(en) in der A4-Warteschlange")
+        raise LagerError(
+            "Bitte „Auf D30 drucken“, „In Warteschlange“ oder „A4-Warteschlange“ wählen"
         )
 
     # --- Einstellungen ----------------------------------------------------------
@@ -1081,6 +1055,8 @@ def create_app(settings: Settings) -> FastAPI:
             "settings_admin.html",
             counters=counters,
             keys=apikeys.all_keys(conn),
+            node_types=NL.join(catalog.node_types(conn)),
+            a4_printer=codes.get_setting(conn, "a4_printer", ""),
             new_key=new_key,
         )
 
@@ -1579,6 +1555,23 @@ def create_app(settings: Settings) -> FastAPI:
             labels.enqueue(conn, node["code"], *labels.container_label(conn, node))
         return redirect(f"/n/{node_id}", f"Einsatz {node['code']} ({size}) bei {node['position']}")
 
+    @app.post("/n/{node_id}/bins/{bin_id}/move")
+    def move_bin(
+        node_id: int, bin_id: int, conn: Conn, cells: Annotated[str, Form()]
+    ) -> RedirectResponse:
+        """Drag & Drop in der Draufsicht: Einsatz auf neue Zellen setzen."""
+        try:
+            pos = kasten.move_bin(conn, bin_id, [c for c in cells.split(",") if c])
+        except LagerError as exc:
+            return redirect(f"/n/{node_id}", f"Verschieben nicht möglich: {exc}")
+        return redirect(f"/n/{node_id}", f"Einsatz nach {pos} verschoben (Etikett neu drucken)")
+
+    @app.post("/n/{node_id}/cad")
+    async def save_bin_cad(node_id: int, request: Request, conn: Conn) -> RedirectResponse:
+        form = await request.form()
+        kasten.save_cad(conn, node_id, {k: str(v) for k, v in form.items()})
+        return redirect(f"/n/{node_id}#cad", "Druck-Parameter gespeichert")
+
     @app.post("/n/{node_id}/fill")
     def fill_bins(node_id: int, conn: Conn) -> RedirectResponse:
         """Alle freien Zellen mit 1x1-Einsätzen belegen (schnelle Ersteinrichtung)."""
@@ -1646,30 +1639,58 @@ def create_app(settings: Settings) -> FastAPI:
         back = request.headers.get("referer", f"/n/{node_id}").split("?")[0]
         return redirect(back, f"Inhaltsetikett {labels.content_title(conn, node)} vorgemerkt")
 
-    @app.get("/labels/content.xlsx", response_model=None)
-    def content_export(conn: Conn) -> Response:
-        rows = labels.content_queue(conn)
-        if not rows:
-            raise LagerError("Keine Inhaltsetiketten vorgemerkt")
-        data = labels.content_xlsx(rows, prefs.number(conn, "label_text_max") * 2)
+    @app.post("/labels/content/a4q")
+    def content_to_a4(conn: Conn) -> RedirectResponse:
+        """Inhaltsetiketten (Bins/Fächer) als Seitenetiketten in die A4-Warteschlange."""
+        n = 0
+        for row in labels.content_queue(conn):
+            node = repo.get_container(conn, int(row["id"]))  # type: ignore[call-overload]
+            if node is None:
+                continue
+            if node["kind"] == "bin":
+                a4.enqueue(conn, a4.job_bin_side(conn, node))
+            else:
+                job = {"type": "content", "title": row["title"], "color": "red"}
+                a4.enqueue(conn, {**job, "lines": [str(row["text"])]})
+            n += 1
         labels.clear_content(conn)
-        return Response(
-            data,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": 'attachment; filename="inhaltsetiketten.xlsx"'},
-        )
-
-    @app.get("/labels/content/a4", response_class=HTMLResponse)
-    def content_a4(request: Request, conn: Conn) -> HTMLResponse:
-        rows = labels.content_queue(conn)
-        pages = [rows[i : i + labels.A4_COLS * labels.A4_ROWS]
-                 for i in range(0, len(rows), labels.A4_COLS * labels.A4_ROWS)]  # fmt: skip
-        return render(request, conn, "labels_content_a4.html", rows=rows, pages=pages)
+        return redirect("/a4", f"{n} Seitenetiketten in der A4-Warteschlange")
 
     @app.post("/labels/content/clear")
     def content_clear(conn: Conn) -> RedirectResponse:
         labels.clear_content(conn)
         return redirect("/labels", "Inhaltsetiketten geleert")
+
+    def print_or_queue(
+        conn: sqlite3.Connection, code: str, text: str, extra: str, back: str
+    ) -> RedirectResponse:
+        """Druck-Symbol: sofort auf den D30, sonst (Fehler/kein D30) in die Warteschlange."""
+        if settings.d30:
+            try:
+                d30.print_codes(conn, settings.base_url, [code])
+                return redirect(back, f"Etikett {code} gedruckt")
+            except LagerError as exc:
+                labels.enqueue(conn, code, text, extra)
+                return redirect(back, f"Druck nicht möglich ({exc}) – {code} in der Warteschlange")
+        labels.enqueue(conn, code, text, extra)
+        return redirect(back, f"Etikett {code} in Warteschlange")
+
+    @app.post("/labels/quick/node/{node_id}")
+    def quick_print_node(node_id: int, conn: Conn) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        if not node["code"]:
+            raise LagerError("Behälter hat noch keinen Code")
+        return print_or_queue(
+            conn, node["code"], *labels.container_label(conn, node), f"/n/{node_id}"
+        )
+
+    @app.post("/labels/quick/item/{item_id}")
+    def quick_print_item(item_id: int, conn: Conn) -> RedirectResponse:
+        item = repo.get_item(conn, item_id)
+        if not item["code"]:
+            raise LagerError("Teil hat noch keinen Code")
+        lab = labels.item_label(conn, settings.base_url, item)
+        return print_or_queue(conn, lab.code, lab.text, lab.extra, f"/items/{item_id}")
 
     @app.post("/labels/queue/item/{item_id}")
     def queue_item(request: Request, item_id: int, conn: Conn) -> RedirectResponse:
@@ -1703,9 +1724,19 @@ def create_app(settings: Settings) -> FastAPI:
         name: Annotated[str, Form()],
         notes: Annotated[str, Form()] = "",
         code: Annotated[str, Form()] = "",
+        tare: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         node = need_node(conn, node_id)
         repo.update_container(conn, node_id, name, notes)
+        raw = tare.strip().replace(",", ".")
+        try:
+            grams = float(raw) if raw else None
+        except ValueError:
+            raise LagerError(f"„{tare}“ ist kein Gewicht in Gramm") from None
+        if grams is not None and grams < 0:
+            raise LagerError("Gewicht darf nicht negativ sein")
+        with conn:
+            conn.execute("UPDATE container SET tare = ? WHERE id = ?", (grams, node_id))
         new_code = container_code(code)
         if new_code != node["code"]:
             repo.assign_code(conn, node_id, new_code)

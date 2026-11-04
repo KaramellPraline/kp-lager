@@ -5,7 +5,7 @@ Referenzen sind 'i<ID>' (Teil) und 'c<ID>' (Behälter), wie sie das Auswahlformu
 
 import sqlite3
 
-from app import codes, itemtypes, labels, materials, repo
+from app import catalog, codes, itemtypes, labels, materials, repo
 from app.repo import LagerError
 
 # Aktion -> (Beschriftung, Eingabe: '' | 'target' | 'tag' | 'cat' | 'text' | 'number')
@@ -15,6 +15,7 @@ ACTIONS: dict[str, tuple[str, str]] = {
     "cat": ("Kategorie ändern …", "cat"),
     "min": ("Mindestbestand setzen …", "number"),
     "unit": ("Einheit setzen …", "text"),
+    "field": ("Typ-Feld setzen (Node, Material, Hersteller …) …", "field"),
     "price": ("Preis setzen (€) …", "text"),
     "list_on": ("Auf Einkaufsliste", ""),
     "list_off": ("Von Einkaufsliste nehmen", ""),
@@ -74,6 +75,8 @@ def apply(
             repo.delete_container(conn, cid)
             n += 1
         return f"{n} gelöscht"
+    if action == "field":
+        return _set_field(conn, item_ids, value)
     for iid in item_ids:
         if action == "tag":
             name = value.strip()
@@ -99,6 +102,31 @@ def apply(
             repo.update_item(conn, iid, archived=1)
         n += 1
     return f"{n} Teile geändert"
+
+
+def _set_field(conn: sqlite3.Connection, item_ids: list[int], value: str) -> str:
+    """Feld (z. B. node, material, brand) bei allen gewählten Teilen setzen, deren Typ es hat.
+    `value` = „schlüssel=wert“; leerer Wert entfernt das Feld."""
+    key, _, val = value.partition("=")
+    key, val = key.strip(), val.strip()
+    if not key:
+        raise LagerError("Bitte ein Feld wählen")
+    done = skipped = 0
+    for iid in item_ids:
+        item = repo.get_item(conn, iid)
+        t = catalog.lookup(conn, item["ctype"] or "")
+        if t is None or key not in {f.key for f in t.fields}:
+            skipped += 1
+            continue
+        values = catalog.values_of(item)
+        if val:
+            values[key] = val
+        else:
+            values.pop(key, None)
+        catalog.store(conn, iid, t.key, values)
+        done += 1
+    extra = f" ({skipped} ohne dieses Feld übersprungen)" if skipped else ""
+    return f"{done} Teile: {key} {'= ' + val if val else 'entfernt'}{extra}"
 
 
 def _change_cat(conn: sqlite3.Connection, item_id: int, cat: str) -> None:

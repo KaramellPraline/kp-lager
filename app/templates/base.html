@@ -33,7 +33,7 @@
     <a class="nav {% if cur.startswith('/neu') %}active{% endif %}" href="/neu/go">{{ icon('action.add') }}<span>Hinzufügen</span></a>
     {{ nav_link('/scan', 'action.scan', 'Scannen') }}
     {{ nav_link('/suche', 'nav.search', 'Suche') }}
-    {{ nav_link('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
+    {{ nav_link('/labels', 'action.print', 'Drucken', NQUEUE) }}
     {{ nav_link('/einkauf', 'content.shopping', 'Einkauf') }}
     {{ nav_link('/platz', 'content.space', 'Freie Plätze') }}
     {{ nav_link('/verlauf', 'content.history', 'Verlauf') }}
@@ -69,7 +69,7 @@
   <a href="/neu/go" class="{% if cur.startswith('/neu') %}active{% endif %}">{{ icon('action.add') }}<span>Hinzufügen</span></a>
   {{ navtab('/scan', 'action.scan', 'Scannen', extra='scan') }}
   {{ navtab('/suche', 'nav.search', 'Suche') }}
-  {{ navtab('/labels', 'content.tag', 'Etiketten', NQUEUE) }}
+  {{ navtab('/labels', 'action.print', 'Drucken', NQUEUE) }}
 </nav>
 {% if msg %}
 <div class="toast" role="status" {% if not undo %}data-autohide{% endif %}{% if bridge_codes %} data-d30-codes="{{ bridge_codes }}"{% endif %}>

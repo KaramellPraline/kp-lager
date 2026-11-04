@@ -6,7 +6,15 @@ from typing import Any
 
 from app.repo import LagerError, Row
 
-KINDS = {"note": "Notiz", "pinout": "Pinout"}
+# Kartenarten: Schlüssel -> (Name, Hinweis fürs Eingabefeld, Titelvorschlag)
+KIND_INFO = {
+    "note": ("Notiz", "Freier Text", "Notiz"),
+    "pinout": ("Pinout", "Eine Zeile je Pin: 1; VCC; 3,3 V", "Pinbelegung"),
+    "spec": ("Eigenschaften", "Eine Zeile je Wert: Spannung; 3,3 V", "Technische Daten"),
+    "checklist": ("Checkliste", "Eine Zeile je Punkt; [x] am Anfang = erledigt", "Checkliste"),
+    "link": ("Links", "Eine Zeile je Link: https://… oder Titel; https://…", "Links"),
+}
+KINDS = {k: v[0] for k, v in KIND_INFO.items()}
 
 
 def add(
@@ -69,10 +77,41 @@ def pinout_rows(body: str) -> list[list[str]]:
     return rows
 
 
+def checklist_rows(body: str) -> list[list[str]]:
+    """Zeilen „[x] Text“ / „[ ] Text“ / „Text“ -> [„1“|„0“, Text]."""
+    rows = []
+    for line in body.splitlines():
+        m = re.match(r"\s*(?:[-*]\s*)?(\[[xX ]?\])?\s*(.+)", line)
+        if m and m.group(2).strip():
+            rows.append(
+                ["1" if m.group(1) and m.group(1)[1:2] in "xX" else "0", m.group(2).strip()]
+            )
+    return rows
+
+
+def link_rows(body: str) -> list[list[str]]:
+    """Zeilen „Titel; URL“ oder nur „URL“ -> [Titel, URL]; nur http(s)-Links."""
+    rows = []
+    for line in body.splitlines():
+        parts = [p.strip() for p in line.split(";", 1)]
+        url = parts[-1]
+        if re.match(r"https?://\S+$", url):
+            rows.append([parts[0] if len(parts) > 1 else url, url])
+    return rows
+
+
+def _rows_of(kind: str, body: str) -> list[list[str]]:
+    if kind in ("pinout", "spec"):
+        return pinout_rows(body)
+    if kind == "checklist":
+        return checklist_rows(body)
+    if kind == "link":
+        return link_rows(body)
+    return []
+
+
 def _with_rows(rows: list[Row]) -> list[dict[str, Any]]:
-    return [
-        {**dict(r), "rows": pinout_rows(r["body"]) if r["kind"] == "pinout" else []} for r in rows
-    ]
+    return [{**dict(r), "rows": _rows_of(r["kind"], r["body"])} for r in rows]
 
 
 def for_item(conn: sqlite3.Connection, item_id: int) -> list[dict[str, Any]]:

@@ -44,7 +44,7 @@ def test_catalog_page_and_create_resets_form(client: TestClient) -> None:
                                   "target": box, "f_finish": "Schwarz 12.9"})  # fmt: skip
     assert "Zylinderkopfschraube M3x10" in r.text
     assert r.url.path == "/neu" and r.url.params["typ"] == "schraube"  # gleicher Typ, leer
-    assert 'name="f_thread" list="dl_thread" placeholder="" autocomplete="off"' in r.text
+    assert 'name="f_thread" class="grow" list="dl_thread" placeholder="" value=""' in r.text
     assert 'name="f_thread" value=' not in r.text  # Feld leer
     item = _items(client, box)[0]
     assert item["name"] == "Zylinderkopfschraube M3x10" and item["qty"] == 50

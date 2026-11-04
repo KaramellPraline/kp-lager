@@ -24,7 +24,10 @@
 
 - Code-Schema `PRÄFIX-NNN`; QR-Inhalt in Großbuchstaben (`HTTPS://LAGER.HOME.LAN/C/EUR-001`).
 - Etikett-Bild 40×12 mm (320×96 px): QR links, Name (automatische Schriftgröße, einzeilig), ID groß, 1 mm Rand, kein Rahmen.
-- Druckvorschau: „Auf D30 drucken“, „In Warteschlange“, XLSX, A4/A8.
+- Druckvorschau: „Auf D30 drucken“, „In Warteschlange“, „In A4-Warteschlange“ (kein XLSX mehr).
+- **A4** (`docs/A4.md`): Seitenetiketten für Einsätze (alle Fächer), Box-Label mit abgerundetem Rahmen und Maßen, Inhaltsetiketten, Rot möglich; Warteschlange, automatische Anordnung, Druck erst nach Bestätigung per IPP.
+- **Anlegen** (`docs/VERBRAUCH.md`): Live-Etikett, Klassen/Presets (Filament, Harz), Varianten-Reihe, Pflichtfelder zuerst, „merken“, Komma→Punkt.
+- **Einsätze** (`docs/BINS.md`): Drag & Drop in der Draufsicht, Druck-Parameter, Bin-Druckdatei `bins.json`.
 - **D30-Direktdruck:** Checkbox beim Eintragen (leuchtet bei erreichbarem Drucker), Knopf am Teil solange das Etikett offen ist.
   Weg: Bluetooth-Seriell (COM) zuerst, sonst BLE. Details: `docs/DIREKTDRUCK.md`.
 

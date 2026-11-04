@@ -124,4 +124,25 @@ Erledigt: kein Auto-Fokus beim Typwechsel, Feld bleibt beim Tippen sichtbar (scr
 
 ### M46 erledigt (2026-11-04, Branch feat/m46-bedienung)
 Icon-Leiste + Sticky-Kopf an Teil/Behälter, Eintragen/„Darin anlegen“ entfernt, Katalog: Favoriten (Stern), Sprungleiste, 10 neue Typen (u. a. Gridfinity, Set/Sortiment, Kabel), Auto-Tags, „Kein eigenes Etikett“, Zielwahl mit Zu-sortieren-Knopf (Box of Shame), Tab „Kabel & Material“ entfernt, globales Rückgängig/Wiederholen (Kopfzeile), Gesamtarchiv `/export.zip`, Druckverlauf (`/verlauf?tab=druck`, Wiederholung/Batch), Regel „neue Teile automatisch drucken“.
-**Noch offen aus Backlog:** Symbolbibliothek (Agent), Druckmodi-Menü, Vorlagen-Preset „Alles“, Standalone-Teile im Sortierkisten-Editor je Fach, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Sortierkisten-Typenliste (18), Einsatz-Menü, Behälter-Leergewicht (Spalte `container.tare` angelegt, noch ohne UI), Kategorie-Codes CNS/RAW/CMP komplett aus dem Schema.
+### M47 erledigt (2026-11-04)
+Etiketten-Vorlagen inkl. „Alles“ (+ „Für alle Typen“), Druckmodus-Menü (Aus/Einzeln/Sammeln, `print_mode`), Behälter-Leergewicht (UI am Behälter), 18 Sortierkasten-Modelle (NORB16 + 17 Raster), Symbolbibliothek im `kp-print-agent`.
+**Noch offen:** Standalone-Teile je Fach im Sortierkisten-Editor, mehrere Kartentypen je Artikel, Admin-Einstellungen/Nummernvergabe neu ordnen, Einsatz-Menü, CNS/RAW/CMP komplett aus dem Schema, Pi zieht Image aus ghcr (Paket noch privat).
+
+### M48 erledigt (2026-11-04)
+Katalog enthält jetzt Filament-Spule, UV-Harz-Flasche (250/500/1000 ml), Steckernetzteil, Kabel mit Steckern, Werkzeug (allgemein), PPE, Norb16-Bin (1x1/2x1/2x2, gedruckt/nicht gedruckt); Menü „Kabel & Material“ aus den Tabs entfernt (Route bleibt unverlinkt). Kartenarten: Notiz, Pinout, Eigenschaften, Checkliste, Links (Migration 025); Notiz/Link direkt beim Anlegen. Admin: Nummernvergabe nach Schema-Gruppen mit Filter. Einsatz-Assistent: Standardgrößen-Chips, „noch nicht gedruckt“. Kategorien CNS/RAW/CMP bleiben im Datenmodell. Pi: BLE-Scan klappt (bleak/BlueZ), D30 war nicht in Reichweite – echter Druck ungetestet.
+**Offen:** Standalone-Teile je Fach im Sortierkisten-Editor, Pi zieht Image aus ghcr (Paket privat), `/neu/material` ganz entfernen (Tests hängen dran).
+
+### M49 erledigt (2026-11-04) – Release 1.0.0
+Dreizeiliges Standard-Etikett für alle Typen (`catalog.default_label_layout`, `Type.label_lines`; Vorrang: gespeichertes Layout > eigene Haupt-/Zusatzzeile > Standard). Anlegen: Live-Etikett (`/neu/etikett.png`) mit Rücksprung aus dem Editor (sessionStorage-Entwurf, `?draft=1`), Wie letztes Teil/Duplizieren (`?vorlage=<id>`), Varianten-Reihe + Satzdruck (`/neu/satz`), Pflichtfelder (`/neu/pflicht`) und „merken“ (Migration 026, `typesettings.required_keys/kept_values`), „Weitere Angaben“ für alle Typen (`GROUP_EXTRAS`), Node-Liste (`catalog.node_types`, Admin), Bulk-Aktion „Typ-Feld setzen“.
+**Offen:** Standalone-Teile je Fach im Sortierkisten-Editor, Pi zieht Image aus ghcr (Paket privat), `/neu/material` entfernen, Pi-Bluetooth zum D30.
+
+### M50 erledigt (2026-11-04) – Release 1.1.0
+Filament/Harz: Klassen (Presets, `preset`), Kunststoff + Zusatz mit %, Spulentyp, Spulenleergewicht, Preis; Hersteller werden gemerkt. Anlegen: Merken-Haken klein, Eingaben lang, Pflichtfelder zuerst, Komma→Punkt. Sortierkasten: Drag & Drop, Druck-Parameter, `bins.json` (+ `norb_bins.py --file`). **A4 komplett neu** (`app/a4.py`): Typen Tag/Seitenetikett/Box/Inhalt, Rot, Warteschlange, Regalpackung, PDF, IPP-Druck nach Bestätigung, Bin-Etikett-Editor mit Tags; **XLSX entfernt**; Drucken-Menü neu geordnet. Migration 027. Docs: `docs/A4.md`, `docs/VERBRAUCH.md`, `docs/BINS.md`.
+**Offen:** echter A4-Druck am Netzwerkdrucker (nur gegen Fake-IPP getestet), Standalone-Teile je Fach im Sortierkisten-Editor, Pi zieht Image aus ghcr (Paket privat), `/neu/material` entfernen, Pi-Bluetooth zum D30.
+
+### M51 erledigt (2026-11-04) – Release 1.2.0
+Druckfehler → automatisch Warteschlange; Nav „Drucken“ mit Druckersymbol; Filament/Harz als Einzelstücke (+ Haken „Einzelteile" bei allen Typen, Duplizieren); Kunststoff = 100 − Zusatz (Migration 028); A4-Etikett aus Behälter; Einstellung `api_write_key`; MCP-Anlegen (stdio, mit/ohne Schlüssel) real getestet.
+**Offen:** wie M50 (echter A4-Druck, Standalone je Fach, ghcr privat, `/neu/material`, Pi-Bluetooth).
+
+### M52 erledigt (2026-11-04) – Release 1.3.0
+Umlaute/ß auf dem Pi (Roboto mitgeliefert, `labelimg.BUNDLED_FONT`); A4-Gestalter mit Behälter-Übernahme, Zeilenfarben Schwarz/Rot, QR/Rahmen/Größe, Live-Vorschau (`/a4/layout.png`).

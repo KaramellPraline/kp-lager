@@ -41,12 +41,12 @@ def test_content_labels_for_bins_and_compartments(client: TestClient) -> None:
     target = re.findall(r'<option value="(\d+)">A1', page)[0]
     client.post(f"/n/{k}/quickadd", data={"target": target, "text": "M3 Muttern", "queue": "1"})
     labels_page = client.get("/labels").text
-    assert "Inhaltsetiketten (1)" in labels_page and "BIN-001 · M3 Muttern" in labels_page
-    a4 = client.get("/labels/content/a4").text
-    assert "<b>BIN-001</b><span>M3 Muttern</span>" in a4
-    x = client.get("/labels/content.xlsx")
-    assert x.status_code == 200 and x.content[:2] == b"PK"
-    assert "Inhaltsetiketten (0)" in client.get("/labels").text  # nach Export geleert
+    assert (
+        "Inhaltsetiketten vorgemerkt (1)" in labels_page and "BIN-001 · M3 Muttern" in labels_page
+    )
+    a4 = client.post("/labels/content/a4q")
+    assert a4.url.path == "/a4" and "BIN-001" in a4.text
+    assert "Inhaltsetiketten vorgemerkt" not in client.get("/labels").text  # nach Übergabe geleert
     bin_id = target
     r = client.post(f"/labels/content/node/{bin_id}")
     assert "vorgemerkt" in r.text

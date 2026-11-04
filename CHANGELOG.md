@@ -3,6 +3,74 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.3.0] – 2026-11-04
+
+### Behoben
+- Umlaute, ß, €, ° und µ fehlten in Etiketten-Bildern auf dem Pi: Im Docker-Image gibt es keine Systemschriften. Jetzt wird Roboto (Apache 2.0) mitgeliefert (`app/static/fonts/Roboto-Regular.ttf`).
+
+### Neu
+- A4 „Neues Etikett“ ist ein Gestalter wie beim kleinen Etikett: Zeilen (bis 4) mit Höhe, Ausrichtung und **Farbe (Schwarz/Rot)**, QR links/rechts/ohne, Rahmen abgerundet/eckig/keiner, Rahmenfarbe, Größe in mm, Live-Vorschau.
+- Behälter wählen übernimmt **Name und Code automatisch** (Platzhalter `{name}`, `{code}`, `{inhalt}`, `{ort}`); Vorlagen Box-Label, Etikett mit QR, Inhaltsetikett, Großes Schild.
+
+## [1.2.0] – 2026-11-04
+
+### Neu
+- Scheitert der Druck (MQTT/Agent/D30 offline), landen die Etiketten automatisch in der Druck-Warteschlange (Anlegen, Einsatz-Assistent, Druckvorschau).
+- Navigation: „Etiketten“ heißt jetzt „Drucken“ mit Druckersymbol.
+- Filament/Harz sind Einzelstücke: Anzahl N legt N Spulen/Flaschen mit eigenem Code an; bestehende lassen sich per „Duplizieren“ als Vorlage nutzen. Bei allen Typen: kleiner Haken „Einzelteile“ neben der Menge.
+- Kunststoff hat kein Anteilfeld mehr: Anteil = 100 − Zusatz („PA12 80% + CF 20%“).
+- A4-Warteschlange: neues Etikett aus einem Behälter wählen (Name, Code, optional Inhalt als Zeilen) oder alles selbst eintragen.
+- Einstellung „API: Schreiben nur mit Schlüssel“ (Betrieb): zum Debuggen abschaltbar. MCP-Anlegen von Teilen mit und ohne Schlüssel getestet.
+- Migration 028 (Presets ohne Kunststoffanteil).
+
+## [1.1.0] – 2026-11-04
+
+### Neu
+- Filament/Harz: Klassen (Presets) als oberste Reihe beim Anlegen, Preset-Ersteller (auch mit Hersteller/Preis), manuell eingetragene Hersteller werden gemerkt. Filament: Kunststoff + Zusatz (je mit %), Spulentyp, Spulenleergewicht, Preis; Harz: Preis, Leerflasche. Workflow: `docs/VERBRAUCH.md`.
+- Anlegen: „merken“ als kleiner Haken, Eingabefelder wieder lang; Pflichtfelder zuerst, darunter optionale; Komma wird überall zu Punkt (Dezimalzahlen).
+- Sortierkasten: Einsätze per Drag & Drop verschieben; Druck-Parameter je Einsatz; Bin-Druckdatei `bins.json` (Drucken → Dateien) für `cad/norb_bins.py --file`.
+- A4 komplett neu (`docs/A4.md`): Etikettentypen Etikett/Seitenetikett (alle Fächer)/Box-Label (abgerundeter Rahmen, Länge × Breite)/Inhaltsetikett, Rot möglich, Warteschlange, automatische Anordnung auf A4, PDF, Netzwerkdruck per IPP erst nach Bestätigung (nie automatisch). Bin-Etikett-Editor mit Tags aus „Kein eigenes Etikett“-Teilen.
+- Drucken-Menü übersichtlicher (Kacheln D30/A4/Layout/Dateien); Layout je Typ bleibt.
+
+### Entfernt
+- XLSX-Export (Etiketten, Inhaltsetiketten) und alte A4-/A8-Bögen; Abhängigkeit `openpyxl`.
+
+### Technik
+- Migration 027 (`a4_job`, `preset`, `container.label_text`, `container.cad`).
+
+## [1.0.0] – 2026-11-04
+
+### Neu
+- Standard-Etikett für alle Typen dreizeilig: Typ + Spezifikation · Maße · Code (je Typ eigene Zeilen, z. B. „Heat-Set Insert M3“ / „3 x 4.2mm“ / „CNS-002“); eigenes Layout hat weiter Vorrang.
+- Anlegen: Live-Etikett-Vorschau, Antippen öffnet den Layout-Editor und bringt mit allen Eingaben zurück; „Wie letztes Teil“, Duplizieren am Teil, Varianten-Reihe (mehrere Werte → mehrere Teile, Etiketten als Satz), Pflichtfelder je Typ, „merken“ für Felder, „Alle Etiketten drucken (Satz)“.
+- Optionale Felder („Weitere Angaben“) für alle Typen: Norm, Festigkeitsklasse, Beschichtung, Hersteller, Bezugsquelle u. v. m.; Insert zusätzlich Node (Nut-Typ), Einbau, Form, Bohrung, Auszugskraft …
+- Node-Typen als eigene Liste (Admin → Node-Typen).
+- Sammelbearbeitung: Typ-Feld (Node, Material, Hersteller …) für viele Teile gleichzeitig setzen.
+- Migration 026 (Pflichtfelder, gemerkte Werte je Typ).
+
+## [0.7.1] – 2026-11-04
+
+### Neu
+- Druck-Symbol an Teil und Behälter: sofort auf den D30 drucken, bei Fehler automatisch in die Warteschlange.
+- D30-Druck nutzt immer das aktuelle Etiketten-Layout des Artikeltyps.
+
+## [0.7.0] – 2026-11-04
+
+### Neu
+- Katalog: Filament-Spule, UV-Harz-Flasche (250/500/1000 ml), Steckernetzteil, Kabel mit Steckern, Werkzeug, PPE, Norb16-Bin; Menü „Kabel & Material“ entfällt.
+- Mehr Kartenarten (Eigenschaften, Checkliste, Links); Notiz/Datenblatt-Link schon beim Anlegen.
+- Admin: Nummernvergabe nach Gruppen mit Filter.
+- Einsatz-Assistent: Standardgrößen 1x1/2x1/2x2/3x1/4x1, „noch nicht gedruckt“.
+
+## [0.6.0] – 2026-11-04
+
+### Neu
+- Etiketten-Layout: Vorlagen („Alles“, Standard, Nur Name) und „Für alle Typen übernehmen“.
+- Druckmodus-Menü beim Anlegen: Aus · Einzeln (sofort 40x12) · Sammeln (Warteschlange).
+- Behälter-Leergewicht (Bearbeiten-Block am Behälter).
+- 17 weitere Sortierkasten-Raster (insgesamt 18 Modelle).
+- Druck-Agent (eigenes Repo): Symbolbibliothek für Homelab/DIY.
+
 ## [0.5.0] – 2026-11-04
 
 ### Neu

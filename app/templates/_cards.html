@@ -2,15 +2,21 @@
   <h2>Karten</h2>
   {% for c in cards %}
   <div class="card card-note">
-    <div class="title-row"><b>{{ c.title }}</b><span class="chip">{{ 'Pinout' if c.kind == 'pinout' else 'Notiz' }}</span></div>
+    <div class="title-row"><b>{{ c.title }}</b><span class="chip">{{ CARD_KINDS[c.kind][0] }}</span></div>
     {% if c.kind == 'pinout' %}
     <table class="pinout"><thead><tr><th>Pin</th><th>Funktion</th><th>Hinweis</th></tr></thead>
       <tbody>{% for r in c.rows %}<tr><td>{{ r[0] }}</td><td>{{ r[1] if r|length > 1 }}</td><td>{{ r[2] if r|length > 2 }}</td></tr>{% endfor %}</tbody></table>
+    {% elif c.kind == 'spec' %}
+    <table class="pinout"><tbody>{% for r in c.rows %}<tr><th>{{ r[0] }}</th><td>{{ r[1] if r|length > 1 }}</td></tr>{% endfor %}</tbody></table>
+    {% elif c.kind == 'checklist' %}
+    <ul class="list">{% for r in c.rows %}<li>{{ '[x]' if r[0] == '1' else '[ ]' }} {{ r[1] }}</li>{% endfor %}</ul>
+    {% elif c.kind == 'link' %}
+    <ul class="list">{% for r in c.rows %}<li><a href="{{ r[1] }}" target="_blank" rel="noopener noreferrer">{{ r[0] }}</a></li>{% endfor %}</ul>
     {% else %}<p class="notes">{{ c.body }}</p>{% endif %}
     <details><summary>Bearbeiten</summary>
       <form method="post" action="/cards/{{ c.id }}/edit" class="stack">
         <input name="title" value="{{ c.title }}" required aria-label="Titel">
-        <textarea name="body" rows="{{ 8 if c.kind == 'pinout' else 4 }}" aria-label="Inhalt">{{ c.body }}</textarea>
+        <textarea name="body" rows="{{ 8 if c.kind != 'note' else 4 }}" aria-label="Inhalt" placeholder="{{ CARD_KINDS[c.kind][1] }}">{{ c.body }}</textarea>
         <button class="primary">Speichern</button>
       </form>
       <form method="post" action="/cards/{{ c.id }}/delete" onsubmit="return confirm('Karte löschen?')"><button>Löschen</button></form>
@@ -19,10 +25,10 @@
   {% endfor %}
   <details {% if not cards %}open{% endif %}>
     <summary>{{ icon('action.add', size='sm') }} Karte hinzufügen</summary>
-    <form method="post" action="{{ card_action }}" class="stack card">
-      <select name="kind" aria-label="Art"><option value="note">Notiz</option><option value="pinout">Pinout (Pin; Funktion; Hinweis)</option></select>
+    <form method="post" action="{{ card_action }}" class="stack card" id="card-add">
+      <select name="kind" aria-label="Art">{% for k, v in CARD_KINDS.items() %}<option value="{{ k }}" data-hint="{{ v[1] }}" data-title="{{ v[2] }}">{{ v[0] }}</option>{% endfor %}</select>
       <input name="title" placeholder="Titel, z. B. Pinbelegung J1" required>
-      <textarea name="body" rows="5" placeholder="Notiz – oder Pinout, eine Zeile je Pin:&#10;1; VCC; 3,3 V&#10;2; GND"></textarea>
+      <textarea name="body" rows="5" placeholder="Freier Text"></textarea>
       <button class="primary">Anlegen</button>
     </form>
   </details>

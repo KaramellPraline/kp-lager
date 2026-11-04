@@ -35,7 +35,7 @@ Vorwissen weiterarbeiten kann.
 | App-Start, Routen | `app/main.py`, `app/web.py` (Hauptrouten, Schnelleingabe), `app/web_ops.py` (Betrieb: Status, Trockner, Slicer, Massenaktionen, D30-Status), `app/web_katalog.py` (Katalog, Einsatz-Assistent, Baum), `app/api.py` (REST) |
 | Datenzugriff | `app/db.py` (Verbindung, Migrationen), `app/repo.py` (Behälter/Teile), `app/codes.py` (Code-Schema), `app/kinds.py` (Behälterarten) |
 | Anlegen | `app/catalog.py` (Teile-Typen, Namensvorlagen), `app/choices.py` (Auswahllisten Filament/Harz), `app/quick.py` (Schnelleingabe-Parser), `app/creation.py` (API/MCP), `app/importer.py` |
-| Etiketten | `app/labels.py` (Listen, XLSX), `app/labelimg.py` (Bild 320×96), `app/d30.py` (Bluetooth-Druck) |
+| Etiketten | `app/labels.py` (Listen, Layout je Typ), `app/a4.py` + `app/web_a4.py` (A4), `app/labelimg.py` (Bild 320×96), `app/d30.py` (Bluetooth-Druck) |
 | Sortierkasten | `app/kasten.py`, `cad/norb_bins.py`, `cad/bin_params.json` |
 | Material | `app/materials.py`, `app/dryer.py`, `app/slicer.py`, `app/vision.py`, `app/value.py` |
 | Betrieb | `app/scheduler.py` (Backup täglich), `app/backup.py`, `app/status.py`, `app/config.py` |
@@ -59,7 +59,7 @@ Einrichtung Schritt für Schritt: [CLOUD.md](CLOUD.md) (Hook `.claude/hooks/sess
 
 Funktioniert vollständig für alles außer Hardware:
 
-- Läuft in der Cloud: App, API, Tests, Lint, Typecheck, Katalog, Baum, Etiketten als Bild (`/labels/img/<CODE>.png`), XLSX-Export.
+- Läuft in der Cloud: App, API, Tests, Lint, Typecheck, Katalog, Baum, Etiketten als Bild (`/labels/img/<CODE>.png`), A4-PDF, IPP gegen Fake-Server (Testort.
 - Läuft nur am Windows-PC: D30-Druck (Bluetooth, Client mit Bridge).
 - Eine Test-Instanz für die Oberfläche: `LAGER_DATA_DIR=/tmp/lager LAGER_AUTO_BACKUP=0 LAGER_D30=0 uv run uvicorn app.main:app --port 8000`.
 - CI (`.github/workflows/ci.yml`) führt Lint, Typecheck und Tests bei jedem Push und PR aus.

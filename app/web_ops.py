@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from app import (
     backup,
     bulk,
+    catalog,
     d30,
     dryer,
     itemtypes,
@@ -262,6 +263,7 @@ def register(
         return render(
             request, conn, "auswahl.html", title=title, rows=rows, nodes=nodes,
             actions=bulk.ACTIONS, targets=repo.all_paths(conn),
+            field_opts=catalog.field_choices(),
             tags=itemtypes.all_types(conn), cats=kinds.ITEM_CATS,
             back=request.url.path + ("?" + request.url.query if request.url.query else ""),
         )  # fmt: skip
@@ -271,9 +273,12 @@ def register(
         form = await request.form()
         refs = [str(v) for v in form.getlist("ref")]
         back = safe_back(str(form.get("back", "/auswahl")), "/auswahl")
+        value = str(form.get("value", ""))
+        if form.get("action") == "field":
+            value = f"{form.get('field', '')}={value}"
         msg = bulk.apply(
             conn, refs, str(form.get("action", "")),
-            value=str(form.get("value", "")), target=str(form.get("target", "")),
+            value=value, target=str(form.get("target", "")),
         )  # fmt: skip
         return redirect(back, msg)
 

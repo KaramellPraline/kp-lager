@@ -9,9 +9,11 @@ Optional Etikettenablage 40×12 mm an der Rückwand.
 Beispiele:
   uv run --group cad python cad/norb_bins.py 2x2 --div 3x1
   uv run --group cad python cad/norb_bins.py --standard
+  uv run --group cad python cad/norb_bins.py --file bins.json   # Bin-Druckdatei aus KP Lager
 """
 
 import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -77,6 +79,9 @@ class BinSpec:
             parts.append(f"div{self.div_x}x{self.div_y}")
         if self.label:
             parts.append("label")
+        for key in ("pitch", "wall", "floor", "divider", "scoop", "corner", "draft", "chamfer"):
+            if getattr(self, key) != BinSpec.__dataclass_fields__[key].default:
+                parts.append(f"{key}{getattr(self, key):g}")  # abweichende Parameter im Dateinamen
         return "_".join(parts)
 
 
@@ -234,6 +239,23 @@ def _pair(text: str) -> tuple[int, int]:
     return int(a), int(b or 1)
 
 
+def specs_from_file(path: Path) -> list[BinSpec]:
+    """Bin-Druckdatei (KP Lager: Drucken -> Dateien -> bins.json) -> je Einsatz ein BinSpec.
+    Gleiche Einsätze (Größe, Teilung, Parameter) werden nur einmal erzeugt."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if data.get("format") != "kp-lager-bins/1":
+        raise SystemExit(f"{path}: unbekanntes Format {data.get('format')!r}")
+    known = {"label", "pitch", "wall", "floor", "divider", "scoop", "corner", "draft", "chamfer"}
+    out: dict[BinSpec, None] = {}
+    for box in data.get("boxes", []):
+        for b in box.get("bins", []):
+            w, d = _pair(b["size"])
+            div = b.get("divisions", {})
+            params = {k: v for k, v in b.get("params", {}).items() if k in known}
+            out[BinSpec(w, d, int(div.get("x", 1)), int(div.get("y", 1)), **params)] = None
+    return list(out)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("size", nargs="?", help="Größe BxT in Rastereinheiten, z. B. 2x1")
@@ -241,15 +263,18 @@ def main() -> None:
     ap.add_argument("--no-label", action="store_true", help="ohne Etikettenablage")
     ap.add_argument("--pitch", type=float, default=BinSpec.pitch, help="Rastermaß in mm")
     ap.add_argument("--standard", action="store_true", help="Standard-Set erzeugen")
+    ap.add_argument("--file", type=Path, help="Bin-Druckdatei aus KP Lager (bins.json)")
     ap.add_argument("--out", type=Path, default=Path("out/bins"))
     args = ap.parse_args()
-    if args.standard:
+    if args.file:
+        specs = specs_from_file(args.file)
+    elif args.standard:
         specs = STANDARD
     elif args.size:
         (w, d), (dx, dy) = _pair(args.size), _pair(args.div)
         specs = [BinSpec(w, d, dx, dy, label=not args.no_label, pitch=args.pitch)]
     else:
-        ap.error("Größe angeben oder --standard")
+        ap.error("Größe angeben, --standard oder --file")
     for spec in specs:
         for path in export(spec, args.out):
             print(path)

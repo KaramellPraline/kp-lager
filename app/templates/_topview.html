@@ -1,7 +1,7 @@
 {# Draufsicht eines Sortierkastens mit Einsätzen (topview aus app/kasten.py) #}
 <section class="topview-wrap">
   <h2>{{ topview.model.name }} – Draufsicht</h2>
-  <svg class="topview" viewBox="-12 -12 {{ topview.width + 24 }} {{ topview.height + 24 }}" role="img"
+  <svg class="topview" id="topview" data-kasten="{{ node.id }}" data-cell="100" data-cells="{{ topview.cells|tojson|forceescape }}" viewBox="-12 -12 {{ topview.width + 24 }} {{ topview.height + 24 }}" role="img"
        aria-label="Draufsicht {{ node.name }}">
     <rect x="-10" y="-10" width="{{ topview.width + 20 }}" height="{{ topview.height + 20 }}" rx="14" class="tv-box"/>
     {% for f in topview.free %}
@@ -17,6 +17,7 @@
     <text x="{{ topview.blocked[0].x + 50 }}" y="{{ topview.blocked[1].y + 56 if topview.blocked|length > 1 else topview.blocked[0].y + 56 }}" class="tv-cell">{{ topview.model.blocked_label }}</text>
     {% endif %}
     {% for b in topview.bins %}
+    <g class="tv-drag" data-bin="{{ b.id }}" data-bincells="{{ b.cells }}">
     <a href="/n/{{ b.id }}">
       <rect x="{{ b.x + 4 }}" y="{{ b.y + 4 }}" width="{{ b.w - 8 }}" height="{{ b.h - 8 }}" rx="8" class="tv-bin"/>
     </a>
@@ -27,9 +28,12 @@
     </a>
     {% endfor %}
     <text x="{{ b.x + b.w - 10 }}" y="{{ b.y + b.h - 12 }}" class="tv-code">{{ b.code }}</text>
+    </g>
     {% endfor %}
   </svg>
   <p class="meta">Freie Zelle antippen → Einsatz einsetzen · Fach antippen → Inhalt</p>
+  <p class="row"><button type="button" id="tv-move-toggle" class="chip" aria-pressed="false">{{ icon('action.move', size='sm') }} Einsätze verschieben (Drag &amp; Drop)</button>
+    <span class="meta" id="tv-move-hint" hidden>Einsatz ziehen und auf freie Zellen loslassen.</span></p>
   <p class="row"><a class="button" href="/n/{{ node.id }}?drehen={{ (topview.rot + 90) % 360 }}#" rel="nofollow">{{ icon('action.refresh', size='sm') }} Kiste drehen</a>
     <span class="meta">Ansicht {{ topview.rot }}° · Griff {{ {0: 'links', 90: 'oben', 180: 'rechts', 270: 'unten'}[topview.rot] }} · Größe „LxK“: x = lange Seite</span></p>
 </section>

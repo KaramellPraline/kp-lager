@@ -3,7 +3,7 @@
 {% block content %}
 <nav class="crumbs"><a href="/labels">Etiketten</a> › Vorschau</nav>
 <h1>{% if source == "queue" %}Warteschlange{% else %}Druckvorschau{% endif %} ({{ rows|length }})</h1>
-<p class="meta">Text bearbeiten, dann exportieren. Auf dem D30 (40×12) passen ca. {{ text_max }} Zeichen – längere werden gekürzt.</p>
+<p class="meta">Text bearbeiten, dann drucken. Auf dem D30 (40×12) passen ca. {{ text_max }} Zeichen – längere werden gekürzt.</p>
 
 <form method="post" action="/labels/export" class="stack" id="export">
   <input type="hidden" name="source" value="{{ source }}">
@@ -28,9 +28,9 @@
   <div class="row">
     {% if D30 %}<button name="fmt" value="d30" class="primary d30-btn" data-d30 disabled><span class="d30-dot" aria-hidden="true"></span> Auf D30 drucken</button>{% endif %}
     {% if source != 'queue' %}<button name="fmt" value="queue">{{ icon('content.tag', size='sm') }} In Warteschlange</button>{% endif %}
-    <button name="fmt" value="xlsx">{{ icon('action.download', size='sm') }} XLSX für D30 exportieren</button>
+    <button name="fmt" value="a4q">{{ icon('action.print', size='sm') }} In A4-Warteschlange</button>
   </div>
-  <p class="meta">Auf Papier drucken: <a href="/labels/a4">A4-Druck</a> (Auswahl aus allen Etiketten). Export zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
+  <p class="meta">A4 wird nie automatisch gedruckt: <a href="/a4">A4-Warteschlange</a> prüfen und dort bestätigen. Druck zählt als gedruckt{% if source == 'blank' %} und reserviert die Codes{% endif %}.</p>
 </form>
 <script>
   // Hinweis, wenn Text auf dem D30 gekürzt würde

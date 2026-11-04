@@ -177,7 +177,7 @@ def print_codes(conn: sqlite3.Connection, base_url: str, codes_: list[str]) -> i
     rows = []
     for code in dict.fromkeys(codes_):
         if label := labels.find(conn, base_url, code):
-            rows.append(label)
+            rows.append(labels.with_layout(conn, label))  # immer das aktuelle Layout des Typs
     try:
         print_labels(rows)
     except LagerError as exc:

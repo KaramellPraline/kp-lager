@@ -52,3 +52,6 @@ Schreibwerkzeuge melden dann „403: Dieser Schlüssel darf nur lesen“.
 
 ## MCP: Artikel aus einem Chat anlegen
 `tools/lager_mcp.py` ist ein MCP-Server (Tools: suchen, Behälter/Teile lesen, Teile anlegen, ein-/auslagern). In Claude Desktop (oder jedem MCP-Client) den Eintrag aus `docs/mcp.example.json` in die MCP-Konfiguration übernehmen, `--directory` auf diesen Ordner setzen, `LAGER_URL=https://lager.home.lan` und `LAGER_API_KEY` (Schreib-Schlüssel aus Einstellungen › Admin) eintragen; Voraussetzung `uv sync --group mcp`. Danach reicht im Chat z. B. „Lege 50 M3x10 Zylinderkopfschrauben ins Fach Elektro“. Der Schlüssel bleibt lokal und wird nie committet.
+
+## Schlüssel abschaltbar (Debug)
+`Einstellungen → Betrieb → „API: Schreiben nur mit Schlüssel“` (Standard an). Aus: Schreiben per REST/CLI/MCP im LAN ohne Schlüssel – nur zum Testen, danach wieder einschalten. „API: auch Lesen nur mit Schlüssel“ bleibt davon unabhängig.
