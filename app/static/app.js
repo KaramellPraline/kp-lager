@@ -363,6 +363,17 @@
       var b = e.target.closest("button[formaction]");
       if (b) saveDraft();
     });
+    // Klassen-Presets: Klick füllt die hinterlegten Felder vor
+    form.querySelectorAll(".preset-chip").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var d = JSON.parse(b.dataset.preset || "{}");
+        Object.keys(d).forEach(function (k) {
+          var i = document.getElementById("f_" + k);
+          if (i) i.value = d[k];
+        });
+        preview();
+      });
+    });
     // „Wie letztes Teil“: alle Felder des zuletzt angelegten Teils dieses Typs übernehmen
     var last = document.getElementById("use-last");
     if (last) last.addEventListener("click", function () {
@@ -755,3 +766,70 @@ document.addEventListener("click", function (ev) {
     });
   });
 })();
+
+// Dezimalzahlen immer mit Punkt: „1,75“ wird beim Tippen zu „1.75“ (Komma zwischen Ziffern)
+document.addEventListener("input", function (e) {
+  var el = e.target;
+  if (!el || el.tagName !== "INPUT" || el.dataset.keepComma !== undefined) return;
+  if (["text", "search", "number", "tel", ""].indexOf(el.type) < 0) return;
+  if (!/\d,\d/.test(el.value)) return;
+  var pos = el.selectionStart;
+  el.value = el.value.replace(/(\d),(?=\d)/g, "$1.");
+  try { el.setSelectionRange(pos, pos); } catch (err) {}
+});
+
+// Sortierkasten-Draufsicht: Einsätze per Drag & Drop auf freie Zellen verschieben
+document.addEventListener("DOMContentLoaded", function () {
+  var svg = document.getElementById("topview");
+  if (!svg) return;
+  var toggle = document.getElementById("tv-move-toggle"), hint = document.getElementById("tv-move-hint");
+  var cells = JSON.parse(svg.dataset.cells || "[]"), unit = +svg.dataset.cell || 100;
+  var byXY = {};
+  cells.forEach(function (c) { byXY[c.x + "," + c.y] = c.cell; });
+  var on = false, drag = null, moved = false;
+  toggle.addEventListener("click", function () {
+    on = !on;
+    toggle.setAttribute("aria-pressed", on);
+    toggle.classList.toggle("on", on);
+    svg.classList.toggle("moving", on);
+    hint.hidden = !on;
+  });
+  function pt(e) {
+    var p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+    return p.matrixTransform(svg.getScreenCTM().inverse());
+  }
+  svg.addEventListener("pointerdown", function (e) {
+    var g = e.target.closest(".tv-drag");
+    if (!on || !g) return;
+    var cs = g.dataset.bincells.split(",").map(function (n) {
+      var c = cells.filter(function (x) { return x.cell === n; })[0]; return c;
+    });
+    drag = { g: g, start: pt(e), cells: cs };
+    moved = false;
+    g.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  svg.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    var p = pt(e), dx = p.x - drag.start.x, dy = p.y - drag.start.y;
+    if (Math.abs(dx) + Math.abs(dy) > 8) moved = true;
+    drag.g.setAttribute("transform", "translate(" + dx + "," + dy + ")");
+    drag.g.classList.add("dragging");
+  });
+  svg.addEventListener("pointerup", function (e) {
+    if (!drag) return;
+    var p = pt(e), dx = Math.round((p.x - drag.start.x) / unit) * unit, dy = Math.round((p.y - drag.start.y) / unit) * unit;
+    var g = drag.g, cs = drag.cells;
+    drag = null;
+    g.removeAttribute("transform"); g.classList.remove("dragging");
+    if (!moved || (!dx && !dy)) return;
+    var names = cs.map(function (c) { return byXY[(c.x + dx) + "," + (c.y + dy)]; });
+    if (names.indexOf(undefined) >= 0) return;
+    var fd = new FormData(); fd.append("cells", names.join(","));
+    fetch("/n/" + svg.dataset.kasten + "/bins/" + g.dataset.bin + "/move", { method: "POST", body: fd })
+      .then(function (r) { location.href = r.url; });
+  });
+  svg.addEventListener("click", function (e) {
+    if (on) { e.preventDefault(); e.stopPropagation(); }
+  }, true);
+});

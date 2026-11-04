@@ -62,6 +62,9 @@
       {% elif KIND_PREFIX.get(node.kind) %}
       <form method="post" action="/n/{{ node.id }}/code"><button>{{ icon('content.tag') }} {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
       {% endif %}
+      {% if node.code or node.kind == 'bin' %}
+      <form method="post" action="/a4/queue/node/{{ node.id }}"><button>{{ icon('action.print') }} {{ 'Seitenetikett' if node.kind == 'bin' else 'Etikett' }} → A4-Warteschlange</button></form>
+      {% endif %}
       {% if node.kind in ('bin', 'compartment') %}
       <form method="post" action="/labels/content/node/{{ node.id }}"><button>{{ icon('content.tag') }} Inhaltsetikett</button></form>
       {% endif %}
@@ -75,8 +78,26 @@
     </div>
     {% if node.kind == 'bin' %}
     <p class="meta">3D-Druck dieses Einsatzes:<br><code>{{ cad }}</code></p>
+    <a class="button" href="/n/{{ node.id }}/etikett">{{ icon('content.tag', size='sm') }} Etikett-Editor (A4)</a>
     {% endif %}
   </div>
+
+  {% if node.kind == 'bin' %}
+  <details id="cad">
+    <summary>Druck-Parameter (3D-Generator)</summary>
+    <form method="post" action="/n/{{ node.id }}/cad" class="stack">
+      <p class="meta">Gehen in die Bin-Druckdatei (Drucken → Dateien). Leer = Standard.</p>
+      {% for k, f in cad_fields.items() %}
+      {% if f[2] is sameas true or f[2] is sameas false %}
+      <label class="check"><input type="checkbox" name="{{ k }}" value="1" {% if cad_values[k] %}checked{% endif %}> {{ f[0] }}</label>
+      {% else %}
+      <label>{{ f[0] }} <span class="meta">({{ f[1] }}, Standard {{ f[2] }})</span> <input name="{{ k }}" inputmode="decimal" value="{{ cad_values[k] if cad_values[k] != f[2] else '' }}" placeholder="{{ f[2] }}"></label>
+      {% endif %}
+      {% endfor %}
+      <button class="primary">Speichern</button>
+    </form>
+  </details>
+  {% endif %}
 
   <details id="edit-box">
     <summary>Bearbeiten</summary>

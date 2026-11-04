@@ -3,6 +3,21 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.1.0] – 2026-11-04
+
+### Neu
+- Filament/Harz: Klassen (Presets) als oberste Reihe beim Anlegen, Preset-Ersteller (auch mit Hersteller/Preis), manuell eingetragene Hersteller werden gemerkt. Filament: Kunststoff + Zusatz (je mit %), Spulentyp, Spulenleergewicht, Preis; Harz: Preis, Leerflasche. Workflow: `docs/VERBRAUCH.md`.
+- Anlegen: „merken“ als kleiner Haken, Eingabefelder wieder lang; Pflichtfelder zuerst, darunter optionale; Komma wird überall zu Punkt (Dezimalzahlen).
+- Sortierkasten: Einsätze per Drag & Drop verschieben; Druck-Parameter je Einsatz; Bin-Druckdatei `bins.json` (Drucken → Dateien) für `cad/norb_bins.py --file`.
+- A4 komplett neu (`docs/A4.md`): Etikettentypen Etikett/Seitenetikett (alle Fächer)/Box-Label (abgerundeter Rahmen, Länge × Breite)/Inhaltsetikett, Rot möglich, Warteschlange, automatische Anordnung auf A4, PDF, Netzwerkdruck per IPP erst nach Bestätigung (nie automatisch). Bin-Etikett-Editor mit Tags aus „Kein eigenes Etikett“-Teilen.
+- Drucken-Menü übersichtlicher (Kacheln D30/A4/Layout/Dateien); Layout je Typ bleibt.
+
+### Entfernt
+- XLSX-Export (Etiketten, Inhaltsetiketten) und alte A4-/A8-Bögen; Abhängigkeit `openpyxl`.
+
+### Technik
+- Migration 027 (`a4_job`, `preset`, `container.label_text`, `container.cad`).
+
 ## [1.0.0] – 2026-11-04
 
 ### Neu

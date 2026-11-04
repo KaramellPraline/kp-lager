@@ -1,20 +1,12 @@
 import html
-import io
 import re
 
 import pytest
 import segno
 from fastapi.testclient import TestClient
 from httpx import Response
-from openpyxl import load_workbook
 
 from app import codes, labels
-
-
-def xlsx_rows(content: bytes) -> list[tuple[object, ...]]:
-    ws = load_workbook(io.BytesIO(content)).active
-    assert ws is not None
-    return list(ws.iter_rows(values_only=True))
 
 
 def node_of(r: Response) -> str:
@@ -31,7 +23,7 @@ def preview(client: TestClient, **form: str) -> dict[str, list[str]]:
 
 
 def export(
-    client: TestClient, fields: dict[str, list[str]], fmt: str = "xlsx", **extra: str
+    client: TestClient, fields: dict[str, list[str]], fmt: str = "a4q", **extra: str
 ) -> Response:
     return client.post("/labels/export", data={**fields, "fmt": fmt, **extra})
 
@@ -56,9 +48,8 @@ def test_blank_preview_reserves_only_on_export(client: TestClient) -> None:
     assert fields["code"] == ["EUR-001", "EUR-002", "EUR-003"]
     assert preview(client, source="blank", prefix="EUR", count="1")["code"] == ["EUR-001"]
     fields["text"][0] = "Elektronik"
-    rows = xlsx_rows(export(client, fields).content)
-    assert rows[0] == ("Code", "QR", "Text")
-    assert rows[1] == ("EUR-001", "HTTPS://LAGER.TEST/C/EUR-001", "Elektronik")
+    page = export(client, fields).text  # landet in der A4-Warteschlange (nie automatisch gedruckt)
+    assert "Elektronik" in page and "EUR-003" in page
     assert preview(client, source="blank", prefix="EUR", count="1")["code"] == ["EUR-004"]
 
 
@@ -68,38 +59,83 @@ def test_edit_names_and_optionally_save(client: TestClient) -> None:
     fields = preview(client, source="pending")
     assert fields["code"] == ["ART-0001"] and fields["extra"] == ["Box"]
     fields["text"] = ["Akkuschrauber kurz"]
-    rows = xlsx_rows(export(client, fields).content)
-    assert rows[1][2] == "Akkuschrauber kurz"
+    assert "Akkuschrauber kurz" in export(client, fields).text
     assert "Akkuschrauber Makita DDF485 18V" in client.get(f"/n/{box}").text  # nicht gespeichert
-    assert "Alles gedruckt" in client.get("/labels").text
     export(client, fields, save_names="1")
     assert "Akkuschrauber kurz" in client.get(f"/n/{box}").text
 
 
-def test_long_text_cut_in_xlsx_only(client: TestClient) -> None:
-    fields = {
-        "code": ["ART-0005"],
-        "text": ["Ein wirklich sehr langer Gegenstandsname"],
-        "extra": [""],
-    }
-    assert xlsx_rows(export(client, fields).content)[1][2] == "Ein wirklich sehr lange…"
-    a8 = export(client, fields, fmt="a8").text
-    assert "Ein wirklich sehr langer Gegenstandsname" in a8
+def test_a4_packing_and_pdf() -> None:
+    from app import a4
+
+    sizes = [(50.0, 20.0)] * 40 + [(100.0, 60.0)] * 3 + [(194.0, 30.0)]
+    pages = a4.pack(sizes)
+    placed = [p for page in pages for p in page]
+    assert len(placed) == len(sizes) and len(pages) >= 2
+    for page in pages:  # nichts außerhalb des Randes, nichts überlappt
+        boxes = [(x, y, x + sizes[i][0], y + sizes[i][1]) for i, x, y in page]
+        for x0, y0, x1, y1 in boxes:
+            assert x0 >= a4.MARGIN and y0 >= a4.MARGIN
+            assert x1 <= a4.PAGE_W - a4.MARGIN + 1e-6 and y1 <= a4.PAGE_H - a4.MARGIN + 1e-6
+        for i, a in enumerate(boxes):
+            for b in boxes[i + 1 :]:
+                assert a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+    jobs = [{"type": "box", "title": "Schrauben", "w": 100, "h": 60, "color": "red",
+             "code": "EUR-001", "qr": "HTTPS://X/C/EUR-001"},
+            {"type": "tag", "title": "Zange", "code": "ART-0001", "qr": "HTTPS://X/C/ART-0001"}]  # fmt: skip
+    assert a4.pdf(jobs)[:5] == b"%PDF-"
+    img = a4.render(jobs[0])
+    assert img.size == (a4.mm(100), a4.mm(60))
+    assert any(px[0] > 150 and px[1] < 80 for px in img.getdata())  # rote Pixel vorhanden
 
 
-def test_a8_sheet_layout(client: TestClient) -> None:
-    fields = preview(client, source="blank", prefix="KIS", count="17")
-    r = export(client, fields, fmt="a8")
-    assert "size: A4 landscape" in r.text
-    assert r.text.count('class="sheet"') == 2
-    assert r.text.count('<div class="a8">') == 32  # 17 Etiketten + 15 leere Felder
-    first = r.text.index('<div class="a8">')
-    assert (
-        r.text.index("<svg", first)
-        < r.text.index('class="name"', first)
-        < r.text.index("KIS-001", first)
+def test_a4_queue_never_prints_without_confirmation(client: TestClient) -> None:
+    box = node_of(
+        client.post("/containers", data={"name": "Werkzeug", "kind": "kiste", "code": "KIS-001"})
     )
-    assert "KIS-018" in preview(client, source="blank", prefix="KIS", count="1")["code"]
+    client.post(f"/n/{box}/items", data={"name": "Zange"})
+    r = client.post("/a4/queue/item/1")
+    assert "in der A4-Warteschlange" in r.text and "Zange" in client.get("/a4").text
+    client.post("/a4/add", data={"type": "box", "title": "Werkstatt", "w": "120", "h": "50",
+                                 "color": "red"})  # fmt: skip
+    page = client.get("/a4").text
+    assert "A4-Warteschlange (2)" in page and "Box-Label" in page and "rot" in page
+    assert client.get("/a4/seite/1.png").content[:4] == b"\x89PNG"
+    assert client.get("/a4/queue.pdf").content[:5] == b"%PDF-"
+    assert "nicht bestätigt" in client.post("/a4/drucken", data={}).text
+    assert "Kein A4-Netzwerkdrucker" in client.post("/a4/drucken", data={"confirm": "1"}).text
+    assert "A4-Warteschlange (2)" in client.get("/a4").text  # nichts verloren
+
+
+def test_a4_ipp_print_sends_pdf_and_clears(client: TestClient) -> None:
+    import threading
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    seen: dict[str, bytes] = {}
+
+    class Fake(BaseHTTPRequestHandler):
+        def do_POST(self) -> None:
+            seen["body"] = self.rfile.read(int(self.headers["Content-Length"]))
+            seen["ctype"] = self.headers["Content-Type"].encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/ipp")
+            self.end_headers()
+            self.wfile.write(b"\x02\x00\x00\x00\x00\x00\x00\x01\x03")
+
+        def log_message(self, *args: object) -> None:
+            pass
+
+    srv = HTTPServer(("127.0.0.1", 0), Fake)
+    threading.Thread(target=srv.handle_request, daemon=True).start()
+    client.post("/a4/add", data={"type": "box", "title": "Werkstatt", "w": "120", "h": "50"})
+    url = f"ipp://127.0.0.1:{srv.server_port}/ipp/print"
+    client.post("/settings/admin/a4drucker", data={"a4_printer": url})
+    r = client.post("/a4/drucken", data={"confirm": "1"})
+    assert "1 Etiketten auf 1 Seite gedruckt" in r.text
+    assert seen["ctype"] == b"application/ipp" and b"%PDF-" in seen["body"]
+    assert b"application/pdf" in seen["body"]
+    assert "A4-Warteschlange (0)" in client.get("/a4").text
+    srv.server_close()
 
 
 def test_scan_reserved_code_preselects_kind(client: TestClient) -> None:
@@ -187,30 +223,8 @@ def test_default_qr_uses_schema_and_dns_name(monkeypatch: pytest.MonkeyPatch) ->
     )
 
 
-def test_preview_exports_only_xlsx(client: TestClient) -> None:
+def test_preview_offers_a4_queue_not_xlsx(client: TestClient) -> None:
     page = client.post(
         "/labels/preview", data={"source": "blank", "prefix": "EUR", "count": "2"}
     ).text
-    assert 'value="xlsx"' in page and 'value="a8"' not in page and 'value="a4"' not in page
-    assert 'href="/labels/a4"' in page
-
-
-def test_a4_selection_and_print(client: TestClient) -> None:
-    box = node_of(
-        client.post("/containers", data={"name": "Werkzeug", "kind": "kiste", "code": "KIS-001"})
-    )
-    client.post(f"/n/{box}/items", data={"name": "Zange"})  # ART-0001
-    client.post(f"/n/{box}/items", data={"name": "Feile"})  # ART-0002
-    page = client.get("/labels/a4").text
-    assert all(f'value="{c}"' in page for c in ("KIS-001", "ART-0001", "ART-0002"))
-    assert 'value="ART-0002"' not in client.get("/labels/a4", params={"q": "zange"}).text
-    r = client.post("/labels/a4", data={"code": ["ART-0001", "KIS-001"], "fmt": "a4"})
-    assert (
-        "grid-template-columns: repeat(5, 40mm)" in r.text
-        and "<b>ART-0001</b>" in r.text
-        and "ART-0002" not in r.text
-    )
-    r = client.post("/labels/a4", data={"code": ["ART-0002"], "fmt": "a8"})
-    assert "size: A4 landscape" in r.text and "Feile" in r.text
-    r = client.post("/labels/a4", data={"fmt": "a4"}, headers={"referer": "/labels/a4"})
-    assert "Nichts ausgewählt" in r.text
+    assert 'value="a4q"' in page and "xlsx" not in page.lower() and 'value="a8"' not in page

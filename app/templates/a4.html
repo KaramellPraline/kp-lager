@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}A4-Etiketten · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/labels">Drucken</a> › A4</nav>
+<h1>A4-Warteschlange ({{ queue|length }})</h1>
+<p class="meta">A4 wird nie automatisch gedruckt: Etiketten sammeln sich hier, werden platzsparend auf Seiten angeordnet und gehen erst nach deiner Bestätigung an den Netzwerkdrucker. Farbe (auch Rot) ist möglich.</p>
+
+{% if queue %}
+<section class="card stack">
+  <h2 style="margin-top:0">{{ pages }} Seite{{ 'n' if pages != 1 }}</h2>
+  <div class="a4-pages">{% for n in range(1, pages + 1) %}<a href="/a4/seite/{{ n }}.png" target="_blank"><img src="/a4/seite/{{ n }}.png" alt="Seite {{ n }}" loading="lazy"></a>{% endfor %}</div>
+  <ul class="list">
+    {% for q in queue %}
+    <li class="item a4-job"><img src="/a4/vorschau/{{ q.id }}.png" alt="" loading="lazy">
+      <span class="name">{{ types[q.kind][0] }} · {{ q.title or '–' }}{% if q.job.code %} · {{ q.job.code }}{% endif %}<small>{{ '%g'|format(q.job.w) }} × {{ '%g'|format(q.job.h) }} mm{% if q.job.color == 'red' %} · rot{% endif %}</small></span>
+      <form method="post" action="/a4/{{ q.id }}/remove"><button aria-label="Entfernen">{{ icon('nav.close') }}</button></form></li>
+    {% endfor %}
+  </ul>
+  <div class="row">
+    <form method="post" action="/a4/drucken" onsubmit="return confirm('{{ queue|length }} Etiketten auf {{ pages }} Seite(n) an den Drucker senden?\n{{ printer or 'Kein Drucker eingetragen' }}')">
+      <input type="hidden" name="confirm" value="1">
+      <button class="primary" {% if not printer %}disabled title="Erst unter Admin → A4-Drucker eintragen"{% endif %}>{{ icon('action.print', size='sm') }} Drucken (bestätigen)</button></form>
+    <a class="button" href="/a4/queue.pdf" target="_blank">{{ icon('action.download', size='sm') }} PDF ansehen</a>
+    <form method="post" action="/a4/clear"><button>Leeren</button></form>
+  </div>
+  {% if not printer %}<p class="meta">Noch kein Netzwerkdrucker: <a href="/settings/admin#a4drucker">Admin → A4-Drucker</a>.</p>{% else %}<p class="meta">Drucker: {{ printer }}</p>{% endif %}
+</section>
+{% else %}<p class="empty">Leer. Etiketten kommen per „A4“ am Teil, Behälter oder Einsatz hierher – oder unten frei anlegen.</p>{% endif %}
+
+<section class="card">
+  <h2 style="margin-top:0">Neues Etikett</h2>
+  <form method="post" action="/a4/add" class="stack" id="a4-add">
+    <label>Typ
+      <select name="type" id="a4-type">{% for k, t in types.items() if k != 'bin_side' %}<option value="{{ k }}" data-w="{{ t[2][0] }}" data-h="{{ t[2][1] }}" {% if k == 'box' %}selected{% endif %}>{{ t[0] }} – {{ t[1] }}</option>{% endfor %}</select></label>
+    <label>Titel <input name="title" placeholder="z. B. Schrauben M3" required></label>
+    <div class="frow">
+      <label class="nf">Länge (mm) <input name="w" id="a4-w" inputmode="decimal" value="100"></label>
+      <label class="nf">Breite (mm) <input name="h" id="a4-h" inputmode="decimal" value="60"></label>
+      <label class="nf">Farbe <select name="color">{% for k, n in colors.items() %}<option value="{{ k }}">{{ n }}</option>{% endfor %}</select></label>
+    </div>
+    <label>Code <span class="meta">(optional, für QR und Kennung)</span> <input name="code" placeholder="z. B. EUR-001" autocapitalize="characters"></label>
+    <label class="check"><input type="checkbox" name="qr" value="1" checked> QR-Code zum Code</label>
+    <label>Weitere Zeilen <textarea name="lines" rows="2" placeholder="je Zeile ein Text"></textarea></label>
+    <button class="primary">In die A4-Warteschlange</button>
+  </form>
+  <script>document.getElementById('a4-type').addEventListener('change',function(e){var o=e.target.selectedOptions[0];document.getElementById('a4-w').value=o.dataset.w;document.getElementById('a4-h').value=o.dataset.h;});</script>
+</section>
+{% endblock %}

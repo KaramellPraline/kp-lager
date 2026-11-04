@@ -8,7 +8,18 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import cards, catalog, codes, d30, kasten, labelimg, labels, repo, typesettings
+from app import (
+    cards,
+    catalog,
+    codes,
+    d30,
+    kasten,
+    labelimg,
+    labels,
+    presets,
+    repo,
+    typesettings,
+)
 from app.config import Settings
 from app.repo import LagerError
 
@@ -81,6 +92,7 @@ def register(
         key = typ or request.cookies.get(TYPE_COOKIE, "") or "schraube"
         current = catalog.lookup(conn, key) or catalog.BY_KEY["schraube"]
         kept = typesettings.kept_values(conn, current.key)
+        required = typesettings.required_keys(conn, current.key)
         last_row = conn.execute(
             "SELECT * FROM item WHERE ctype = ? ORDER BY id DESC LIMIT 1", (current.key,)
         ).fetchone()
@@ -104,10 +116,20 @@ def register(
             prefill=prefill,
             kept=kept,
             last_vals=last_vals,
-            required=typesettings.required_keys(conn, current.key),
-            opts={f.key: catalog.options_for(conn, f) for f in current.fields},
+            required=required,
+            sections={
+                "required": catalog.field_rows([f for f in current.fields if f.key in required]),
+                "optional": catalog.field_rows(
+                    [f for f in current.fields if f.key not in required and not f.extra]
+                ),
+                "extra": catalog.field_rows(
+                    [f for f in current.fields if f.key not in required and f.extra]
+                ),
+            },
+            presets=presets.all_for(conn, current.key),
+            opts={f.key: catalog.options_for(conn, f, current) for f in current.fields},
             draft=bool(draft),
-            series_fields=[f for f in current.fields if catalog.options_for(conn, f)],
+            series_fields=[f for f in current.fields if catalog.options_for(conn, f, current)],
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
             recent_targets=[
@@ -145,6 +167,23 @@ def register(
         codes.set_setting(conn, "print_mode", "einzel" if form.get("on") == "1" else "aus")
         return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
+    @app.post("/neu/preset")
+    def katalog_preset_save(conn: Conn, form: Form) -> RedirectResponse:
+        t = catalog.lookup(conn, form.get("typ", ""))
+        if t is None:
+            raise LagerError("Bitte einen Teile-Typ wählen")
+        values = {f.key: catalog.number(form.get(f"f_{f.key}", "")) for f in t.fields}
+        presets.save(conn, t.key, form.get("preset_name", ""), values)
+        catalog.remember_brand(conn, t, values.get("brand", ""))
+        return redirect(
+            f"/neu?typ={t.key}&draft=1", f"Preset „{form['preset_name'].strip()}“ gespeichert"
+        )
+
+    @app.post("/neu/preset/{preset_id}/loeschen")
+    def katalog_preset_delete(preset_id: int, conn: Conn, form: Form) -> RedirectResponse:
+        presets.delete(conn, preset_id)
+        return redirect(f"/neu?typ={form.get('typ', '')}&draft=1", "Preset gelöscht")
+
     @app.post("/neu/pflicht")
     def katalog_required(conn: Conn, form: Form) -> RedirectResponse:
         t = catalog.lookup(conn, form.get("typ", ""))
@@ -171,6 +210,7 @@ def register(
         if t is None:
             raise LagerError("Unbekannter Teile-Typ")
         vals = {f.key: request.query_params.get(f"f_{f.key}", "").strip() for f in t.fields}
+        vals = catalog.derive(t, vals)
         code = codes.format_code(t.cat, codes.next_number(conn, t.cat))
         vals.update({k: "" for k, _ in labels.EXTRA_FIELDS})
         vals.update({"name": catalog.name(t, vals) or t.label, "code": code, "ort": ""})
@@ -205,7 +245,7 @@ def register(
             raise LagerError("Bitte einen Teile-Typ wählen")
         target = int(form["target"]) if form.get("target", "").isdigit() else repo.inbox(conn)
         qty = int(form["qty"]) if form.get("qty", "").strip().isdigit() else None
-        values = {f.key: form.get(f"f_{f.key}", "") for f in t.fields}
+        values = {f.key: catalog.number(form.get(f"f_{f.key}", "")) for f in t.fields}
         if form.get("keeps"):  # „merken“: diese Werte sind beim nächsten Mal vorbelegt
             typesettings.save_kept(
                 conn, t.key,

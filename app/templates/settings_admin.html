@@ -4,7 +4,7 @@
 <h1>Einstellungen</h1>
 {% with tab="admin" %}{% include "_settings_tabs.html" %}{% endwith %}
 <nav class="jump-bar-inline row" aria-label="Abschnitte">
-  <a class="chip" href="#nummern">Nummernvergabe</a><a class="chip" href="#nodetypen">Node-Typen</a><a class="chip" href="#api">API-Schlüssel</a><a class="chip" href="/codes">Code-Schema &amp; Behälter-Arten</a>
+  <a class="chip" href="#nummern">Nummernvergabe</a><a class="chip" href="#nodetypen">Node-Typen</a><a class="chip" href="#a4drucker">A4-Drucker</a><a class="chip" href="#api">API-Schlüssel</a><a class="chip" href="/codes">Code-Schema &amp; Behälter-Arten</a>
 </nav>
 
 <section id="nummern">
@@ -63,6 +63,15 @@ Etiketten könnten dann doppelt entstehen.</p>
   <p class="meta">Auswahlliste für das Feld „Node“ (z. B. Nut-Typ bei Inserts). Eine Zeile je Eintrag; leer = Standardliste.</p>
   <form method="post" action="/settings/admin/nodetypen" class="stack">
     <textarea name="node_types" rows="8" aria-label="Node-Typen">{{ node_types }}</textarea>
+    <button class="primary">Speichern</button>
+  </form>
+</section>
+
+<section class="card" id="a4drucker">
+  <h2 style="margin-top:0">A4-Netzwerkdrucker</h2>
+  <p class="meta">IPP-Adresse des Farbdruckers, z. B. <code>ipp://192.168.1.50/ipp/print</code> (die meisten Netzwerkdrucker mit AirPrint verstehen das). Gedruckt wird erst nach Bestätigung in der A4-Warteschlange.</p>
+  <form method="post" action="/settings/admin/a4drucker" class="stack">
+    <input name="a4_printer" value="{{ a4_printer }}" placeholder="ipp://drucker.local/ipp/print" aria-label="Drucker-Adresse" data-keep-comma>
     <button class="primary">Speichern</button>
   </form>
 </section>

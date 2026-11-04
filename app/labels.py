@@ -1,11 +1,11 @@
-"""Etiketten: QR-Inhalt, XLSX für den D30-Etikettendrucker (40×12 mm) und A8-Bögen (A4 quer).
+"""Etiketten: QR-Inhalt, Texte, Layout je Typ und Warteschlange für den D30 (40×12 mm).
+A4-Etiketten: `app/a4.py`.
 
 QR-Inhalt komplett in Großbuchstaben (HTTP://LAGER.HOME.LAN/C/EUR-001): Dann nutzt der QR den
 Alphanumerik-Modus, wird eine Version kleiner und auf 10 mm besser scannbar. /C/ = /c/.
 """
 
 import copy
-import io
 import json
 import re
 import sqlite3
@@ -13,12 +13,10 @@ from dataclasses import dataclass
 from typing import Any
 
 import segno
-from openpyxl import Workbook
 
 from app import codes, repo
 
 TEXT_MAX = 24  # Zeichen, die auf 40×12 mm neben den QR passen
-A8_PER_PAGE = 16  # A4 quer = 4×4 A8 quer (74×52 mm)
 
 
 @dataclass(frozen=True)
@@ -120,22 +118,6 @@ def qr_svg(content: str) -> str:
 
 def short(text: str, limit: int = TEXT_MAX) -> str:
     return text if len(text) <= limit else text[: limit - 1] + "…"
-
-
-def to_xlsx(rows: list[Label], text_max: int = TEXT_MAX) -> bytes:
-    """Spalten für die D30-App: A Code, B QR-Inhalt, C Text (ohne Zusatz-Spalte)."""
-    wb = Workbook()
-    ws = wb.active
-    assert ws is not None
-    ws.title = "Etiketten"
-    ws.append(["Code", "QR", "Text"])
-    for r in rows:
-        ws.append([r.code, r.qr, short(r.text, text_max)])
-    for col, width in zip("ABC", (12, 40, 26), strict=True):
-        ws.column_dimensions[col].width = width
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()
 
 
 # --- Etikettenlisten ---------------------------------------------------------------
@@ -384,8 +366,6 @@ def finalize(
 
 # --- Warteschlange: Etiketten sammeln, später als Batch exportieren -------------------
 
-A4_COLS, A4_ROWS = 5, 22  # 40×12 mm auf A4 hoch (200 × 264 mm), Schnittlinien
-
 
 def enqueue(conn: sqlite3.Connection, code: str, text: str, extra: str = "") -> None:
     """Gleicher Code nochmal = Text aktualisieren (z. B. Bin-Inhalt geändert)."""
@@ -471,16 +451,3 @@ def content_queue(conn: sqlite3.Connection) -> list[dict[str, object]]:
 def clear_content(conn: sqlite3.Connection) -> None:
     with conn:
         conn.execute("DELETE FROM content_queue")
-
-
-def content_xlsx(rows: list[dict[str, object]], text_max: int = TEXT_MAX * 2) -> bytes:
-    """Inhaltsetiketten für den D30: A Code, B Text (kein QR – Platz zum Beschriften)."""
-    wb = Workbook()
-    ws = wb.active
-    assert ws is not None
-    ws.append(["Code", "Text"])
-    for r in rows:
-        ws.append([str(r["title"]), short(str(r["text"]), text_max)])
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Etikett {{ node.code or node.name }} · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs"><a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %} › <a href="/n/{{ node.id }}">{{ node.name }}</a></nav>
+<h1>Seitenetikett {{ node.code }}</h1>
+<p class="meta">Text je Fach festlegen – er wird Standard für dieses Etikett. Tags aus „Kein eigenes Etikett“-Teilen lassen sich per Klick einfügen.</p>
+<div class="label-stage card"><img id="side-preview" class="label-preview" alt="Vorschau Seitenetikett" src="/n/{{ node.id }}/etikett.png?color=red"></div>
+<form method="post" action="/n/{{ node.id }}/etikett" class="card stack" id="bin-label-form">
+  {% for s in slots %}
+  <label>Fach {{ s.pos }} <textarea name="t_{{ s.id }}" rows="3" placeholder="je Zeile ein Eintrag">{{ s.text }}</textarea></label>
+  {% endfor %}
+  {% if tags %}<div><span class="meta">Tag einfügen (in das zuletzt bearbeitete Fach):</span>
+    <div class="chips">{% for t in tags %}<button type="button" class="chip tag-chip" data-tag="{{ t }}">{{ t }}</button>{% endfor %}</div></div>{% endif %}
+  <label>Farbe <select name="color">{% for k, n in colors.items() %}<option value="{{ k }}" {% if k == 'red' %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></label>
+  <div class="row">
+    <button class="primary">Speichern</button>
+    <button name="queue" value="1">{{ icon('action.print', size='sm') }} Speichern &amp; in A4-Warteschlange</button>
+    <a class="button" href="/a4">A4-Warteschlange</a>
+  </div>
+</form>
+<script>
+(function () {
+  var last = null, form = document.getElementById("bin-label-form");
+  form.addEventListener("focusin", function (e) { if (e.target.tagName === "TEXTAREA") last = e.target; });
+  form.querySelectorAll(".tag-chip").forEach(function (c) {
+    c.addEventListener("click", function () {
+      var t = last || form.querySelector("textarea");
+      t.value = (t.value.trim() ? t.value.replace(/\s+$/, "") + "\n" : "") + c.dataset.tag;
+      t.focus();
+    });
+  });
+})();
+</script>
+{% endblock %}

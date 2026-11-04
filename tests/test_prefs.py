@@ -1,9 +1,7 @@
-import io
 import re
 
 import httpx
 from fastapi.testclient import TestClient
-from openpyxl import load_workbook
 
 from app import prefs
 
@@ -64,9 +62,10 @@ def test_quick_parse_off_and_default_unit(client: TestClient) -> None:
 
 def test_label_text_max_and_typo_toggle(client: TestClient) -> None:
     save(client, label_text_max="10")
-    fields = {"code": ["ART-0001"], "text": ["Akkuschrauber Makita"], "extra": [""], "fmt": "xlsx"}
-    ws = load_workbook(io.BytesIO(client.post("/labels/export", data=fields).content)).active
-    assert ws is not None and ws["C2"].value == "Akkuschra…"
+    page = client.post(
+        "/labels/preview", data={"source": "blank", "prefix": "ART", "count": "1"}
+    ).text
+    assert 'data-max="10"' in page
     box = node_of(client.post("/containers", data={"name": "Box", "kind": "kiste"}))
     client.post(f"/n/{box}/items", data={"name": "Holzschrauben"})
     assert "Ergebnisse für" in client.get("/suche", params={"q": "holzschrabuen"}).text

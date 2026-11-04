@@ -61,3 +61,15 @@ def test_scoop_and_rounded_floor() -> None:
     )  # Kreismitte frei
     no_scoop = nb.build(nb.BinSpec(1, 1, label=False, scoop=0, floor_fillet=0))
     assert not no_scoop.is_inside(Vector(0, front + 2, spec.floor + 5))
+
+
+def test_specs_from_bins_file(tmp_path: Path) -> None:
+    import json
+
+    same = {"size": "2x1", "divisions": {"x": 3, "y": 1}, "params": {"wall": 1.6, "label": False}}
+    one = {"size": "1x1", "divisions": {"x": 1, "y": 1}, "params": {}}
+    f = tmp_path / "bins.json"
+    f.write_text(json.dumps({"format": "kp-lager-bins/1", "boxes": [{"bins": [same, same, one]}]}))
+    specs = nb.specs_from_file(f)
+    assert len(specs) == 2 and specs[0].wall == 1.6 and specs[0].div_x == 3 and not specs[0].label
+    assert "wall1.6" in specs[0].name

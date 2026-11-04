@@ -12,7 +12,7 @@ Zwei Wege, beide mit Offline-Modus:
 In der App:
 - **Adresse ändern:** lange auf „Zurück“ drücken, oder im Fehlerdialog „Adresse ändern“.
 - **QR-Scan** fragt beim ersten Mal nach der Kamera-Berechtigung.
-- **Fotos** kommen aus Kamera oder Galerie; **Downloads** (Etiketten-XLSX, Export) landen in „Downloads“.
+- **Fotos** kommen aus Kamera oder Galerie; **Downloads** (Export, PDF) landen in „Downloads“.
 - Links zu Shops/Datenblättern öffnen im Browser.
 - **Updates:** neue APK einfach drüber installieren – Daten und Anmeldung bleiben (gleiche Signatur).
 

@@ -6,6 +6,7 @@ Teilename wie im Lager üblich („Zylinderkopfschraube M3x10“, „Holzinsert 
 schnelles Anlegen, nicht um exakte Erfassung – Details lassen sich am Teil nachtragen.
 """
 
+import contextlib
 import json
 import re
 import sqlite3
@@ -23,6 +24,7 @@ class Field:
     unit: str = ""
     hint: str = ""
     extra: bool = False  # optional: im Formular unter „Weitere Angaben“ eingeklappt
+    row: str = ""  # gleiche Zeilen-Kennung hintereinander = nebeneinander im Formular
 
 
 @dataclass(frozen=True)
@@ -43,10 +45,16 @@ class Type:
 
 
 def F(
-    key: str, label: str, options: str = "", unit: str = "", hint: str = "", extra: bool = False
+    key: str,
+    label: str,
+    options: str = "",
+    unit: str = "",
+    hint: str = "",
+    extra: bool = False,
+    row: str = "",
 ) -> Field:
     opts = tuple(o.strip() for o in options.split("|") if o.strip())
-    return Field(key, label, opts, unit, hint, extra)
+    return Field(key, label, opts, unit, hint, extra, row)
 
 
 def default_label_layout(t: Type) -> dict[str, object]:
@@ -1076,10 +1084,26 @@ TYPES: tuple[Type, ...] = (
         "FIL",
         (
             F("brand", "Hersteller", "Prusament|eSun|Sunlu|Bambu Lab|Creality|Polymaker|Elegoo"),
-            F("material", "Werkstoff", "PLA|PLA+|PETG|ABS|ASA|TPU|PA|PC|PVA|PLA-CF|PETG-CF|PA-CF"),
+            F("plastic", "Kunststoff", "PLA|PLA+|PETG|ABS|ASA|TPU|PA6|PA12|PC|PVA|PP", row="werk"),
+            F("plastic_pct", "Anteil", "100|90|85|80|75", "%", row="werk"),
+            F(
+                "additive",
+                "Zusatz",
+                "Glasfaser|Carbonfaser|Kevlar|Holz|Metall|Glitzer|Marmor",
+                row="werk",
+            ),
+            F("additive_pct", "Anteil", "5|10|15|20|25|30", "%", row="werk"),
             F("color", "Farbe", "Schwarz|Weiß|Grau|Rot|Blau|Grün|Gelb|Orange|Transparent|Natur"),
-            F("diameter", "Durchmesser", "1.75|2.85", "mm"),
-            F("weight", "Gewicht je Spule", "0.25|0.5|0.75|1|2|3", "kg"),
+            F("diameter", "Durchmesser", "1.75|2.85", "mm", row="maß"),
+            F("weight", "Gewicht je Spule", "0.25|0.5|0.75|1|2|3", "kg", row="maß"),
+            F(
+                "spool_type",
+                "Spulentyp",
+                "Pappe|Plastik|Mehrweg|Masterspool|Refill (ohne Spule)|Metall",
+                row="spule",
+            ),
+            F("spool_weight", "Spulenleergewicht", "150|200|250|300", "g", row="spule"),
+            F("price", "Preis je Spule", "", "€", row="spule"),
         ),
         (("{brand}",), ("{material}",), ("{color}",)),
         material="fil",
@@ -1097,8 +1121,16 @@ TYPES: tuple[Type, ...] = (
                 "Standard|ABS-like|Tough|Flexibel|Wasserwaschbar|Hochtemperatur",
             ),
             F("color", "Farbe", "Grau|Schwarz|Weiß|Transparent|Klar|Rot|Blau|Grün"),
-            F("volume", "Inhalt je Flasche", "250|500|1000", "ml", hint="250 ml · 500 ml · 1 l"),
-            F("bottle_weight", "Leerflasche", "", "g"),
+            F(
+                "volume",
+                "Inhalt je Flasche",
+                "250|500|1000",
+                "ml",
+                hint="250 ml · 500 ml · 1 l",
+                row="fl",
+            ),
+            F("bottle_weight", "Leerflasche", "", "g", row="fl"),
+            F("price", "Preis je Flasche", "", "€", row="fl"),
         ),
         (("{brand}",), ("{material}",), ("{color}",), ("{volume}ml",)),
         material="res",
@@ -1291,6 +1323,25 @@ def node_types(conn: sqlite3.Connection | None) -> list[str]:
     return custom or list(DEFAULT_NODES)
 
 
+def brands(conn: sqlite3.Connection | None, t: Type) -> list[str]:
+    """Hersteller-Auswahl: Katalogliste + alles, was je manuell eingetragen wurde."""
+    base = next((f.options for f in t.fields if f.key == "brand"), ())
+    raw = codes.get_setting(conn, f"brands_{t.key}", "") if conn is not None else ""
+    manual = [x.strip() for x in raw.split("|") if x.strip()]
+    return list(dict.fromkeys([*base, *manual]))
+
+
+def remember_brand(conn: sqlite3.Connection, t: Type, brand: str) -> None:
+    """Manuell eingetragener Hersteller wird künftig in Auswahl und Presets angeboten."""
+    brand = brand.strip()
+    if not brand or brand.casefold() in {b.casefold() for b in brands(conn, t)}:
+        return
+    if not any(f.key == "brand" for f in t.fields):
+        return
+    manual = [b for b in codes.get_setting(conn, f"brands_{t.key}", "").split("|") if b]
+    codes.set_setting(conn, f"brands_{t.key}", "|".join([*manual, brand]))
+
+
 def field_choices() -> list[tuple[str, str]]:
     """Alle Feld-Schlüssel der Katalogtypen (für die Sammelbearbeitung)."""
     seen: dict[str, str] = {}
@@ -1300,8 +1351,14 @@ def field_choices() -> list[tuple[str, str]]:
     return sorted(seen.items(), key=lambda kv: kv[1].lower())
 
 
-def options_for(conn: sqlite3.Connection | None, f: Field) -> tuple[str, ...]:
-    return tuple(node_types(conn)) if f.key == "node" else f.options
+def options_for(
+    conn: sqlite3.Connection | None, f: Field, t: Type | None = None
+) -> tuple[str, ...]:
+    if f.key == "node":
+        return tuple(node_types(conn))
+    if f.key == "brand" and t is not None:
+        return tuple(brands(conn, t))
+    return f.options
 
 
 def grouped(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
@@ -1433,8 +1490,44 @@ def field_lines(t: Type) -> str:
     )  # fmt: skip
 
 
+ADDITIVE_SHORT = {"glasfaser": "GF", "carbonfaser": "CF", "kohlefaser": "CF"}
+
+
+def derive(t: Type, values: dict[str, str]) -> dict[str, str]:
+    """Abgeleitete Werte: Filament-Werkstoff = „PA12 80 % + CF 20 %“ aus Kunststoff/Zusatz."""
+    if t.key != "filament":
+        return values
+    plastic = values.get("plastic", "").strip()
+    add = values.get("additive", "").strip()
+    text = plastic
+    if plastic and values.get("plastic_pct", "").strip():
+        text += f" {values['plastic_pct'].strip()}%"
+    if add:
+        short = ADDITIVE_SHORT.get(add.casefold(), add)
+        pct = values.get("additive_pct", "").strip()
+        text = f"{text} + {short}{' ' + pct + '%' if pct else ''}".strip(" +")
+    return {**values, "material": text} if text else values
+
+
+def number(raw: str) -> str:
+    """Dezimalzahlen immer mit Punkt: „1,75“ -> „1.75“ (Komma zwischen Ziffern)."""
+    return re.sub(r"(?<=\d),(?=\d)", ".", raw)
+
+
+def field_rows(fields: list[Field] | tuple[Field, ...]) -> list[list[Field]]:
+    """Felder zu Formularzeilen: aufeinanderfolgende Felder mit gleicher `row` stehen nebeneinander."""
+    out: list[list[Field]] = []
+    for f in fields:
+        if out and f.row and out[-1][-1].row == f.row:
+            out[-1].append(f)
+        else:
+            out.append([f])
+    return out
+
+
 def name(t: Type, values: dict[str, str]) -> str:
     """Name aus den Vorlagen: pro Teil die erste Alternative, deren Felder alle ausgefüllt sind."""
+    values = derive(t, values)
     out = []
     for alts in t.parts:
         for alt in (alts,) if isinstance(alts, str) else alts:
@@ -1460,7 +1553,7 @@ def create(
     t = lookup(conn, type_key)
     if t is None:
         raise LagerError("Unbekannter Teile-Typ")
-    clean = {f.key: values.get(f.key, "").strip() for f in t.fields}
+    clean = derive(t, {f.key: number(values.get(f.key, "")).strip() for f in t.fields})
     text = name(t, clean)
     if not text:
         raise LagerError(f"Bitte mindestens ein Feld für „{t.label}“ ausfüllen")
@@ -1488,7 +1581,13 @@ def create(
     if t.material:  # Filament/Harz/Netzteil/Kabel: Materialdaten fürs Datenblatt und Restmengen
         keys = {f.key for f in materials.FIELDS[t.material]}
         spec = {f"spec_{k}": v for k, v in clean.items() if v and k in keys}
+        if t.key == "filament" and spec.get("spec_weight"):  # Katalog in kg, Datenblatt in g
+            with contextlib.suppress(ValueError):
+                spec["spec_weight"] = f"{float(spec['spec_weight']) * 1000:g}"
         materials.save_specs(conn, item_id, t.material, spec)
+    if clean.get("price"):
+        repo.update_item(conn, item_id, price=materials.parse_price(clean["price"]))
+    remember_brand(conn, t, clean.get("brand", ""))
     return item_id
 
 

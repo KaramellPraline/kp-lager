@@ -33,6 +33,7 @@
       <label class="file-btn" title="Foto" aria-label="Foto">{{ icon('media.camera') }}
         <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
     </form>
+    {% if item.code %}<form method="post" action="/a4/queue/item/{{ item.id }}"><button title="In die A4-Warteschlange" aria-label="A4-Warteschlange">{{ icon('content.tag') }}</button></form>{% endif %}
     {% if item.ctype %}<a class="icon-link" href="/neu?typ={{ item.ctype }}&vorlage={{ item.id }}" title="Duplizieren: neues Teil mit diesen Angaben anlegen" aria-label="Duplizieren">{{ icon('action.add') }}</a>{% endif %}
     <form method="post" action="/carry/item/{{ item.id }}"><button title="Umlagern" aria-label="Umlagern">{{ icon('action.move') }}</button></form>
     <button type="button" data-open="edit-box" title="Bearbeiten" aria-label="Bearbeiten">{{ icon('action.edit') }}</button>

@@ -55,6 +55,7 @@ FIELDS: dict[str, tuple[Field, ...]] = {
         Field("color", "base", "Farbe", "Color"),
         Field("diameter", "base", "Durchmesser", "Diameter", "mm", "1.75"),
         Field("weight", "base", "Netto-Gewicht je Spule", "Net weight per spool", "g", "1000"),
+        Field("spool_type", "base", "Spulentyp", "Spool type", "", "Pappe, Plastik, Mehrweg …"),
         Field("spool_weight", "base", "Leerspule", "Empty spool", "g", "250"),
         Field("density", "base", "Dichte", "Density", "g/cm³", "1.24"),
         Field("nozzle_min", "print", "Düsentemperatur min", "Nozzle temp min", "°C"),

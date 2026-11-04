@@ -39,26 +39,27 @@ Ohne eigenen Code: `level` (Ebene), `compartment` (Fach). Alte Codes: STA → TB
 ## QR-Inhalt
 `HTTP(S)://LAGER.HOME.LAN/C/EUR-001` – komplett groß geschrieben → QR-Alphanumerik-Modus, Version 2 (25×25 Module) statt 3. Bei 10 mm QR auf dem D30 (203 dpi) ≈ 3 Druckpunkte pro Modul. **Probedruck mit Handy testen.**
 
-## D30 (40×12 mm) einrichten – einmalig
-1. In der App „Etiketten“ eine XLSX laden (Spalten: `Code | QR | Text`).
-2. In der D30-App neue Vorlage 40×12 mm, Excel/Batch-Import, XLSX wählen.
-3. Elemente anlegen und Spalten zuordnen:
-   - QR-Code links, ca. 10×10 mm ← Spalte **QR**
-   - Text oben rechts, fett ← **Code** (bei Behälter-Etiketten) bzw. **Text** (Name bei Teilen)
-4. Vorlage speichern; danach nur noch neue XLSX importieren und drucken.
+## D30 (40×12 mm)
+Gedruckt wird direkt (PC-Agent per MQTT, Bluetooth oder `/labels/img/<CODE>.png`), nicht mehr über
+XLSX – der XLSX-Export ist seit 1.1.0 entfernt. Siehe `docs/DIREKTDRUCK.md`, `docs/PRINT_MQTT.md`.
+
+## Standard-Etikett und Layout je Typ
+Jeder Katalogtyp druckt standardmäßig **dreizeilig** (QR links): Typ + Spezifikation · Maße · Code,
+z. B. „Heat-Set Insert M3“ / „3 x 4.2mm“ / „CNS-002“. Vorrang: im Designer gespeichertes Layout
+(`/etiketten/typ/<Typ>`) > eigene Haupt-/Zusatzzeile des Typs > dieses Standardlayout
+(`catalog.default_label_layout`, `Type.label_lines`). Im Anlegen-Formular zeigt eine Live-Vorschau das
+Etikett; Antippen öffnet den Designer und Speichern bringt mit allen Eingaben zurück.
 
 ## Abläufe
 Jede Auswahl öffnet zuerst die **Vorschau-Tabelle** (Code | Text | Zusatz). Texte lassen sich dort ändern
-(rot = zu lang für 40×12, wird im XLSX gekürzt). Optional „Geänderte Texte auch als Namen im Lager speichern“.
-Export immer als **XLSX für den D30**. Papierdruck separat unter **Etiketten › A4-Druck**: beliebige Etiketten auswählen, als 40×12-Bogen (110/Seite) oder A8 (16/Seite).
+(rot = zu lang für 40×12). Optional „Geänderte Texte auch als Namen im Lager speichern“.
+Ziele: **Auf D30 drucken**, **In Warteschlange** (D30) oder **In A4-Warteschlange** (`docs/A4.md`).
 
-- **Neue Boxen:** `Etiketten › Neue Codes auf Vorrat` (z. B. 20× EUR) → Vorschau (Text z. B. „Elektronik“) → Export → aufkleben → beim ersten Scan anlegen. Codes werden erst beim Export reserviert.
+- **Neue Boxen:** `Drucken › Neue Codes auf Vorrat` (z. B. 20× EUR) → Vorschau (Text z. B. „Elektronik“) → drucken → aufkleben → beim ersten Scan anlegen. Codes werden erst beim Drucken reserviert.
 - **Sortierkasten komplett:** Kastenseite › „Etiketten aller Teile drucken“ → ein Etikett pro Teil, fehlende ART-Codes werden vergeben.
-- **Alles Neue seit dem letzten Druck:** `Etiketten › Noch nicht gedruckt`.
-- **Einzelnes Teil:** Teileseite › „Etikett drucken“ (bzw. „Etikett vergeben“).
-- Export zählt als gedruckt. Erneut drucken: Teil- oder Kasten-Etiketten nochmal öffnen.
+- **Alles Neue seit dem letzten Druck:** `Drucken › Noch nicht gedruckt`.
+- **Einzelnes Teil:** Druck-Symbol an Teil/Behälter (sofort, sonst Warteschlange).
+- **Satz:** Varianten-Reihe und „Alle Etiketten drucken (Satz)“ drucken mehrere Etiketten in einem Rutsch.
 
-## A8-Etiketten (Normaldrucker)
-A4 **quer**, 4×4 = 16 Etiketten à 74×52 mm (A8 quer), dünne graue Schnittlinien.
-Aufbau je Etikett: **QR links** (40 mm), rechts **Name** (bis 5 Zeilen) + Zusatz, unten **Code**.
-Drucken mit Skalierung 100 %, Ränder „keine“. Gut für Euroboxen, Kisten, Regale (aus Distanz lesbar).
+## A4 (Seiten-, Box-, Inhaltsetiketten)
+Eigene Etikettentypen, Warteschlange, automatische Anordnung und Netzwerkdruck: `docs/A4.md`.

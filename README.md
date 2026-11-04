@@ -16,7 +16,7 @@ Suchen und Umlagern im Heimnetz (LAN). Alles läuft lokal, ohne Cloud und ohne e
 | Behälter & Teile | Baum aus Räumen, Regalen, Boxen, Sortierkästen, Einsätzen und Fächern; Teile mit Menge, Einheit, Tags, Fotos, Mindestbestand, Preis |
 | Anlegen | Schnelleingabe auf der Startseite · **Katalog** (`/neu`, ~55 Teile-Typen mit Auswahlfeldern) · **Einsatz-Assistent** (`/neu/bin`) · Spracheingabe · Foto-Erkennung (lokale KI) |
 | Übersicht | Aufklappbarer Baum (`/baum`, Startseite), Suche mit Tippfehlern/Synonymen, Freie Plätze, Verlauf, Rückgängig |
-| Etiketten | Code-Schema `PRÄFIX-NNN`, QR, XLSX/A4/A8, **D30-Direktdruck per Bluetooth** (40×12 mm), Warteschlange, Inhaltsetiketten |
+| Etiketten | Code-Schema `PRÄFIX-NNN`, QR, **D30-Direktdruck** (40×12 mm, dreizeiliges Standardlayout), **A4-Warteschlange** (Seiten-, Box-, Inhaltsetiketten, Rot, Netzwerkdrucker), Bin-Druckdatei |
 | Sortierkästen | Modell Kistenberg NORB16 (5×7), Einsätze X×Y mit Fächern, Draufsicht, parametrischer Bin-Generator (`cad/`) |
 | 3D-Druck & Material | Filament/Harz mit Datenblatt, Restmenge per Wägung, Trockner-Programme + Scan-Ablauf, Slicer-Import (Creality Print/Orca/Cura) |
 | Betrieb | Tägliches Backup, Statusseite, Einkaufsliste mit Mindestbestand, Lagerwert, Massenbearbeitung |
@@ -59,7 +59,10 @@ Kamera-Scan und Mikrofon funktionieren im Browser nur über HTTPS. Für LAN-Betr
 | [docs/CLOUD.md](docs/CLOUD.md) | Einrichtung für Claude Code im Web und Codespaces |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Docker, Raspberry Pi, HTTPS, Backup |
 | [docs/FEATURES.md](docs/FEATURES.md) | Funktionen und Bedienung im Detail |
-| [docs/ETIKETTEN.md](docs/ETIKETTEN.md) | Code-Schema, XLSX/D30-Vorlage |
+| [docs/ETIKETTEN.md](docs/ETIKETTEN.md) | Code-Schema, Standard-Etikett, Layout je Typ |
+| [docs/A4.md](docs/A4.md) | A4-Warteschlange, Etikettentypen, Anordnung, IPP-Druck |
+| [docs/VERBRAUCH.md](docs/VERBRAUCH.md) | Filament & Harz: Klassen, Felder, Workflow |
+| [docs/BINS.md](docs/BINS.md) | Einsätze per Drag & Drop, Parameter, `bins.json` |
 | [docs/DIREKTDRUCK.md](docs/DIREKTDRUCK.md) | D30-Direktdruck (Bluetooth, Protokoll, Fehlersuche) |
 | [docs/NORB16.md](docs/NORB16.md), [docs/BIN_SPEC.md](docs/BIN_SPEC.md) | Sortierkasten und Bin-Spezifikation (+ `cad/bin_params.json`) |
 | [deploy/README.md](deploy/README.md) | Docker-Deployment, Handy-Einrichtung |

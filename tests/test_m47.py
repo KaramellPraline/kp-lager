@@ -65,7 +65,7 @@ def test_material_types_in_catalog(client: TestClient) -> None:
     page = client.get("/neu").text
     assert "/neu/material" not in page and 'data-g="Filament &amp; Harz"' in page
     box = _box(client)
-    client.post("/neu", data={"typ": "filament", "f_brand": "Sunlu", "f_material": "PETG",
+    client.post("/neu", data={"typ": "filament", "f_brand": "Sunlu", "f_plastic": "PETG",
                               "f_color": "Weiß", "f_weight": "1", "target": str(box)})  # fmt: skip
     client.post("/neu", data={"typ": "harz", "f_brand": "Elegoo", "f_material": "Standard",
                               "f_color": "Grau", "f_volume": "500", "target": str(box)})  # fmt: skip

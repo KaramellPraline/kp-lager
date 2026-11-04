@@ -5,6 +5,7 @@ Einsatz-Größe 'LxK': die erste Zahl (x) zählt entlang der langen Seite des Ka
 A-G beim NORB16), die zweite entlang der kurzen Seite (= Spalten).
 """
 
+import json
 import sqlite3
 from dataclasses import dataclass
 from string import ascii_uppercase
@@ -162,6 +163,129 @@ def bin_label_text(conn: sqlite3.Connection, bin_row: Row) -> str:
     return ", ".join(dict.fromkeys(names)) or bin_row["name"]
 
 
+def move_bin(conn: sqlite3.Connection, bin_id: int, cells: list[str]) -> str:
+    """Einsatz per Drag & Drop auf neue Zellen setzen (gleiche Größe); gibt die neue Position."""
+    b = repo.get_container(conn, bin_id)
+    if b is None or b["kind"] != "bin" or b["parent_id"] is None:
+        raise LagerError("Das ist kein Einsatz")
+    kasten = repo.get_container(conn, b["parent_id"])
+    model = model_of(kasten) if kasten else None
+    if kasten is None or model is None:
+        raise LagerError("Kein Sortierkasten mit Modell")
+    try:
+        coords = [parse_cell(c) for c in cells]
+    except LagerError:
+        raise
+    if not coords:
+        raise LagerError("Keine Zielzellen")
+    pos = cell_name(min(r for r, _ in coords), min(c for _, c in coords))
+    if cells_of(pos, b["size"]) != {c.strip().upper() for c in cells}:
+        raise LagerError("Zielzellen passen nicht zur Größe des Einsatzes")
+    taken = {c: i for c, i in occupied(conn, kasten["id"]).items() if i != bin_id}
+    check_place(model, taken, pos, b["size"])
+    name = f"Einsatz {pos}" if b["name"] == f"Einsatz {b['position']}" else b["name"]
+    with conn:
+        conn.execute(
+            "UPDATE container SET position = ?, name = ?, label_printed = 0,"
+            " updated_at = datetime('now') WHERE id = ?",
+            (pos, name, bin_id),
+        )
+    return pos
+
+
+# --- Parameter für den parametrischen Bin-Generator (cad/norb_bins.py) ------------------------
+
+CAD_FIELDS: dict[str, tuple[str, str, object]] = {  # Schlüssel: (Name, Einheit, Standard)
+    "label": ("Etikettenablage 40×12", "", True),
+    "scoop": ("Greifmulde vorn (Radius, 0 = aus)", "mm", 15.0),
+    "wall": ("Wandstärke", "mm", 1.2),
+    "floor": ("Bodenstärke", "mm", 1.2),
+    "divider": ("Trennwand-Stärke", "mm", 1.2),
+    "pitch": ("Rastermaß", "mm", 54.77),
+    "corner": ("Außenradius Ecken", "mm", 3.0),
+    "draft": ("Formschräge je Seite", "mm", 2.3),
+    "chamfer": ("Fase unten", "mm", 3.0),
+}
+
+
+def cad_params(bin_row: Row) -> dict[str, object]:
+    """Standardwerte, überschrieben durch die am Einsatz gespeicherten Parameter."""
+    try:
+        own = json.loads(bin_row["cad"] or "{}")
+    except ValueError:
+        own = {}
+    out: dict[str, object] = {k: v[2] for k, v in CAD_FIELDS.items()}
+    if isinstance(own, dict):
+        out.update({k: v for k, v in own.items() if k in CAD_FIELDS})
+    return out
+
+
+def save_cad(conn: sqlite3.Connection, bin_id: int, form: dict[str, str]) -> None:
+    own: dict[str, object] = {}
+    for key, (label, _unit, default) in CAD_FIELDS.items():
+        if isinstance(default, bool):
+            value: object = bool(form.get(key))
+        else:
+            raw = form.get(key, "").strip().replace(",", ".")
+            if not raw:
+                continue
+            try:
+                value = float(raw)
+            except ValueError:
+                raise LagerError(f"{label}: „{raw}“ ist keine Zahl") from None
+            if value < 0:
+                raise LagerError(f"{label}: keine negativen Werte")
+        if value != default:
+            own[key] = value
+    with conn:
+        conn.execute(
+            "UPDATE container SET cad = ? WHERE id = ?",
+            (json.dumps(own) if own else None, bin_id),
+        )
+
+
+def print_file(conn: sqlite3.Connection) -> dict[str, Any]:
+    """Alle Sortierkästen mit Einsätzen als eine Datei für den parametrischen Druckgenerator:
+    Größe, Teilung, Position, Parameter und Inhalt je Fach (`cad/norb_bins.py --file`)."""
+    from datetime import datetime
+
+    out: list[dict[str, Any]] = []
+    for k in conn.execute(
+        "SELECT * FROM container WHERE kind = 'sortingbox' AND model IS NOT NULL ORDER BY name"
+    ):
+        model = model_of(k)
+        if model is None:
+            continue
+        items = []
+        for b in bins(conn, k["id"]):
+            w, d = parse_size(b["size"])
+            div = b["grid"] or "1x1"
+            dx, dy = (int(x) for x in div.split("x"))
+            comps = [
+                {"position": f["position"], "label": f["label_text"] or f["item_names"] or ""}
+                for f in repo.children(conn, b["id"])
+            ]
+            items.append({
+                "code": b["code"], "name": b["name"], "position": b["position"],
+                "cells": sorted(cells_of(b["position"], b["size"])),
+                "size": b["size"], "units": {"w": w, "d": d}, "divisions": {"x": dx, "y": dy},
+                "params": cad_params(b), "compartments": comps,
+                "label_text": b["label_text"] or bin_label_text(conn, b),
+                "command": cad_command(b),
+            })  # fmt: skip
+        out.append({
+            "id": k["id"], "code": k["code"], "name": k["name"], "model": model.key,
+            "grid": {"cols": model.cols, "rows": model.rows},
+            "blocked": sorted(model.blocked), "bins": items,
+        })  # fmt: skip
+    return {
+        "format": "kp-lager-bins/1",
+        "generated": datetime.now().isoformat(timespec="seconds"),
+        "generator": "cad/norb_bins.py --file <diese Datei>",
+        "boxes": out,
+    }
+
+
 def cad_command(bin_row: Row) -> str:
     div = bin_row["grid"] or "1x1"
     return f"uv run --group cad python cad/norb_bins.py {bin_row['size']} --div {div}"
@@ -219,7 +343,8 @@ def topview(conn: sqlite3.Connection, kasten: Row, rot: int = 0) -> dict[str, An
         bx, by, bw2, bh2 = _rot(x, y, bw, bh, W, H, rot)
         drawn_bins.append(
             {"id": b["id"], "code": b["code"], "pos": b["position"], "size": b["size"],
-             "x": bx, "y": by, "w": bw2, "h": bh2, "comps": comps}
+             "x": bx, "y": by, "w": bw2, "h": bh2, "comps": comps,
+             "cells": ",".join(sorted(cells_of(b["position"], b["size"])))}
         )  # fmt: skip
     blocked = sorted(model.blocked)
     rows = [parse_cell(c) for c in blocked]
@@ -234,6 +359,11 @@ def topview(conn: sqlite3.Connection, kasten: Row, rot: int = 0) -> dict[str, An
         "width": H if rot in (90, 270) else W,
         "height": W if rot in (90, 270) else H,
         "bins": drawn_bins,
+        "cells": [
+            {"cell": cell_name(r, c), "x": cell_xy(r, c)[0], "y": cell_xy(r, c)[1]}
+            for r in range(model.rows)
+            for c in range(model.cols)
+        ],
         "free": [
             {"cell": c, "x": cell_xy(*parse_cell(c))[0], "y": cell_xy(*parse_cell(c))[1]}
             for c in free_cells(conn, kasten)
