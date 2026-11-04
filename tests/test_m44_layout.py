@@ -94,7 +94,8 @@ def test_designer_saves_and_applies_to_labels(client: TestClient, tmp_path: Path
     r = client.post("/etiketten/typ/schraube", data={"reset": "1"})
     assert "Standard-Layout" in r.text
     assert typesettings.get(conn, "schraube")["label_layout"] == ""
-    assert labels.item_label(conn, "https://x.test", item).lines == ()
+    lines = labels.item_label(conn, "https://x.test", item).lines  # Standard: dreizeilig
+    assert len(lines) == 3 and lines[-1][0] == item["code"]
 
 
 def test_designer_preview_without_items_and_overview(client: TestClient) -> None:

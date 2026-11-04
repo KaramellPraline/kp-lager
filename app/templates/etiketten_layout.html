@@ -11,6 +11,8 @@
 </div>
 
 <form method="post" action="/etiketten/typ/{{ kind.key }}" class="card stack" id="layout-form" data-key="{{ kind.key }}">
+  {% if back and back.startswith('/neu') %}<input type="hidden" name="back" value="{{ back }}">
+  <p class="meta" style="margin:0">Du kommst vom Anlegen: Speichern bringt dich mit deinen Eingaben zurück. <a href="{{ back }}">Ohne Änderung zurück</a></p>{% endif %}
   <div class="nf">
     <label for="qr">QR-Code</label>
     <select id="qr" name="qr">

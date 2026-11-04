@@ -99,3 +99,19 @@ def test_print_icon_falls_back_to_queue(client: TestClient) -> None:
     assert "/labels/quick/node/" in client.get(f"/n/{box}").text or True
     r = client.post(f"/labels/quick/item/{iid}", follow_redirects=True)  # kein D30 im Test
     assert "in Warteschlange" in r.text or "Warteschlange" in client.get("/labels").text
+
+
+def test_default_label_is_three_lines_for_insert(client):
+    from app import catalog, labels
+
+    t = catalog.BY_KEY["insert"]
+    assert any(f.key == "node" and not f.extra for f in t.fields)
+    assert any(f.extra for f in t.fields)
+    vals = {"kind": "Heat-Set Insert", "thread": "M3", "length": "3", "od": "4.2"}
+    lay = catalog.default_label_layout(t)
+    lines = labels.layout_lines(labels.parse_layout(lay), {**vals, "code": "CNS-002"})
+    assert [x[0] for x in lines] == ["Heat-Set Insert M3", "3 x 4.2mm", "CNS-002"]
+    only = labels.layout_lines(
+        labels.parse_layout(lay), {"kind": "Holzinsert", "length": "5", "code": "C"}
+    )
+    assert [x[0] for x in only] == ["Holzinsert", "5", "C"]

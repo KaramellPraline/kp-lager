@@ -26,8 +26,47 @@ def get(conn: sqlite3.Connection, key: str) -> dict[str, Any]:
             "shelf_months": None,
             "label_main": "",
             "label_extra": "",
+            "required": "",
+            "defaults": "",
         }
     return dict(row)
+
+
+def required_keys(conn: sqlite3.Connection, key: str) -> set[str]:
+    """Felder, die beim Anlegen dieses Typs ausgefüllt sein müssen."""
+    return {k for k in str(get(conn, key).get("required") or "").split(",") if k}
+
+
+def save_required(conn: sqlite3.Connection, key: str, fields: list[str]) -> None:
+    if not key:
+        raise LagerError("Typ fehlt")
+    with conn:
+        conn.execute(
+            "INSERT INTO type_setting (key, required) VALUES (?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET required = excluded.required",
+            (key, ",".join(dict.fromkeys(fields))),
+        )
+
+
+def kept_values(conn: sqlite3.Connection, key: str) -> dict[str, str]:
+    """Gemerkte Standardwerte (Felder mit „merken“), die beim nächsten Anlegen vorbelegt sind."""
+    try:
+        data = json.loads(str(get(conn, key).get("defaults") or "{}"))
+    except ValueError:
+        return {}
+    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+
+
+def save_kept(conn: sqlite3.Connection, key: str, values: dict[str, str]) -> None:
+    if not key:
+        raise LagerError("Typ fehlt")
+    raw = json.dumps({k: v for k, v in values.items() if v}, ensure_ascii=False)
+    with conn:
+        conn.execute(
+            "INSERT INTO type_setting (key, defaults) VALUES (?, ?)"
+            " ON CONFLICT(key) DO UPDATE SET defaults = excluded.defaults",
+            (key, raw),
+        )
 
 
 def save(

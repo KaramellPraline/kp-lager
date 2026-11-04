@@ -333,9 +333,67 @@
         form.querySelectorAll("input[name^=f_]").forEach(function (i) { q.set(i.name, i.value); });
         fetch("/neu/vorschau?" + q.toString()).then(function (r) { return r.json(); })
           .then(function (d) { np.textContent = d.name || "–"; }).catch(function () {});
+        var img = document.getElementById("label-img");
+        if (img) img.src = "/neu/etikett.png?" + q.toString();
       }, 120);
     }
     form.addEventListener("input", preview);
+    // Entwurf: Eingaben überleben den Abstecher in den Etikett-Editor (sessionStorage)
+    var dkey = "neu-draft-" + form.dataset.typ;
+    function saveDraft() {
+      var d = {};
+      form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
+        if (i.type === "checkbox") d[i.name] = i.checked; else d[i.name] = i.value;
+      });
+      try { sessionStorage.setItem(dkey, JSON.stringify(d)); } catch (e) {}
+    }
+    if (form.dataset.draft === "1") {
+      try {
+        var saved = JSON.parse(sessionStorage.getItem(dkey) || "null");
+        if (saved) form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
+          if (!(i.name in saved)) return;
+          if (i.type === "checkbox") i.checked = !!saved[i.name]; else i.value = saved[i.name];
+        });
+        sessionStorage.removeItem(dkey);
+      } catch (e) {}
+    }
+    var live = document.getElementById("label-live");
+    if (live) live.addEventListener("click", saveDraft);
+    form.addEventListener("click", function (e) {
+      var b = e.target.closest("button[formaction]");
+      if (b) saveDraft();
+    });
+    // „Wie letztes Teil“: alle Felder des zuletzt angelegten Teils dieses Typs übernehmen
+    var last = document.getElementById("use-last");
+    if (last) last.addEventListener("click", function () {
+      var d = JSON.parse(last.dataset.last || "{}");
+      form.querySelectorAll("input[name^=f_]").forEach(function (i) { i.value = d[i.name.slice(2)] || ""; });
+      preview();
+    });
+    // Varianten-Reihe: Chips zum gewählten Feld, Klick hängt den Wert an
+    var sf = document.getElementById("series_field"), sv = document.getElementById("series_values");
+    function seriesChips() {
+      form.querySelectorAll("[data-series]").forEach(function (c) { c.hidden = c.dataset.series !== sf.value; });
+    }
+    if (sf) {
+      sf.addEventListener("change", seriesChips);
+      form.addEventListener("click", function (e) {
+        var c = e.target.closest("[data-add]");
+        if (!c) return;
+        sv.value = (sv.value.trim() ? sv.value.trim().replace(/,$/, "") + ", " : "") + c.dataset.add;
+      });
+      seriesChips();
+    }
+    // Pflichtfelder: bei aktiver Reihe ist das Reihenfeld kein Pflichtfeld mehr
+    function syncReq() {
+      var on = sf && sf.value && sv.value.trim();
+      form.querySelectorAll("input[data-req]").forEach(function (i) {
+        i.required = !(on && "f_" + sf.value === i.name);
+      });
+    }
+    form.addEventListener("input", syncReq);
+    form.addEventListener("change", syncReq);
+    syncReq();
     preview();
     var filter = document.getElementById("type-filter");
     if (filter) filter.addEventListener("input", function () {

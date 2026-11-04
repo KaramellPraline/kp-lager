@@ -15,21 +15,46 @@
   <nav class="jump-bar" aria-label="Zu Kategorie springen">{% for g, types in groups %}<a href="#g{{ loop.index }}" data-jump="g{{ loop.index }}" title="{{ g }}">{{ g[:2] }}</a>{% endfor %}</nav>
 
   <section class="neu-main">
-    <form method="post" action="/neu" id="neu-form" class="card stack" data-typ="{{ ctype.key }}">
+    <form method="post" action="/neu" id="neu-form" class="card stack" data-typ="{{ ctype.key }}" data-draft="{{ 1 if draft else 0 }}">
       <div class="title-row"><h1 style="margin:0">{{ ctype.label }}</h1>
         <button type="submit" class="star fav-star {% if ctype.key in favs %}on{% endif %}" formaction="/neu/favorit" formnovalidate aria-label="Typ als Favorit {{ 'lösen' if ctype.key in favs else 'markieren' }}" title="Favorit">{{ icon('content.star') }}</button></div>
       <input type="hidden" name="typ" value="{{ ctype.key }}">
-      {% for f in ctype.fields %}
+      {% macro field(f, chips) %}
+      {% set fo = opts[f.key] %}
       <div class="nf">
-        <label for="f_{{ f.key }}">{{ f.label }}{% if f.unit %} <span class="meta">({{ f.unit }})</span>{% endif %}</label>
-        <input id="f_{{ f.key }}" name="f_{{ f.key }}" {% if f.options %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" autocomplete="off">
-        {% if f.options %}
-        <datalist id="dl_{{ f.key }}">{% for o in f.options %}<option value="{{ o }}">{% endfor %}</datalist>
-        <div class="chips">{% for o in f.options[:18] %}<button type="button" class="chip" data-for="f_{{ f.key }}">{{ o }}</button>{% endfor %}</div>
+        <label for="f_{{ f.key }}">{{ f.label }}{% if f.key in required %} <b class="req" title="Pflichtfeld">*</b>{% endif %}{% if f.unit %} <span class="meta">({{ f.unit }})</span>{% endif %}</label>
+        <div class="row"><input id="f_{{ f.key }}" name="f_{{ f.key }}" class="grow" {% if fo %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" value="{{ prefill.get(f.key, '') }}" autocomplete="off" {% if f.key in required %}data-req="1"{% endif %}>
+          <label class="keep" title="Wert für das nächste Teil dieses Typs merken"><input type="checkbox" name="keep_{{ f.key }}" value="1" {% if f.key in kept %}checked{% endif %}> merken</label></div>
+        {% if fo %}
+        <datalist id="dl_{{ f.key }}">{% for o in fo %}<option value="{{ o }}">{% endfor %}</datalist>
+        {% if chips %}<div class="chips">{% for o in fo[:18] %}<button type="button" class="chip" data-for="f_{{ f.key }}">{{ o }}</button>{% endfor %}</div>{% endif %}
         {% endif %}
       </div>
-      {% endfor %}
+      {% endmacro %}
+      <input type="hidden" name="keeps" value="1">
+      {% if last_vals %}<div class="row"><button type="button" id="use-last" class="chip" data-last="{{ last_vals|tojson|forceescape }}" title="Alle Felder vom zuletzt angelegten Teil dieses Typs übernehmen">Wie letztes Teil</button><span class="meta">alle Felder des zuletzt angelegten Teils übernehmen</span></div>{% endif %}
+      {% for f in ctype.fields if not f.extra %}{{ field(f, true) }}{% endfor %}
+      {% if ctype.fields|selectattr('extra')|list %}
+      <details class="nf extra-fields"><summary>Weitere Angaben <span class="meta">(optional)</span></summary>
+      {% for f in ctype.fields if f.extra %}{{ field(f, false) }}{% endfor %}
+      </details>
+      {% endif %}
       <div class="name-preview">Name: <b id="np">–</b></div>
+      <a class="label-live card" id="label-live" href="/etiketten/typ/{{ ctype.key }}?back=%2Fneu%3Ftyp%3D{{ ctype.key|urlencode }}%26draft%3D1" title="Etikett-Layout bearbeiten (Eingaben bleiben erhalten)">
+        <img id="label-img" alt="Etikett-Vorschau" width="320" height="96" src="/neu/etikett.png?typ={{ ctype.key|urlencode }}">
+        <span class="meta">Etikett-Vorschau · antippen zum Bearbeiten des Layouts</span></a>
+      <details class="nf" id="series-box"><summary>Varianten-Reihe <span class="meta">(mehrere Teile auf einmal, z. B. Längen)</span></summary>
+        <label for="series_field">Feld</label>
+        <select id="series_field" name="series_field"><option value="">– keine Reihe –</option>{% for f in series_fields %}<option value="{{ f.key }}">{{ f.label }}</option>{% endfor %}</select>
+        <label for="series_values">Werte <span class="meta">(Komma getrennt, z. B. 6, 8, 10, 12)</span></label>
+        <input id="series_values" name="series_values" autocomplete="off" placeholder="6, 8, 10, 12">
+        {% for f in series_fields %}<div class="chips" data-series="{{ f.key }}" hidden>{% for o in opts[f.key][:18] %}<button type="button" class="chip" data-add="{{ o }}">{{ o }}</button>{% endfor %}</div>{% endfor %}
+        <span class="meta">Jeder Wert wird ein eigenes Teil mit eigenem Code; die Etiketten laufen als Satz in den Druck.</span>
+      </details>
+      <details class="nf"><summary>Pflichtfelder festlegen <span class="meta">(für „{{ ctype.label }}“)</span></summary>
+        <div class="chips">{% for f in ctype.fields %}<label class="chip"><input type="checkbox" name="req_{{ f.key }}" value="1" {% if f.key in required %}checked{% endif %}> {{ f.label }}</label>{% endfor %}</div>
+        <button type="submit" formaction="/neu/pflicht" formnovalidate>Pflichtfelder speichern</button>
+      </details>
       <div class="nf">
         <label for="qty">Menge <span class="meta">(leer = ungezählt)</span></label>
         <input id="qty" name="qty" inputmode="numeric" class="short" autocomplete="off">
@@ -63,6 +88,7 @@
     </details>
     {% if recent %}
     <h2>Zuletzt angelegt</h2>
+    <form method="post" action="/neu/satz" class="row"><input type="hidden" name="typ" value="{{ ctype.key }}"><input type="hidden" name="ids" value="{% for r in recent %}{{ r.id }}{% if not loop.last %},{% endif %}{% endfor %}"><button title="Etiketten aller hier gelisteten Teile als Satz drucken">{{ icon('action.print', size='sm') }} Alle {{ recent|length }} Etiketten drucken (Satz)</button></form>
     <ul class="list">{% for r in recent %}<li><a href="/items/{{ r.id }}"><span class="name">{{ r.name }}</span><span class="meta">{{ r.code }} · {{ r.place }}{% if r.qty is not none %} · {{ r.qty }}×{% endif %}</span></a></li>{% endfor %}</ul>
     {% endif %}
   </section>

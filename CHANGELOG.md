@@ -3,6 +3,16 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [1.0.0] – 2026-11-04
+
+### Neu
+- Standard-Etikett für alle Typen dreizeilig: Typ + Spezifikation · Maße · Code (je Typ eigene Zeilen, z. B. „Heat-Set Insert M3“ / „3 x 4.2mm“ / „CNS-002“); eigenes Layout hat weiter Vorrang.
+- Anlegen: Live-Etikett-Vorschau, Antippen öffnet den Layout-Editor und bringt mit allen Eingaben zurück; „Wie letztes Teil“, Duplizieren am Teil, Varianten-Reihe (mehrere Werte → mehrere Teile, Etiketten als Satz), Pflichtfelder je Typ, „merken“ für Felder, „Alle Etiketten drucken (Satz)“.
+- Optionale Felder („Weitere Angaben“) für alle Typen: Norm, Festigkeitsklasse, Beschichtung, Hersteller, Bezugsquelle u. v. m.; Insert zusätzlich Node (Nut-Typ), Einbau, Form, Bohrung, Auszugskraft …
+- Node-Typen als eigene Liste (Admin → Node-Typen).
+- Sammelbearbeitung: Typ-Feld (Node, Material, Hersteller …) für viele Teile gleichzeitig setzen.
+- Migration 026 (Pflichtfelder, gemerkte Werte je Typ).
+
 ## [0.7.1] – 2026-11-04
 
 ### Neu

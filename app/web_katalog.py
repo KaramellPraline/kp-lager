@@ -1,5 +1,6 @@
 """Routen: Teile-Katalog („Anlegen“), Einsatz-Assistent (Sortierkasten) und Baumansicht."""
 
+import re
 import sqlite3
 from collections.abc import Callable
 from typing import Annotated, Any
@@ -7,7 +8,7 @@ from typing import Annotated, Any
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import cards, catalog, codes, d30, kasten, labels, repo
+from app import cards, catalog, codes, d30, kasten, labelimg, labels, repo, typesettings
 from app.config import Settings
 from app.repo import LagerError
 
@@ -53,12 +54,39 @@ def register(
             return f" · nicht gedruckt: {exc}"
         return f" · {n} Etikett{'en' if n != 1 else ''} gedruckt"
 
+    def print_set_queue(conn: sqlite3.Connection, codes_: list[str]) -> str:
+        for code in codes_:
+            item = repo.get_item_by_code(conn, code)
+            if item is not None:
+                lab = labels.item_label(conn, settings.base_url, item)
+                labels.enqueue(conn, lab.code, lab.text, lab.extra)
+        return f" · {len(codes_)} in der Druck-Warteschlange"
+
+    def print_set(conn: sqlite3.Connection, codes_: list[str]) -> str:
+        """Etikett-Satz: alle auf einmal auf den D30, bei Fehler alle in die Warteschlange."""
+        if not settings.d30:
+            return print_set_queue(conn, codes_)
+        try:
+            n = d30.print_codes(conn, settings.base_url, codes_)
+        except LagerError as exc:
+            return f" · Druck nicht möglich ({exc})" + print_set_queue(conn, codes_)
+        return f" · {n} Etikett{'en' if n != 1 else ''} gedruckt"
+
     # --- Katalog ---------------------------------------------------------------------
 
     @app.get("/neu", response_class=HTMLResponse)
-    def katalog_page(request: Request, conn: Conn, typ: str = "") -> HTMLResponse:
+    def katalog_page(
+        request: Request, conn: Conn, typ: str = "", vorlage: str = "", draft: str = ""
+    ) -> HTMLResponse:
         key = typ or request.cookies.get(TYPE_COOKIE, "") or "schraube"
         current = catalog.lookup(conn, key) or catalog.BY_KEY["schraube"]
+        kept = typesettings.kept_values(conn, current.key)
+        last_row = conn.execute(
+            "SELECT * FROM item WHERE ctype = ? ORDER BY id DESC LIMIT 1", (current.key,)
+        ).fetchone()
+        last_vals = catalog.values_of(last_row) if last_row else {}
+        base = repo.get_item(conn, int(vorlage)) if vorlage.isdigit() else None
+        prefill = catalog.values_of(base) if base else dict(kept)
         last = targets_cookie(request)
         recent = conn.execute(
             "SELECT i.id, i.name, i.code, i.qty, c.name AS place FROM item i"
@@ -73,6 +101,13 @@ def register(
             print_mode=print_mode(conn),
             print_modes=PRINT_MODES,
             ctype=current,
+            prefill=prefill,
+            kept=kept,
+            last_vals=last_vals,
+            required=typesettings.required_keys(conn, current.key),
+            opts={f.key: catalog.options_for(conn, f) for f in current.fields},
+            draft=bool(draft),
+            series_fields=[f for f in current.fields if catalog.options_for(conn, f)],
             targets=repo.all_paths(conn),
             target=last[0] if last else None,
             recent_targets=[
@@ -110,6 +145,50 @@ def register(
         codes.set_setting(conn, "print_mode", "einzel" if form.get("on") == "1" else "aus")
         return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
+    @app.post("/neu/pflicht")
+    def katalog_required(conn: Conn, form: Form) -> RedirectResponse:
+        t = catalog.lookup(conn, form.get("typ", ""))
+        if t is None:
+            raise LagerError("Bitte einen Teile-Typ wählen")
+        keys = [f.key for f in t.fields if form.get(f"req_{f.key}")]
+        typesettings.save_required(conn, t.key, keys)
+        return redirect(f"/neu?typ={t.key}&draft=1", "Pflichtfelder gespeichert")
+
+    @app.post("/neu/satz")
+    def katalog_print_set(conn: Conn, form: Form) -> RedirectResponse:
+        """Etikett-Satz: die zuletzt angelegten Teile gemeinsam drucken."""
+        ids = [int(x) for x in form.get("ids", "").split(",") if x.isdigit()]
+        found = [repo.get_item(conn, i) for i in ids]
+        codes_ = [i["code"] for i in found if i["code"]]
+        if not codes_:
+            raise LagerError("Keine Etiketten zum Drucken")
+        return redirect(f"/neu?typ={form.get('typ', '')}", "Satz" + print_set(conn, codes_))
+
+    @app.get("/neu/etikett.png")
+    def katalog_label_png(request: Request, typ: str, conn: Conn) -> Response:
+        """Live-Vorschau des Etiketts aus den aktuellen Formularwerten (noch nicht angelegt)."""
+        t = catalog.lookup(conn, typ)
+        if t is None:
+            raise LagerError("Unbekannter Teile-Typ")
+        vals = {f.key: request.query_params.get(f"f_{f.key}", "").strip() for f in t.fields}
+        code = codes.format_code(t.cat, codes.next_number(conn, t.cat))
+        vals.update({k: "" for k, _ in labels.EXTRA_FIELDS})
+        vals.update({"name": catalog.name(t, vals) or t.label, "code": code, "ort": ""})
+        stored = typesettings.get(conn, t.key).get("label_layout") or ""
+        layout = labels.parse_layout(stored or catalog.default_label_layout(t))
+        label = labels.Label(
+            code, labels.qr_content(settings.base_url, code), vals["name"], "",
+            labels.layout_lines(layout, vals), str(layout["qr"]),
+        )  # fmt: skip
+        return Response(labelimg.png(label), media_type="image/png",
+                        headers={"Cache-Control": "no-store"})  # fmt: skip
+
+    @app.post("/settings/admin/nodetypen")
+    def admin_node_types(conn: Conn, form: Form) -> RedirectResponse:
+        lines = [x.strip() for x in form.get("node_types", "").splitlines() if x.strip()]
+        codes.set_setting(conn, "node_types", "\n".join(dict.fromkeys(lines)))
+        return redirect("/settings/admin#nodetypen", "Node-Typen gespeichert")
+
     @app.get("/neu/vorschau")
     def katalog_preview(request: Request, typ: str, conn: Conn) -> JSONResponse:
         t = catalog.lookup(conn, typ)
@@ -127,6 +206,54 @@ def register(
         target = int(form["target"]) if form.get("target", "").isdigit() else repo.inbox(conn)
         qty = int(form["qty"]) if form.get("qty", "").strip().isdigit() else None
         values = {f.key: form.get(f"f_{f.key}", "") for f in t.fields}
+        if form.get("keeps"):  # „merken“: diese Werte sind beim nächsten Mal vorbelegt
+            typesettings.save_kept(
+                conn, t.key,
+                {f.key: values[f.key].strip() for f in t.fields if form.get(f"keep_{f.key}")},
+            )  # fmt: skip
+        series_key = form.get("series_field", "")
+        series = [v.strip() for v in re.split(r"[,;\n]+", form.get("series_values", ""))]
+        series = [v for v in series if v] if series_key in values else []
+        required = typesettings.required_keys(conn, t.key)
+        missing = [
+            f.label for f in t.fields
+            if f.key in required and not values[f.key].strip()
+            and not (series and f.key == series_key)
+        ]  # fmt: skip
+        if missing:
+            raise LagerError("Pflichtfeld fehlt: " + ", ".join(missing))
+        mode = print_mode(conn)  # Regel: einzel = sofort 40x12, sammel = in die Warteschlange
+        wants_print = bool(form.get("d30_print") or mode == "einzel") and bool(settings.d30)
+        note = form.get("note", "").strip()
+
+        def add_note(item_id: int) -> None:
+            if note:  # optionale Karte: Links -> Linkkarte, sonst Notiz
+                is_link = note.startswith(("http://", "https://"))
+                cards.add(conn, "Links" if is_link else "Notiz", note,
+                          "link" if is_link else "note", item_id=item_id)  # fmt: skip
+
+        if series:  # Varianten-Reihe: je Wert ein Teil, Etiketten als Satz
+            made_codes: list[str] = []
+            names: list[str] = []
+            for v in series:
+                item_id = catalog.create(
+                    conn, typ, {**values, series_key: v}, target, qty,
+                    standalone=not form.get("no_label"),
+                )  # fmt: skip
+                add_note(item_id)
+                row = repo.get_item(conn, item_id)
+                names.append(row["name"])
+                if row["code"]:
+                    made_codes.append(row["code"])
+            msg = f"{len(names)} Teile angelegt: " + ", ".join(names)
+            if made_codes and wants_print:
+                msg += print_set(conn, made_codes)
+            elif made_codes and mode == "sammel":
+                msg += print_set_queue(conn, made_codes)
+            resp = redirect(f"/neu?typ={typ}", msg)
+            resp.set_cookie(TYPE_COOKIE, typ, max_age=31_536_000, samesite="lax")
+            remember_target(resp, request, target)
+            return resp
         dupes = [] if form.get("force") else catalog.duplicates(conn, typ, values)
         if dupes:  # gibt es schon: Menge dort erhöhen statt doppelt anlegen
             return render(
@@ -140,15 +267,10 @@ def register(
             conn, typ, values, target, qty, standalone=not form.get("no_label")
         )
         item = repo.get_item(conn, item_id)
-        note = form.get("note", "").strip()
-        if note:  # optionale Karte: Links -> Linkkarte, sonst Notiz
-            is_link = note.startswith(("http://", "https://"))
-            cards.add(conn, "Links" if is_link else "Notiz", note, "link" if is_link else "note",
-                      item_id=item_id)  # fmt: skip
+        add_note(item_id)
         msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"
-        mode = print_mode(conn)  # Regel: einzel = sofort 40x12, sammel = in die Warteschlange
         if item["code"]:
-            if (form.get("d30_print") or mode == "einzel") and settings.d30:
+            if wants_print:
                 msg += print_now(conn, [item["code"]])
             elif mode == "sammel":
                 label = labels.item_label(conn, settings.base_url, item)

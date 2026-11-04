@@ -70,6 +70,7 @@ APP_DIR = Path(__file__).parent
 APP_NAME = "KP Lager"
 CARRY_COOKIE = "carry"
 ADD_TABS = ("/neu", "/neu/behaelter", "/neu/bin")
+NL = chr(10)
 KIND_LABELS = kinds.KIND_LABELS
 
 templates = Jinja2Templates(directory=APP_DIR / "templates")
@@ -1082,6 +1083,7 @@ def create_app(settings: Settings) -> FastAPI:
             "settings_admin.html",
             counters=counters,
             keys=apikeys.all_keys(conn),
+            node_types=NL.join(catalog.node_types(conn)),
             new_key=new_key,
         )
 

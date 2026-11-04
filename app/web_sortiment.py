@@ -153,13 +153,15 @@ def register(
     def label_designer(request: Request, key: str, conn: Conn) -> HTMLResponse:
         k = sortiment.kind(conn, key)
         stored = typesettings.get(conn, key).get("label_layout") or ""
-        layout = labels.parse_layout(stored)
+        layout = labels.parse_layout(stored) if stored else labels.default_for(conn, key)
+        layout = layout or labels.default_layout()
         values, code = sample(conn, k)
         fields = [(f"{{{f}}}", lb) for f, lb, _ in k.fields]
         have = {f for f, _, _ in k.fields}
         fields += [(f"{{{f}}}", lb) for f, lb in labels.EXTRA_FIELDS if f not in have]
         return render(
             request, conn, "etiketten_layout.html", kind=k, layout=layout, custom=bool(stored),
+            back=request.query_params.get("back", ""),
             fields=fields, max_lines=labels.MAX_LINES, sample_code=code, presets=labels.PRESETS,
             preview=[(t, w, a) for t, w, a in labels.layout_lines(layout, values)],
         )  # fmt: skip
@@ -171,7 +173,9 @@ def register(
         if "qr" in params or any(p.startswith("t_") for p in params):
             layout = layout_from(params)
         else:  # Seite frisch geladen (z. B. nach dem Speichern): gespeichertes Layout zeigen
-            layout = labels.parse_layout(typesettings.get(conn, key).get("label_layout") or "")
+            stored = typesettings.get(conn, key).get("label_layout") or ""
+            fallback = labels.default_for(conn, key) or labels.default_layout()
+            layout = labels.parse_layout(stored) if stored else fallback
         values, code = sample(conn, k)
         label = labels.Label(
             code, labels.qr_content(settings.base_url, code), values.get("name", ""), "",
@@ -183,17 +187,20 @@ def register(
     @app.post("/etiketten/typ/{key}")
     def label_layout_save(key: str, conn: Conn, form: Form) -> RedirectResponse:
         sortiment.kind(conn, key)
+        back = form.get("back", "")  # Rücksprung ins Anlegen-Formular
+        back = back if back.startswith("/neu") else ""
         if form.get("reset"):
             typesettings.save_layout(conn, key, None)
-            return redirect(f"/etiketten/typ/{key}", "Standard-Layout wiederhergestellt")
+            return redirect(back or f"/etiketten/typ/{key}", "Standard-Layout wiederhergestellt")
         if form.get("all"):
             lay = layout_from(form)
             for k in sortiment.kinds(conn):
                 typesettings.save_layout(conn, k.key, lay)
-            return redirect(f"/etiketten/typ/{key}", "Layout für alle Typen übernommen")
+            return redirect(back or f"/etiketten/typ/{key}", "Layout für alle Typen übernommen")
         typesettings.save_layout(conn, key, layout_from(form))
         return redirect(
-            f"/etiketten/typ/{key}", "Layout gespeichert – gilt für neue Etiketten dieses Typs"
+            back or f"/etiketten/typ/{key}",
+            "Layout gespeichert – gilt für neue Etiketten dieses Typs",
         )
 
     # --- Typ am Teil ---------------------------------------------------------------------

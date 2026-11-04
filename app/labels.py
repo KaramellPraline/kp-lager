@@ -167,6 +167,12 @@ def fill(template: str, values: dict[str, str]) -> str:
         if keys and not all(values.get(k, "").strip() for k in keys):
             continue
         out.append(re.sub(r"{(\w+)}", lambda m: values.get(m.group(1), "").strip(), token))
+    seps = ("x", "×", "·", "-", "/")  # Trenner allein: weg, wenn ein Nachbar fehlt
+    while out and out[0] in seps:
+        out.pop(0)
+    while out and out[-1] in seps:
+        out.pop()
+    out = [t for i, t in enumerate(out) if not (t in seps and i and out[i - 1] in seps)]
     return " ".join(out).strip()
 
 
@@ -207,13 +213,25 @@ def item_values(conn: sqlite3.Connection, item: sqlite3.Row) -> dict[str, str]:
     return values
 
 
+def default_for(conn: sqlite3.Connection, key: str) -> Layout | None:
+    """Standard-Layout des Katalog-/eigenen Typs: dreizeilig (Typ+Spec · Maße · Code)."""
+    from app import catalog
+
+    t = catalog.lookup(conn, key) if key and not key.startswith("mat:") else None
+    return parse_layout(catalog.default_label_layout(t)) if t else None
+
+
 def type_layout(conn: sqlite3.Connection, item: sqlite3.Row) -> Layout | None:
-    """Gespeichertes Layout des Typs dieses Teils (None = Standarddarstellung)."""
+    """Layout des Typs dieses Teils: gespeichert, sonst dreizeilig; None = Name + Code."""
     from app import typesettings
 
     key = typesettings.key_of(item)
-    raw = typesettings.get(conn, key).get("label_layout") if key else ""
-    return parse_layout(raw) if raw else None
+    ts = typesettings.get(conn, key) if key else {}
+    if ts.get("label_layout"):
+        return parse_layout(ts["label_layout"])
+    if ts.get("label_main") or ts.get("label_extra"):  # eigene Haupt-/Zusatzzeile hat Vorrang
+        return None
+    return default_for(conn, key)
 
 
 def item_label(conn: sqlite3.Connection, base_url: str, item: sqlite3.Row) -> Label:
