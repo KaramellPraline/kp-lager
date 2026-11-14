@@ -1,55 +1,34 @@
-"""Routen: Teile-Katalog („Anlegen“), Einsatz-Assistent (Sortierkasten) und Baumansicht."""
+"""Hinzufügen › Teile-Katalog (/neu) und Einsatz-Assistent für Sortierkästen (/neu/bin)."""
 
 import re
 import sqlite3
 from collections import Counter
-from collections.abc import Callable
-from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import (
-    cards,
-    catalog,
-    codes,
-    d30,
-    kasten,
-    labelimg,
-    labels,
-    presets,
-    repo,
-    typesettings,
-)
-from app.config import Settings
+from app import cards, catalog, codes, d30, kasten, labelimg, labels, presets, repo, typesettings
 from app.repo import LagerError
+from app.web.shared import TARGET_COOKIE, Conn, Ctx, FormDict, redirect
 
-TARGET_COOKIE = "qa_targets"  # gleiche Liste wie die Schnelleingabe auf der Startseite
 TYPE_COOKIE = "kat_typ"
+
+
 # Druckmodus beim Anlegen: (Schlüssel, Name, Erklärung)
 PRINT_MODES = {
     "aus": ("Aus", "nichts automatisch drucken"),
     "einzel": ("Einzeln", "jedes neue Teil sofort auf den D30 (40x12)"),
     "sammel": ("Sammeln", "neue Etiketten in die Warteschlange, später gemeinsam drucken"),
 }
+
+
 QTYS = ("10", "25", "50", "100", "200", "500")
 
 
-async def form_fields(request: Request) -> dict[str, str]:
-    form = await request.form()
-    return {k: v for k, v in form.items() if isinstance(v, str)}
+def register(app: FastAPI, ctx: Ctx) -> None:
+    settings = ctx.settings
+    render = ctx.render
 
-
-Form = Annotated[dict[str, str], Depends(form_fields)]
-
-
-def register(
-    app: FastAPI,
-    Conn: Any,
-    render: Callable[..., HTMLResponse],
-    redirect: Callable[..., RedirectResponse],
-    settings: Settings,
-) -> None:
     def targets_cookie(request: Request) -> list[int]:
         return [int(x) for x in request.cookies.get(TARGET_COOKIE, "").split(",") if x.isdigit()]
 
@@ -85,8 +64,6 @@ def register(
         except LagerError as exc:
             return f" · Druck nicht möglich ({exc})" + print_set_queue(conn, codes_)
         return f" · {n} Etikett{'en' if n != 1 else ''} gedruckt"
-
-    # --- Katalog ---------------------------------------------------------------------
 
     @app.get("/neu", response_class=HTMLResponse)
     def katalog_page(
@@ -147,7 +124,7 @@ def register(
         )
 
     @app.post("/neu/favorit")
-    def katalog_favorite(conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_favorite(conn: Conn, form: FormDict) -> RedirectResponse:
         key = form.get("typ", "")
         if catalog.lookup(conn, key):
             catalog.toggle_favorite(conn, key)
@@ -160,18 +137,18 @@ def register(
         return "einzel" if codes.get_setting(conn, "auto_print", "0") == "1" else "aus"
 
     @app.post("/neu/druckmodus")
-    def katalog_print_mode(conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_print_mode(conn: Conn, form: FormDict) -> RedirectResponse:
         mode = form.get("mode", "aus")
         codes.set_setting(conn, "print_mode", mode if mode in PRINT_MODES else "aus")
         return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
     @app.post("/neu/autodruck")  # alt: an/aus -> Einzel/Aus
-    def katalog_auto_print(conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_auto_print(conn: Conn, form: FormDict) -> RedirectResponse:
         codes.set_setting(conn, "print_mode", "einzel" if form.get("on") == "1" else "aus")
         return RedirectResponse(form.get("back", "/neu"), status_code=303)
 
     @app.post("/neu/preset")
-    def katalog_preset_save(conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_preset_save(conn: Conn, form: FormDict) -> RedirectResponse:
         t = catalog.lookup(conn, form.get("typ", ""))
         if t is None:
             raise LagerError("Bitte einen Teile-Typ wählen")
@@ -183,12 +160,12 @@ def register(
         )
 
     @app.post("/neu/preset/{preset_id}/loeschen")
-    def katalog_preset_delete(preset_id: int, conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_preset_delete(preset_id: int, conn: Conn, form: FormDict) -> RedirectResponse:
         presets.delete(conn, preset_id)
         return redirect(f"/neu?typ={form.get('typ', '')}&draft=1", "Preset gelöscht")
 
     @app.post("/neu/pflicht")
-    def katalog_required(conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_required(conn: Conn, form: FormDict) -> RedirectResponse:
         t = catalog.lookup(conn, form.get("typ", ""))
         if t is None:
             raise LagerError("Bitte einen Teile-Typ wählen")
@@ -197,7 +174,7 @@ def register(
         return redirect(f"/neu?typ={t.key}&draft=1", "Pflichtfelder gespeichert")
 
     @app.post("/neu/satz")
-    def katalog_print_set(conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_print_set(conn: Conn, form: FormDict) -> RedirectResponse:
         """Etikett-Satz: die zuletzt angelegten Teile gemeinsam drucken."""
         ids = [int(x) for x in form.get("ids", "").split(",") if x.isdigit()]
         found = [repo.get_item(conn, i) for i in ids]
@@ -226,12 +203,6 @@ def register(
         return Response(labelimg.png(label), media_type="image/png",
                         headers={"Cache-Control": "no-store"})  # fmt: skip
 
-    @app.post("/settings/admin/nodetypen")
-    def admin_node_types(conn: Conn, form: Form) -> RedirectResponse:
-        lines = [x.strip() for x in form.get("node_types", "").splitlines() if x.strip()]
-        codes.set_setting(conn, "node_types", "\n".join(dict.fromkeys(lines)))
-        return redirect("/settings/admin#nodetypen", "Node-Typen gespeichert")
-
     @app.get("/neu/vorschau")
     def katalog_preview(request: Request, typ: str, conn: Conn) -> JSONResponse:
         t = catalog.lookup(conn, typ)
@@ -241,7 +212,7 @@ def register(
         return JSONResponse({"name": catalog.name(t, values)})
 
     @app.post("/neu")
-    def katalog_create(request: Request, conn: Conn, form: Form) -> Response:
+    def katalog_create(request: Request, conn: Conn, form: FormDict) -> Response:
         typ = form.get("typ", "")
         t = catalog.lookup(conn, typ)
         if t is None:
@@ -332,7 +303,7 @@ def register(
         return resp
 
     @app.post("/neu/dublette/{item_id}")
-    def katalog_add_to_existing(item_id: int, conn: Conn, form: Form) -> RedirectResponse:
+    def katalog_add_to_existing(item_id: int, conn: Conn, form: FormDict) -> RedirectResponse:
         item = repo.get_item(conn, item_id)
         qty = int(form["qty"]) if form.get("qty", "").strip().isdigit() else 0
         if qty and item["qty"] is not None:
@@ -346,8 +317,6 @@ def register(
         return redirect(
             f"/neu?typ={item['ctype'] or ''}", msg, repo.last_event_id(conn) if qty else None
         )
-
-    # --- Einsatz-Assistent ----------------------------------------------------------------
 
     @app.get("/neu/bin", response_class=HTMLResponse)
     def bin_page(request: Request, conn: Conn, kasten_id: int = 0) -> HTMLResponse:
@@ -377,7 +346,7 @@ def register(
         )
 
     @app.post("/neu/bin")
-    def bin_create(request: Request, conn: Conn, form: Form) -> RedirectResponse:
+    def bin_create(request: Request, conn: Conn, form: FormDict) -> RedirectResponse:
         if not form.get("kasten", "").isdigit():
             raise LagerError("Bitte einen Sortierkasten wählen")
         kid = int(form["kasten"])
@@ -417,18 +386,3 @@ def register(
             msg += print_now(conn, [node["code"]])
         resp = redirect(f"/neu/bin?kasten_id={kid}", msg)
         return resp
-
-    # --- Baumansicht ------------------------------------------------------------------------
-
-    def branch(request: Request, conn: sqlite3.Connection, node_id: int | None) -> HTMLResponse:
-        kids = repo.children(conn, node_id)
-        items = repo.items_in(conn, node_id) if node_id else []
-        return render(request, conn, "_branch.html", kids=kids, items=items)
-
-    @app.get("/baum", response_class=HTMLResponse)
-    def tree_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render(request, conn, "baum.html", kids=repo.children(conn, None))
-
-    @app.get("/n/{node_id}/zweig", response_class=HTMLResponse)
-    def tree_branch(request: Request, node_id: int, conn: Conn) -> HTMLResponse:
-        return branch(request, conn, node_id)

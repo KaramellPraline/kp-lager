@@ -88,7 +88,7 @@ class ImportText(BaseModel):
     review: bool = False
 
 
-def build_router(get_conn: Callable[[], Iterator[sqlite3.Connection]]) -> APIRouter:
+def build_router(get_conn: Callable[..., Iterator[sqlite3.Connection]]) -> APIRouter:
     Conn = Annotated[sqlite3.Connection, Depends(get_conn)]
 
     def presented(x_api_key: str, authorization: str) -> str:
