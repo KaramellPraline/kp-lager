@@ -197,7 +197,7 @@ def test_item_page_quick_actions(client: TestClient, tmp_path: Path) -> None:
     assert f'action="/items/{iid}/einlagern"' in head and f'action="/carry/item/{iid}"' in head
     assert f'href="/items/{iid}/bearbeiten"' in head and "/labels/quick/item/" in head
     for fold in ("verlauf", "einkaeufe", "karten-box", "waage", "ablauf", "verleihen", "gefahr"):
-        assert f'<details class="fold' in page and f'id="{fold}"' in page
+        assert '<details class="fold' in page and f'id="{fold}"' in page
     r = client.post(f"/items/{iid}/einlagern", data={"qty": "5"})
     assert "5 eingelagert" in r.text
     assert repo.get_item(connect(tmp_path / "lager.db"), iid)["qty"] == 45
