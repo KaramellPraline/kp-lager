@@ -9,7 +9,7 @@ docker compose up -d                     # in diesem Ordner
 
 1. **DNS:** im Router/AdGuard `lager.home.lan` → IP dieses Rechners eintragen.
 2. **Zertifikat:** `http://lager.home.lan/ca.crt` auf Handy/PC laden und installieren (einmalig).
-3. **Öffnen:** `https://lager.home.lan`. QR-Codes tragen immer diese Adresse.
+3. **Öffnen:** `https://lager.home.lan` → beim ersten Aufruf **Admin anlegen** (`/einrichten`). Weitere Benutzer: Einstellungen › Benutzer. QR-Codes tragen immer diese Adresse.
 4. **Bestand übernehmen:** altes System → Mehr › Export (JSON), neues System → Mehr › Import › Datei › Vorschau › Übernehmen.
 
 | Aufgabe | Befehl |
@@ -19,5 +19,7 @@ docker compose up -d                     # in diesem Ordner
 | Zurück | alte Nummer in `.env`, `docker compose up -d` (vorher Backup einspielen, falls Migration lief) |
 | Backup | läuft täglich automatisch nach `data/backups/`; `data/` zusätzlich kopieren (NAS/USB) |
 | Stoppen | `docker compose down` (Daten bleiben in `data/`) |
+
+Anmeldung abschalten (nur reines Heimnetz): `LAGER_AUTH: "0"` in `compose.yaml`. Admin vorab per Docker-Secret: Kommentare in `compose.yaml`. Sicherheitsmodell: `docs/SICHERHEIT.md`.
 
 Alles Wichtige liegt in `./data`. Ohne diesen Ordner gibt es keinen Bestand – nicht löschen.

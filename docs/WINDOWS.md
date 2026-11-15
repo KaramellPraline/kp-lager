@@ -13,11 +13,14 @@ Optionen: `--server <Adresse>`, `--bridge-only` (nur Bridge, kein Fenster), `--c
 Installer-Option „Autostart“ startet beim Anmelden nur die Bridge im Hintergrund.
 
 ## D30-Bridge – so funktioniert der Druck
-1. Server mit `LAGER_D30_BRIDGE=1` (in `deploy/compose.yaml` Standard) und `LAGER_D30=0` (kein Bluetooth im Container).
+1. Server mit `LAGER_D30_BRIDGE=1` (in `deploy/compose.yaml` Standard; ohne die Variable: Einstellungen › Anbindungen › Druck) und `LAGER_D30=0` (kein Bluetooth im Container).
 2. In der Oberfläche erscheinen die D30-Schalter wie gewohnt; ihr Status kommt von der Bridge am PC.
 3. „Direkt drucken“ lässt den Server die Codes an den Browser melden, der Browser ruft die Bridge auf, die Bridge holt die
    Etikettenbilder vom Server und druckt per Bluetooth; danach meldet der Browser „gedruckt“ an den Server.
-4. Sicherheit: Bridge nur auf `127.0.0.1`, nur Anfragen der eingetragenen Server-Adresse, Bilder nur von diesem Server,
+4. Anmeldung: Das Fenster hält die Sitzung per Cookie (kein privater Modus, Profil in `%APPDATA%\KP Lager Client\webview`).
+   Die Bridge selbst hat kein Cookie – sie holt die Bilder über signierte Kurzlinks, die der Server dem Browser mitgibt
+   (15 Minuten, je Code). Nichts einzurichten; ältere Clients ohne Kurzlink-Unterstützung bitte aktualisieren.
+5. Sicherheit: Bridge nur auf `127.0.0.1`, nur Anfragen der eingetragenen Server-Adresse, Bilder nur von diesem Server,
    höchstens 30 Etiketten je Auftrag. Ohne laufende Bridge bleibt das Etikett in der Warteschlange.
 
 ## Wo liegt die .exe?

@@ -11,6 +11,9 @@ services:
       LAGER_D30: "0"            # kein Bluetooth im Container
       LAGER_D30_BRIDGE: "${LAGER_D30_BRIDGE:-1}"  # Etiketten über den Windows-Client (PC-Bridge) drucken
       LAGER_BACKUP_EXTERN: ${LAGER_BACKUP_EXTERN:-}  # Ziel im Container, z. B. /backup-extern
+      LAGER_AUTH: "${LAGER_AUTH:-1}"  # Anmeldung; erster Aufruf: /einrichten. 0 = aus (nur Heimnetz)
+      LAGER_ADMIN_USER: ${LAGER_ADMIN_USER:-}  # optional: Admin beim Start anlegen …
+      LAGER_ADMIN_PASSWORD_FILE: ${LAGER_ADMIN_PASSWORD_FILE:-}  # … Passwort als Secret-Datei
     volumes:
       - ./data:/data
       # Externes Backup (NAS/USB): Host-Ordner einbinden und LAGER_BACKUP_EXTERN=/backup-extern setzen

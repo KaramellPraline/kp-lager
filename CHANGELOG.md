@@ -9,6 +9,15 @@ Text des GitHub-Releases übernommen (`tools/release.py notes`).
 - Typen in zwei Ebenen: 9 Bereiche (Befestigung · Mechanik & Antrieb · Elektronik · Elektrik & Strom · Werkzeug & Messen · 3D-Druck & Laser · Material & Chemie · Netzwerk & IT · Haus & Schutz) mit Gruppen; beim Anlegen und im Sortiment mit Suchfeld, eigene Typen im Bereich „Eigene Typen“.
 - 46 neue Typen, u. a. O-Ring/Dichtung, Feder, Zahnriemen, Riemenscheibe, Zahnrad, Linearführung, Gleitlager, Gewindespindel, Rolle, Motor, Lüfter, Relais, Quarz, Kühlkörper, Akkuzelle, Werkzeug-Akku, Ladegerät, Steckdosenleiste, Fräser, Sägeblatt, Bit, Trennscheibe, Reiniger, Laser-Platte, Druckbett, Heizpatrone, Handschuhe, Atemschutz, Feuerlöscher, Leuchtmittel.
 - API `GET /api/v1/types/catalog`: Feld `area` je Typ; Favoriten erscheinen dort nicht mehr doppelt.
+- **Anmeldung** für den Betrieb als Dienst (Standard an, `LAGER_AUTH=0` schaltet ab): erster Start `/einrichten`, Benutzer mit Rolle Admin/Nutzer, Passwörter mit scrypt, Sitzung 30 Tage gleitend, Sperre nach 5 Fehlversuchen, Rücksprung zum gescannten Code nach dem Login. Optional Admin per `LAGER_ADMIN_USER` + `LAGER_ADMIN_PASSWORD_FILE` (Docker-Secret). Modell: `docs/SICHERHEIT.md`.
+- Schutz gegen fremde Formulare (Origin-Prüfung) für alle schreibenden Anfragen der Oberfläche, auch ohne Login.
+- **Einstellungen in Reitern:** Allgemein · Bedienung · Anbindungen · Benutzer · System (Admin heißt jetzt System; `/settings/admin` leitet weiter).
+- **Anbindungen** an einem Ort mit Status und „Testen“: API & Schlüssel, MCP (kopierbare Konfiguration), Home Assistant (YAML mit echter Adresse), Druck (A4/IPP, MQTT-Broker jetzt auch in der App einstellbar, D30-Bridge an/aus), Backup extern. Passwörter werden nie wieder angezeigt; Umgebungsvariablen haben Vorrang.
+- D30-PC-Bridge holt Etikettenbilder über signierte Kurzlinks (funktioniert mit Anmeldung); `tools/d30_print.py --key`.
+
+### Geändert
+- Windows-Client merkt sich die Anmeldung (pywebview ohne privaten Modus).
+- Offline-App: Login-Seite wird nie als Offline-Fassung gespeichert; Buchungen, die wegen abgelaufener Anmeldung abgelehnt werden, bleiben gemerkt.
 
 ## [1.3.0] – 2026-11-04
 

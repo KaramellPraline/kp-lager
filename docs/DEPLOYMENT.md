@@ -7,6 +7,13 @@ Am Windows-PC gibt es keinen Server mehr, nur den Client (`docs/WINDOWS.md`). Ku
 
 Siehe `docs/WINDOWS.md`: Client-Installer (Fenster + D30-Bridge).
 
+## Anmeldung
+
+Standard ist **Login an** (`LAGER_AUTH=1`): beim ersten Aufruf `/einrichten` (Admin anlegen), danach Benutzer unter
+Einstellungen › Benutzer. Alternativ legt `LAGER_ADMIN_USER` + `LAGER_ADMIN_PASSWORD_FILE` (Docker-Secret) den Admin beim
+Start an. Passwort vergessen und kein zweiter Admin: `docker compose exec app python -c "from app import auth, db; c=db.connect('/data/lager.db'); auth.set_password(c, 1, 'neues-passwort')"`
+(Benutzer-ID 1 = erster Admin). Reines Heimnetz ohne Login: `LAGER_AUTH=0`. Modell und Grenzen: `docs/SICHERHEIT.md`.
+
 ## Handy einrichten (einmalig)
 
 1. `http://lager.home.lan/ca.crt` öffnen und das Zertifikat installieren (Android: Einstellungen → Sicherheit → Zertifikat installieren → CA; iPhone: Profil + Zertifikatsvertrauen).

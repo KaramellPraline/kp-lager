@@ -5,7 +5,9 @@ Der Server (z. B. auf dem Pi) hat kein Bluetooth. Der **Druck-Agent** (`app/prin
 ## Einrichtung (kp-network, vom Desktop)
 `.\scripts\local\deploy_printer.ps1 [-Autostart]` legt die MQTT-Benutzer `kp-lager` und `kp-desktop-print` an, setzt die ACL, konfiguriert KP Lager auf dem Pi (`LAGER_PRINT_MQTT*`, Passwort nur in `/home/admin/kp-lager/.env`) und startet den Agenten (Log: `%LOCALAPPDATA%\kp-print-agent.log`). Der Server braucht `LAGER_D30=1`.
 
-Server-Umgebung: `LAGER_PRINT_MQTT=host[:port]`, `LAGER_PRINT_MQTT_USER`, `LAGER_PRINT_MQTT_PASSWORD` (oder `..._PASSWORD_FILE`). Ist `LAGER_PRINT_MQTT` gesetzt, gehen alle Druckknöpfe (Warteschlange, Hinzufügen, Sammeldruck) über MQTT.
+Einfachster Weg: **Einstellungen › Anbindungen › Druck** (Broker, Port, Benutzer, Passwort, Thema; „Verbindung testen“). Dann ist kein `LAGER_D30=1` nötig.
+
+Server-Umgebung (hat Vorrang vor der Einstellung): `LAGER_PRINT_MQTT=host[:port]`, `LAGER_PRINT_MQTT_TOPIC` (Basis, Standard `print/d30`), `LAGER_PRINT_MQTT_USER`, `LAGER_PRINT_MQTT_PASSWORD` (oder `..._PASSWORD_FILE`). Ist `LAGER_PRINT_MQTT` gesetzt, gehen alle Druckknöpfe (Warteschlange, Hinzufügen, Sammeldruck) über MQTT.
 
 Agent von Hand: `python -m app.print_agent --broker 192.168.74.6 --password-file <Datei>` (`--dry-run` druckt nicht, meldet aber Erfolg).
 

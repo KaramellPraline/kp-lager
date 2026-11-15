@@ -20,6 +20,10 @@ Optional `.env` neben `compose.yaml`: `LAGER_HOST=lager.home.lan`, `LAGER_BACKUP
 (Host-Ordner für das externe Backup, siehe unten) und `LAGER_D30_BRIDGE=1` (Standard; Etiketten drucken über den Windows-Client).
 Daten liegen in `deploy/data/` (SQLite + Fotos).
 
+**Anmeldung:** Standard an. Beim ersten Aufruf von `https://lager.home.lan` den Admin anlegen (`/einrichten`).
+Vorab per `.env`: `LAGER_ADMIN_USER=admin` und `LAGER_ADMIN_PASSWORD_FILE=/run/secrets/lager_admin` (Datei als
+Docker-Secret einbinden). Ohne Login (nur reines Heimnetz): `LAGER_AUTH=0`. Siehe `docs/SICHERHEIT.md`.
+
 ## 3. Handy einrichten (einmalig)
 1. `http://lager.home.lan/ca.crt` öffnen → Zertifikat laden.
 2. **Android:** Einstellungen › Sicherheit › Verschlüsselung & Anmeldedaten › Zertifikat installieren › CA-Zertifikat.

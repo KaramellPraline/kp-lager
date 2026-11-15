@@ -54,6 +54,7 @@ Kamera-Scan und Mikrofon funktionieren im Browser nur über HTTPS. Für LAN-Betr
 | [docs/STATUS.md](docs/STATUS.md) | Aktueller Stand, Meilensteine, offene Aufgaben – **hier weiterarbeiten** |
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Entwicklungs-Workflow, Projektaufbau, Tests, Arbeiten in der Cloud |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Datenmodell, Module, Routen |
+| [docs/SICHERHEIT.md](docs/SICHERHEIT.md) | Anmeldung, Rollen, CSRF-Schutz, was geschützt ist und was nicht |
 | [docs/DECISIONS.md](docs/DECISIONS.md) | Entscheidungen mit Datum und Begründung (nicht neu diskutieren) |
 | [docs/CONFIG.md](docs/CONFIG.md) | Umgebungsvariablen und Einstellungen |
 | [docs/CLOUD.md](docs/CLOUD.md) | Einrichtung für Claude Code im Web und Codespaces |

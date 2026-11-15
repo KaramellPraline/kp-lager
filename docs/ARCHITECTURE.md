@@ -72,7 +72,9 @@ Jedes Routenmodul hat dieselbe Form `register(app, ctx)`; `ctx` (`app/web/shared
 | Drucken › A4 | `/a4…`, `/n/<id>/etikett`, `/labels/bins.json` | `app/web/routes/drucken_a4.py` |
 | Einkauf | `/einkauf…`, `/lieferanten…`, `/purchases…`, bestellt/eingetroffen/Mindestbestand | `app/web/routes/einkauf.py` |
 | Werkstatt | `/projekte…`, `/entnahmen`, `/verliehen`, `/inventur…`, `/trockner…`, `/slicer…`, `/ablauf`, Waage | `app/web/routes/werkstatt.py` |
-| System | `/settings…` (Admin, Schlüssel, A4-Drucker, Node-Typen), `/status…`, `/import`, `/export.*`, `/codes`, `/arten`, `/lang`, `/mehr`, `/verlauf`, Rückgängig, `/health`, `/ca.crt`, `/sw.js`, `/manifest.webmanifest`, `/offline` | `app/web/routes/system.py` |
+| Anmeldung | `/login`, `/einrichten`, `/logout`, `/settings/benutzer…`, `/settings/konto/passwort`; Middleware (Login, Rollen, Origin-Prüfung) in `app/web/guard.py`, Logik in `app/auth.py` (Modell: `docs/SICHERHEIT.md`) | `app/web/routes/konto.py` |
+| Einstellungen › Anbindungen | `/settings/anbindungen…` (API & Schlüssel, MCP, Home Assistant, Druck: A4/MQTT/Bridge, Backup extern, Testen) | `app/web/routes/anbindungen.py` |
+| System | `/settings` (Allgemein), `/settings/bedienung`, `/settings/system` (Nummernvergabe, Node-Typen; `/settings/admin` leitet weiter), `/status…`, `/import`, `/export.*`, `/codes`, `/arten`, `/lang`, `/mehr`, `/verlauf`, Rückgängig, `/health`, `/ca.crt`, `/sw.js`, `/manifest.webmanifest`, `/offline` | `app/web/routes/system.py` |
 | REST `/api/v1` | Gemeinsames (JSON-Form, Schlüssel, Nachschlagen) · Bestand · Werkstatt · Einkauf · System | `app/api/common.py`, `bestand.py`, `werkstatt.py`, `einkauf.py`, `system.py`; `build_router` in `app/api/__init__.py` |
 
 Reihenfolge der Registrierung: `app/web/routes/__init__.py: ROUTES` (bei gleichem Pfad gewinnt die erste Route, z. B. `/sortiment/eigene` vor `/sortiment/{key}`).
@@ -91,6 +93,7 @@ Reihenfolge der Registrierung: `app/web/routes/__init__.py: ROUTES` (bei gleiche
 
 - `app/catalog.py` Teile-Katalog: `AREAS` (Bereich › Gruppe), `TYPES` (bis 1.3, Reihenfolge fest) + `TYPES_2_0`, Felder, Namensvorlagen, Zusatzfeld-Profile `EXTRAS` (`Type.extras`), Erkennung `guess`; Elektronik → Profil `cmp` · `app/choices.py` Auswahllisten Filament/Harz · `app/web/routes/katalog.py` Routen `/neu`, `/neu/vorschau`, `/neu/bin` (Baum `/baum`, `/n/<id>/zweig` in `bestand.py`)
 - `app/labelimg.py` Etikettenbild 320×96 (QR, Name auto-Größe, ID) · `app/d30.py` Druck: Bluetooth-Seriell (COM) → BLE-Rückfall, Status-Scan, `print_codes`/`print_labels` · `tools/d30_print.py` Kommandozeile
+- Migration 029: `app_user` (Name, scrypt-Hash, Rolle admin|nutzer), `session` (SHA-256 des Tokens, gleitender Ablauf), `login_fail` (Sperre)
 - Migrationen 017 (Betrieb: Haltbarkeit, Maße, Trockner, Slicer) und 018 (`container.airtight`)
 - Neue Behälterarten `machine` (MAS) und `dryer` (TRO); Scan-Ablauf Trockner → Filament in `app/web/routes/scan.py: by_code` (Cookie `dryer_wait`, 10 min)
 - Cookies der Bedienung: `qa_targets` (Ziele), `qa_cats`/`qa_kinds` (zuletzt benutzte Kategorien/Arten), `kat_typ` (letzter Katalog-Typ)

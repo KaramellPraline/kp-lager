@@ -61,7 +61,7 @@ Funktioniert vollständig für alles außer Hardware:
 
 - Läuft in der Cloud: App, API, Tests, Lint, Typecheck, Katalog, Baum, Etiketten als Bild (`/labels/img/<CODE>.png`), A4-PDF, IPP gegen Fake-Server (Testort.
 - Läuft nur am Windows-PC: D30-Druck (Bluetooth, Client mit Bridge).
-- Eine Test-Instanz für die Oberfläche: `LAGER_DATA_DIR=/tmp/lager LAGER_AUTO_BACKUP=0 LAGER_D30=0 uv run uvicorn app.main:app --port 8000`.
+- Eine Test-Instanz für die Oberfläche: `LAGER_DATA_DIR=/tmp/lager LAGER_AUTO_BACKUP=0 LAGER_D30=0 uv run uvicorn app.main:app --port 8000` (Login an: beim ersten Aufruf `/einrichten`; `LAGER_AUTH=0` ohne Login). Tests: `Settings(...)` hat `auth=False`, Login-Tests setzen `auth=True` (`tests/test_auth.py`).
 - CI (`.github/workflows/ci.yml`) führt Lint, Typecheck und Tests bei jedem Push und PR aus.
 - Geheimnisse gehören nicht ins Repository: `.env`, API-Schlüssel (`LAGER_API_KEY`), Zertifikate, `data/`.
 
