@@ -527,3 +527,4 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 .sort-tree details.area > summary { cursor: pointer; min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .sort-tree .grp .menu-h { margin: 12px 0 2px; }
 .sort-tree li a.empty span { color: var(--sub); }
+@media (max-width: 899px) { .neu .jump-bar { display: none; } } /* Bereiche stehen oben zugeklappt; Leiste würde Felder verdecken */

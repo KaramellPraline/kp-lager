@@ -89,7 +89,7 @@ Reihenfolge der Registrierung: `app/web/routes/__init__.py: ROUTES` (bei gleiche
 
 - `app/scheduler.py` tägliches Backup · `app/status.py` Statusseite · `app/value.py` Lagerwert · `app/dryer.py` Trockner · `app/slicer.py` G-Code/3MF-Verbrauch · `app/vision.py` Foto-Erkennung · `app/bulk.py` Massenaktionen · `app/creation.py` Teile mit Kategorie anlegen (API/MCP) · Routen dazu in `app/web/routes/` (`system.py`, `werkstatt.py`, `bestand.py`)
 
-- `app/catalog.py` Teile-Katalog (Typen, Felder, Namensvorlagen; Elektronik → Profil `cmp`) · `app/choices.py` Auswahllisten Filament/Harz · `app/web/routes/katalog.py` Routen `/neu`, `/neu/vorschau`, `/neu/bin` (Baum `/baum`, `/n/<id>/zweig` in `bestand.py`)
+- `app/catalog.py` Teile-Katalog: `AREAS` (Bereich › Gruppe), `TYPES` (bis 1.3, Reihenfolge fest) + `TYPES_2_0`, Felder, Namensvorlagen, Zusatzfeld-Profile `EXTRAS` (`Type.extras`), Erkennung `guess`; Elektronik → Profil `cmp` · `app/choices.py` Auswahllisten Filament/Harz · `app/web/routes/katalog.py` Routen `/neu`, `/neu/vorschau`, `/neu/bin` (Baum `/baum`, `/n/<id>/zweig` in `bestand.py`)
 - `app/labelimg.py` Etikettenbild 320×96 (QR, Name auto-Größe, ID) · `app/d30.py` Druck: Bluetooth-Seriell (COM) → BLE-Rückfall, Status-Scan, `print_codes`/`print_labels` · `tools/d30_print.py` Kommandozeile
 - Migrationen 017 (Betrieb: Haltbarkeit, Maße, Trockner, Slicer) und 018 (`container.airtight`)
 - Neue Behälterarten `machine` (MAS) und `dryer` (TRO); Scan-Ablauf Trockner → Filament in `app/web/routes/scan.py: by_code` (Cookie `dryer_wait`, 10 min)

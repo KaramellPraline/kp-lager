@@ -41,7 +41,7 @@ auch zum Lesen einen Schlüssel (empfohlen, sobald das Lager von außen erreichb
 3. `POST /projects/{id}/shopping` – Fehlendes landet auf der Einkaufsliste.
 
 ## Typen, Einkauf, Home Assistant
-`GET /types/catalog` (alle Typen mit Feldern) · `GET /types/catalog/{key}/items` · `PATCH /items/{ref}` mit `ctype`, `fields`, `rename` ·
+`GET /types/catalog` (alle Typen mit Feldern, `area` = Bereich, `group` = Gruppe) · `GET /types/catalog/{key}/items` · `PATCH /items/{ref}` mit `ctype`, `fields`, `rename` ·
 `POST /purchases/import/preview` und `/purchases/import` (Rechnung/CSV) · `POST /projects/{id}/reserve?release=` ·
 `GET /ha` und `/ha/item/{ref}` für Home Assistant (siehe `docs/HOME_ASSISTANT.md`).
 

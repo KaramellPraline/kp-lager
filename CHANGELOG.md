@@ -3,7 +3,14 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
-## [1.3.0] – 2026-11-04
+## [Unveröffentlicht]
+
+### Neu
+- Typen in zwei Ebenen: 9 Bereiche (Befestigung · Mechanik & Antrieb · Elektronik · Elektrik & Strom · Werkzeug & Messen · 3D-Druck & Laser · Material & Chemie · Netzwerk & IT · Haus & Schutz) mit Gruppen; beim Anlegen und im Sortiment mit Suchfeld, eigene Typen im Bereich „Eigene Typen“.
+- 46 neue Typen, u. a. O-Ring/Dichtung, Feder, Zahnriemen, Riemenscheibe, Zahnrad, Linearführung, Gleitlager, Gewindespindel, Rolle, Motor, Lüfter, Relais, Quarz, Kühlkörper, Akkuzelle, Werkzeug-Akku, Ladegerät, Steckdosenleiste, Fräser, Sägeblatt, Bit, Trennscheibe, Reiniger, Laser-Platte, Druckbett, Heizpatrone, Handschuhe, Atemschutz, Feuerlöscher, Leuchtmittel.
+- API `GET /api/v1/types/catalog`: Feld `area` je Typ; Favoriten erscheinen dort nicht mehr doppelt.
+
+ – 2026-11-04
 
 ### Behoben
 - Umlaute, ß, €, ° und µ fehlten in Etiketten-Bildern auf dem Pi: Im Docker-Image gibt es keine Systemschriften. Jetzt wird Roboto (Apache 2.0) mitgeliefert (`app/static/fonts/Roboto-Regular.ttf`).
