@@ -546,3 +546,9 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 .conn-card pre { white-space: pre-wrap; word-break: break-all; font: 12px/1.45 var(--font-mono); background: var(--raised);
   padding: 10px; border-radius: var(--r-md); margin: 6px 0; }
 .userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.conn-card .add-item, .user-row .add-item { flex-wrap: wrap; }
+.conn-card .add-item input:first-child { flex: 1 1 100%; }
+.user-row .add-item > :first-child { flex: 1 1 140px; }
+.user-row details { border: none; background: none; padding: 0; margin: 0; }
+.user-row summary { flex-wrap: wrap; }
+.user-row summary small { flex-basis: 100%; order: 3; }
