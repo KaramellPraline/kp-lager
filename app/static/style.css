@@ -613,3 +613,4 @@ details.menu-more .list { margin-top: 10px; }
 dl.specs { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
 dl.specs dd { overflow-wrap: anywhere; }
 dl.specs dd.wrap { grid-column: 1 / -1; text-align: left; color: var(--sub); font-size: 13px; margin-top: -2px; }
+#typ-liste, #art-liste { scroll-margin-top: 72px; }
