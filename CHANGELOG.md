@@ -3,7 +3,14 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
-## [Unveröffentlicht]
+## [2.0.0] – 2026-11-15
+
+Vollversion: Betrieb als gehosteter Dienst mit Anmeldung, Anlegen und Bearbeiten über dasselbe Formular,
+117 Typen in Bereichen, alle externen Anbindungen an einem Ort, aufgeräumte Oberfläche und Code-Struktur.
+
+**Vor dem Update:** Backup erstellen. Beim ersten Aufruf führt `/einrichten` durch das Anlegen des Admin-Kontos
+(oder `LAGER_ADMIN_USER` + `LAGER_ADMIN_PASSWORD_FILE` setzen). Windows-Clients mit D30-Bridge aktualisieren.
+Migration 029 läuft automatisch.
 
 ### Neu
 - Typen in zwei Ebenen: 9 Bereiche (Befestigung · Mechanik & Antrieb · Elektronik · Elektrik & Strom · Werkzeug & Messen · 3D-Druck & Laser · Material & Chemie · Netzwerk & IT · Haus & Schutz) mit Gruppen; beim Anlegen und im Sortiment mit Suchfeld, eigene Typen im Bereich „Eigene Typen“.
@@ -27,6 +34,11 @@ Text des GitHub-Releases übernommen (`tools/release.py notes`).
 - `/etiketten/typ` gegliedert nach Bereich › Gruppe mit Suchfeld wie das Sortiment.
 - Windows-Client merkt sich die Anmeldung (pywebview ohne privaten Modus).
 - Offline-App: Login-Seite wird nie als Offline-Fassung gespeichert; Buchungen, die wegen abgelaufener Anmeldung abgelehnt werden, bleiben gemerkt.
+- Code-Struktur: Routen nach Bereichen in `app/web/routes/` und `app/api/` (Karte in `docs/ARCHITECTURE.md`); Verhalten unverändert.
+- Lange Namen werden mit Silbentrennung umbrochen statt mitten im Wort.
+
+### Behoben
+- Suche nach einem einzelnen Buchstaben ergab einen Serverfehler (HTTP 500), in Oberfläche und API.
 
 ## [1.3.0] – 2026-11-04
 

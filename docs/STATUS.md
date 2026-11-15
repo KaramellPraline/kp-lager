@@ -27,6 +27,7 @@ Stand: 2026-11-03
 - 2026-11-04 (0.4.0, M44e): Minimale Docker-Übergabe `deploy/handoff/` (compose.yaml, Caddyfile, .env.example, README).
 - 2026-11-04 (M45): Einsatz um Außendurchmesser, Unterlegscheibe um Außendurchmesser und Dicke; Katalog-Gruppe Netzwerk (Kabel, RJ45, Geräte) und Netzteil unter Druckerteile; Etikett-Layout-Vorschau zeigt nach dem Speichern das gespeicherte Layout; alle Teile-Felder auf Etiketten (`{qty} {unit} {model} {notes} {tags} {price} …`); Vollexport/Wiederherstellung enthalten Etiketten-Layouts, Typ-Einstellungen, eigene Typen und Optionen (Backup-DB hatte sie schon); Kasten-Draufsicht drehbar (Standard: Griff unten, lange Seite waagerecht), Einsatz-Größe „LxK“ mit x = lange Seite; Etikettendruck über MQTT (`app/mqttmini.py`, `app/printmq.py`, `app/print_agent.py`, `docs/PRINT_MQTT.md`).
 
+- 2026-11-15 (2.0.0): Review + vier Pakete – Code nach Bereichen (`app/web/routes/`, `app/api/`), 117 Typen in 9 Bereichen, Anmeldung + Einstellungs-Reiter + Anbindungen (`docs/SICHERHEIT.md`), gemeinsames Formular Anlegen/Bearbeiten, aufgeräumte Oberfläche (`docs/REVIEW-2.0.md`).
 ## Session-Start (für autonome Umsetzung, Modell: Sonnet reicht)
 > Lies CLAUDE.md und docs/STATUS.md. Setze den nächsten offenen Meilenstein um (eigener Branch), bis Tests/Lint/Typecheck grün sind. Hake ihn hier ab, pflege ARCHITECTURE/DECISIONS bei Bedarf, committe und merge nach main. Nicht zwischendurch nachfragen.
 

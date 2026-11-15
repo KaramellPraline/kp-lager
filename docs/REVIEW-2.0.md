@@ -18,4 +18,8 @@ Die gewünschte „Vollversion 1.0.0“ heißt **2.0.0**, weil `main` bereits be
 3. **Dienst + Anbindungen** – Login (Passwort, Sitzung, Sperre nach Fehlversuchen), API bleibt über Schlüssel; Einstellungen in Reitern, neuer Reiter „Anbindungen“ für alles Externe.
 4. **Hinzufügen = Bearbeiten, aufgeräumte Oberfläche** – ein gemeinsames Formular für Anlegen und Bearbeiten (Teile und Behälter), Teil-Seite als klare Ansicht mit gruppierten Aktionen, schlankere Navigation.
 
-Reihenfolge: 1 und 2 parallel, danach 3, danach 4. Jedes Paket endet mit grünen Tests, Lint und Typprüfung.
+Reihenfolge: nacheinander 1 → 2 → 3 → 4. Jedes Paket endet mit grünen Tests, Lint und Typprüfung.
+
+## Ergebnis (2026-11-15, Version 2.0.0)
+Alle vier Pakete umgesetzt: 416 Tests, Ruff und Mypy grün; Sichtprüfung bei 390 und 1280 px ohne Konsolenfehler.
+Offen: API-Lesen ohne Schlüssel bleibt auch mit Anmeldung erlaubt (Entscheidung beim Betreiber, Einstellung „Auch Lesen nur mit Schlüssel“); Sortierkasten-Modell beim Bearbeiten nur anzeigbar; eigene Suchbegriffe gehen bei Typwechsel verloren; Windows-Client, Android-App und D30 nicht auf echter Hardware getestet.

@@ -168,7 +168,7 @@ small { font-size: 12px; }
 .list li.empty { padding: 16px 18px; }
 .menu li > a { flex-direction: row; align-items: center; gap: 12px; }
 .item { display: flex; align-items: center; gap: 8px; padding: 8px 10px 8px 18px; }
-.item .name { flex: 1; min-width: 0; color: var(--fg); text-decoration: none; overflow-wrap: anywhere; }
+.item .name { flex: 1; min-width: 0; color: var(--fg); text-decoration: none; overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
 .compact { font-size: 14px; } .compact .list li > a { padding: 7px 14px; } .compact .item { padding: 4px 8px 4px 14px; }
 .qty-ctl { display: flex; align-items: center; gap: 4px; }
 .qty-ctl button { width: 44px; min-height: 44px; padding: 0; }
@@ -178,7 +178,7 @@ small { font-size: 12px; }
 .kids-grid a { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); padding: 14px 16px;
   text-decoration: none; color: var(--fg); display: flex; flex-direction: column; gap: 4px; }
 .kids-grid a:hover { background: var(--raised); }
-.kids-grid b { font-weight: 500; overflow-wrap: anywhere; }
+.kids-grid b { font-weight: 500; overflow-wrap: break-word; hyphens: auto; -webkit-hyphens: auto; }
 .grid { display: grid; gap: 6px; }
 .cell { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 6px; min-height: 56px; text-decoration: none;
   color: var(--fg); display: flex; flex-direction: column; overflow: hidden; font-size: 12px; background: var(--surface); }
