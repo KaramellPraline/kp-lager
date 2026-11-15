@@ -7,7 +7,7 @@
 var VERSION = "kp-lager-__V__";
 var SHELL = ["/offline", "/static/style.css?v=__V__", "/static/app.js?v=__V__", "/static/htmx.min.js",
   "/static/jsQR.js", "/static/fonts/fonts.css", "/static/icon-192.png", "/manifest.webmanifest"];
-var QUEUE_PATHS = [/^\/items\/\d+\/(take|qty|list|lend|return|zaehlen)$/, /^\/inventur\//, /^\/api\/(take|move|move-batch)$/,
+var QUEUE_PATHS = [/^\/items\/\d+\/(take|einlagern|qty|list|lend|return|zaehlen)$/, /^\/inventur\//, /^\/api\/(take|move|move-batch)$/,
   /^\/drop\/\d+$/, /^\/carry\//, /^\/labels\/queue\//, /^\/n\/\d+\/(items|quickadd)$/, /^\/zu-sortieren\/\d+\/move$/,
   /^\/withdrawals\/\d+\/cancel$/, /^\/projekte\/lines\/\d+\/gather$/, /^\/api\/projects\/\d+\/gather$/];
 

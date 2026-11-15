@@ -22,8 +22,9 @@ def test_fil_res_in_schema_and_new_spool_by_scan(client: TestClient) -> None:
     r = client.post(
         "/items/new", data={"code": "FIL-003", "container_id": box, "name": "PETG schwarz"}
     )
-    assert "Eigenschaften bearbeiten" in r.text and "Max. Volumenfluss" in r.text
-    item_id = int(r.url.path.rsplit("/", 1)[1])
+    assert r.url.path.endswith("/bearbeiten")  # neue Spule: gleich ins Formular
+    assert "Datenblatt &amp; Eigenschaften" in r.text and "Max. Volumenfluss" in r.text
+    item_id = int(r.url.path.split("/")[2])
     r = client.post(f"/items/{item_id}/specs", data={
         "material": "fil", "spec_material": "PETG", "spec_weight": "1000", "spec_nozzle_min": "230",
         "spec_nozzle_max": "250", "spec_flow_max": "15", "spec_tensile": "50"})  # fmt: skip

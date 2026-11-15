@@ -2240,25 +2240,44 @@ def create(
         with conn:
             conn.execute("UPDATE item SET standalone = 0 WHERE id = ?", (item_id,))
     store(conn, item_id, t.key, clean)
-    if t.cmp:
-        form = {
-            f"spec_{k}": v
-            for k, v in clean.items()
-            if v and k in {f.key for f in materials.FIELDS["cmp"]}
-        }
-        form["spec_function"] = " ".join(p for p in (t.label, clean.get("kind", "")) if p)
-        materials.save_specs(conn, item_id, "cmp", form)
-    if t.material:  # Filament/Harz/Netzteil/Kabel: Materialdaten fürs Datenblatt und Restmengen
-        keys = {f.key for f in materials.FIELDS[t.material]}
-        spec = {f"spec_{k}": v for k, v in clean.items() if v and k in keys}
-        if t.key == "filament" and spec.get("spec_weight"):  # Katalog in kg, Datenblatt in g
-            with contextlib.suppress(ValueError):
-                spec["spec_weight"] = f"{float(spec['spec_weight']) * 1000:g}"
-        materials.save_specs(conn, item_id, t.material, spec)
+    profile, spec = type_specs(t, clean)
+    if profile:
+        materials.save_specs(conn, item_id, profile, spec)
     if clean.get("price"):
         repo.update_item(conn, item_id, price=materials.parse_price(clean["price"]))
     remember_brand(conn, t, clean.get("brand", ""))
     return item_id
+
+
+def profile_of(t: Type | None) -> str:
+    """Eigenschafts-Profil, das der Typ festlegt (Elektronik -> cmp, Filament -> fil …)."""
+    if t is None:
+        return ""
+    return t.material or ("cmp" if t.cmp else "")
+
+
+def spec_keys(t: Type) -> set[str]:
+    """Datenblatt-Felder, die schon über die Typ-Felder befüllt werden."""
+    profile = profile_of(t)
+    if not profile:
+        return set()
+    own = {f.key for f in t.fields} | ({"material"} if t.key == "filament" else set())
+    return own & {f.key for f in materials.FIELDS[profile]}
+
+
+def type_specs(t: Type, clean: dict[str, str]) -> tuple[str, dict[str, str]]:
+    """(Profil, Formularwerte spec_*) aus den Typ-Feldern – fürs Datenblatt und Restmengen."""
+    profile = profile_of(t)
+    if not profile:
+        return "", {}
+    keys = {f.key for f in materials.FIELDS[profile]}
+    spec = {f"spec_{k}": v for k, v in clean.items() if v and k in keys}
+    if t.cmp:
+        spec["spec_function"] = " ".join(p for p in (t.label, clean.get("kind", "")) if p)
+    if t.key == "filament" and spec.get("spec_weight"):  # Katalog in kg, Datenblatt in g
+        with contextlib.suppress(ValueError):
+            spec["spec_weight"] = f"{float(spec['spec_weight']) * 1000:g}"
+    return profile, spec
 
 
 PROFILE_TAGS = {

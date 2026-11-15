@@ -5,111 +5,88 @@
   <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
 
-<div class="layout-2">
+<div class="layout-2 detail-page">
 <div>
   <div class="sticky-mini" aria-hidden="true"><b>{{ item.name }}</b>{% if item.code %}<span class="code">{{ item.code }}</span>{% endif %}</div>
   <div class="card head-card" id="head-card">
     {% if item.photo %}<a href="/photos/{{ item.photo }}"><img class="photo-thumb" src="/photos/thumb_{{ item.photo }}" alt="Foto {{ item.name }}"></a>{% endif %}
     <div class="grow">
       <h1>{{ item.name }}</h1>
-      {% if item.full_name %}<p class="meta" style="margin:2px 0 0">{{ item.full_name }}</p>{% endif %}
       <div class="chips">
-        {% if item.review %}<span class="chip review">{{ icon('status.attention', size='xs') }} Zu prüfen</span>{% endif %}
-        {% if item_type %}<a class="chip" href="/typen/{{ item_type.id }}">{{ icon('content.type', size='xs') }} {{ item_type.name }}</a>{% endif %}
-        {% if item.model %}<span class="chip">{{ item.model }}</span>{% endif %}
         {% if item.code %}<span class="chip code">{{ item.code }}</span>{% if not item.label_printed %}<span class="chip">Etikett offen</span>{% endif %}{% endif %}
-        <span class="chip">{{ icon('content.place', size='xs') }} {{ path[-1].name }}</span>
-        {% if item.tags %}<span class="chip">{{ item.tags }}</span>{% endif %}
+        <a class="chip" href="/n/{{ item.container_id }}">{{ icon('content.place', size='xs') }} {{ path[-1].name }}</a>
+        {% if item.review %}<span class="chip review">{{ icon('status.attention', size='xs') }} Zu prüfen</span>{% endif %}
         {% if individual %}<span class="chip">Einzelstück</span>{% endif %}
         {% if item.expires %}<span class="chip {% if item.expires < today %}review{% endif %}">{{ 'abgelaufen' if item.expires < today else 'haltbar bis' }} {{ item.expires }}</span>{% endif %}
         {% if item.opened %}<span class="chip">geöffnet {{ item.opened }}</span>{% endif %}
       </div>
+      {% if item.full_name %}<p class="meta head-sub">{{ item.full_name }}</p>{% endif %}
+    </div>
+    <div class="head-qty" aria-label="Bestand">
+      {% if item.qty is not none %}<b class="{% if item.qty == 0 %}empty{% endif %}">{{ item.qty }}</b><span class="meta">{{ item.unit or 'Stk' }}</span>
+      {% else %}<span class="meta">{{ item.qty_hint or 'ungezählt' }}</span>{% endif %}
     </div>
   </div>
 
-  <div class="icon-row" role="toolbar" aria-label="Schnellaktionen">
-    {% if item.code %}<form method="post" action="/labels/quick/item/{{ item.id }}"><button title="Etikett drucken (sonst Warteschlange)" aria-label="Etikett drucken">{{ icon('action.print') }}</button></form>{% endif %}
-    <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
-      <label class="file-btn" title="Foto" aria-label="Foto">{{ icon('media.camera') }}
-        <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
-    </form>
-    {% if item.code %}<form method="post" action="/a4/queue/item/{{ item.id }}"><button title="In die A4-Warteschlange" aria-label="A4-Warteschlange">{{ icon('content.tag') }}</button></form>{% endif %}
-    {% if item.ctype %}<a class="icon-link" href="/neu?typ={{ item.ctype }}&vorlage={{ item.id }}" title="Duplizieren: neues Teil mit diesen Angaben anlegen" aria-label="Duplizieren">{{ icon('action.add') }}</a>{% endif %}
-    <form method="post" action="/carry/item/{{ item.id }}"><button title="Umlagern" aria-label="Umlagern">{{ icon('action.move') }}</button></form>
-    <button type="button" data-open="edit-box" title="Bearbeiten" aria-label="Bearbeiten">{{ icon('action.edit') }}</button>
+  {% if item.lent_to %}
+  <div class="lent">{{ icon('content.lent') }} Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
+    <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>
   </div>
+  {% endif %}
 
-  <ul class="list items">{% with i=item %}{% include "_item.html" %}{% endwith %}</ul>
-  {% if reservations %}<div class="card"><b>Reserviert:</b> {% for r in reservations %}<a href="/projekte/{{ r.id }}">{{ r.reserved }} für {{ r.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% if item.qty is not none %} · frei {{ [item.qty - reservations|sum(attribute='reserved'), 0]|max }}{% endif %}</div>{% endif %}
-  {% include "_typsheet.html" %}
-  {% if item.material not in ('fil', 'res') %}
-  <details id="waage" class="card" {% if item.unit_weight %}open{% endif %}>
-    <summary><b>Zählen per Waage</b>{% if item.unit_weight %} <span class="meta">{{ '%.3g'|format(item.unit_weight) }} g/Stück{% if item.tare %} · Tara {{ '%g'|format(item.tare) }} g{% endif %}</span>{% endif %}</summary>
-    {% if item.unit_weight %}
-    <form method="post" action="/items/{{ item.id }}/zaehlen" class="add-item" style="margin:8px 0">
-      <input name="gross" inputmode="decimal" placeholder="Gesamtgewicht in g" required aria-label="Gesamtgewicht in Gramm">
-      <button class="primary">Menge übernehmen</button>
+  {# Häufigste Aktionen: Entnehmen (Menge vorbelegt = 1 Tap, Menge wählen = 2 Taps), Einlagern, Umlagern, Etikett, Bearbeiten #}
+  <section class="card stack action-card" id="aktionen" aria-label="Aktionen">
+    <form method="post" action="/items/{{ item.id }}/take" class="stack" style="margin:0">
+      {% if item.qty is not none %}
+      <div class="add-item" style="margin:0">
+        <input id="take-qty" name="qty" value="1" inputmode="numeric" class="short" aria-label="Menge">
+        <button class="primary grow-btn">{{ icon('action.take', size='sm') }} Entnehmen</button>
+      </div>
+      <div class="chips" aria-label="Schnellauswahl Menge">
+        {% for q in (1, 5, 10, 25, 50) if q < item.qty %}<button type="button" class="chip" data-for="take-qty">{{ q }}</button>{% endfor %}
+        {% if item.qty > 0 %}<button type="button" class="chip" data-for="take-qty">{{ item.qty }}</button>{% endif %}
+      </div>
+      {% else %}
+      <button class="primary">{{ icon('action.take', size='sm') }} Entnehmen</button>
+      {% endif %}
+    </form>
+    {% if item.qty is not none %}
+    <form method="post" action="/items/{{ item.id }}/einlagern" class="add-item" style="margin:0">
+      <input name="qty" value="1" inputmode="numeric" class="short" aria-label="Menge einlagern">
+      <button class="grow-btn">{{ icon('action.add', size='sm') }} Einlagern</button>
     </form>
     {% endif %}
-    <form method="post" action="/items/{{ item.id }}/stueckgewicht" class="stack">
-      <span class="meta">Stückgewicht ermitteln: einige Stück abzählen und wiegen (Leergewicht von Tüte/Dose optional).</span>
-      <div class="row"><input name="count" inputmode="numeric" placeholder="Stück" class="short" required><input name="grams" inputmode="decimal" placeholder="Gramm" class="short" required><input name="tare" inputmode="decimal" placeholder="Tara g" class="short"></div>
-      <button>{% if item.unit_weight %}Neu ermitteln{% else %}Stückgewicht speichern{% endif %}</button>
-    </form>
-  </details>
-  {% endif %}
-  <section class="card row" id="ablauf" style="flex-wrap:wrap;gap:8px">
-    <span class="grow">{% if item.expires %}Haltbar bis <b>{{ item.expires }}</b>{% else %}Keine Haltbarkeit eingetragen{% endif %}{% if tset.shelf_months %} <span class="meta">· Typ: {{ tset.shelf_months }} Monate nach Öffnen</span>{% endif %}</span>
-    <form method="post" action="/items/{{ item.id }}/geoeffnet"><button>Heute geöffnet</button></form>
-    {% if item.expires %}<form method="post" action="/items/{{ item.id }}/verlaengern"><input type="hidden" name="months" value="3"><button>+3 Monate</button></form>{% endif %}
+    <div class="act-row">
+      <form method="post" action="/carry/item/{{ item.id }}"><button>{{ icon('action.move', size='sm') }} Umlagern</button></form>
+      {% if item.code %}
+      <form method="post" action="/labels/quick/item/{{ item.id }}"><button title="Etikett drucken (sonst Warteschlange)">{{ icon('action.print', size='sm') }} Etikett</button></form>
+      {% else %}
+      <form method="post" action="/items/{{ item.id }}/code"><button>{{ icon('content.tag', size='sm') }} Etikett vergeben</button></form>
+      {% endif %}
+      <a class="button" href="/items/{{ item.id }}/bearbeiten">{{ icon('action.edit', size='sm') }} Bearbeiten</a>
+      <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
+        <label class="file-btn" title="Foto">{{ icon('media.camera', size='sm') }} Foto
+          <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
+      </form>
+    </div>
+    {% if D30 and item.code and not item.label_printed %}<form method="post" action="/d30/print" data-d30 data-busy="Druckt …"><input type="hidden" name="code" value="{{ item.code }}"><input type="hidden" name="back" value="/items/{{ item.id }}"><button class="primary d30-btn" disabled><span class="d30-dot" aria-hidden="true"></span> Jetzt auf D30 drucken</button></form>{% endif %}
+    <span class="meta">Entnahmen werden nach 7 Tagen bestätigt, bis dahin stornierbar · oder per <a href="/scan">Scannen</a></span>
   </section>
 
   {% if open_takes %}
   <div class="card">
-    <h2 style="margin-top:0">Offene Entnahmen</h2>
+    <h2 class="card-h">Offene Entnahmen</h2>
     {% for w in open_takes %}
     <div class="title-row"><span>{% if w.qty %}{{ w.qty }} Stück{% else %}komplett{% endif %} · {{ w.created_at[:16] }} · Bestätigung in {{ w.days_left }} Tagen</span>
       <form method="post" action="/withdrawals/{{ w.id }}/cancel"><button>{{ icon('action.undo', size='sm') }} Stornieren</button></form></div>
     {% endfor %}
   </div>
   {% endif %}
-  <form method="post" action="/items/{{ item.id }}/take" class="card stack">
-    {% if item.qty is not none %}
-    <div class="add-item" style="margin:0">
-      <input id="take-qty" name="qty" value="1" inputmode="numeric" class="short" aria-label="Menge">
-      <button class="primary">{{ icon('action.take', size='sm') }} Entnehmen</button>
-    </div>
-    <div class="chips" aria-label="Schnellauswahl Menge">
-      {% for q in (1, 5, 10, 25, 50) if q < item.qty %}<button type="button" class="chip" data-for="take-qty">{{ q }}</button>{% endfor %}
-      {% if item.qty > 0 %}<button type="button" class="chip" data-for="take-qty">{{ item.qty }}</button>{% endif %}
-    </div>
-    {% else %}
-    <button class="primary">{{ icon('action.take', size='sm') }} Entnehmen</button>
-    {% endif %}
-    <span class="meta">nach 7 Tagen bestätigt, bis dahin stornierbar · oder per <a href="/scan">Scannen</a></span>
-  </form>
-
-  {% if item.lent_to %}
-  <div class="lent">{{ icon('content.lent') }} Verliehen an <b>{{ item.lent_to }}</b> seit {{ item.lent_since }}
-    <form method="post" action="/items/{{ item.id }}/return"><button class="primary">Zurück im Lager</button></form>
-  </div>
-  {% else %}
-  <form method="post" action="/items/{{ item.id }}/lend" class="add-item card">
-    <input name="to" placeholder="Verleihen an / in Benutzung bei …" aria-label="Verleihen an">
-    <button>{{ icon('content.lent') }} Verleihen</button>
-  </form>
-  {% endif %}
-
-  {% if item.order_url or item.price is not none %}
-  <div class="card title-row">
-    <span>{% if item.price is not none %}<b>{{ '%.2f'|format(item.price)|replace('.', ',') }} €</b>{% if unit_price %} · {{ unit_price }}{% endif %}{% endif %}</span>
-    {% if item.order_url %}<a class="button" href="{{ item.order_url }}" target="_blank" rel="noopener">{{ icon('content.shopping', size='sm') }} Nachbestellen</a>{% endif %}
-  </div>
-  {% endif %}
+  {% if reservations %}<div class="card"><b>Reserviert:</b> {% for r in reservations %}<a href="/projekte/{{ r.id }}">{{ r.reserved }} für {{ r.name }}</a>{% if not loop.last %}, {% endif %}{% endfor %}{% if item.qty is not none %} · frei {{ [item.qty - reservations|sum(attribute='reserved'), 0]|max }}{% endif %}</div>{% endif %}
 
   {% if item.material in ('fil', 'res') %}
   <div class="card" id="rest">
-    <h2 style="margin-top:0">Restmenge</h2>
+    <h2 class="card-h">Restmenge</h2>
     {% if rest %}<p><b>{{ rest.text }}</b>{% if rest.share is not none %} · {{ (rest.share * 100)|round|int }} %{% endif %}
       {% if rest.low %}<span class="chip review">fast leer</span>{% endif %}<br><small class="meta">gewogen am {{ rest.date }}</small></p>{% endif %}
     <form method="post" action="/items/{{ item.id }}/weigh" class="add-item">
@@ -120,9 +97,91 @@
   </div>
   {% endif %}
 
+  {# Eigenschaften: Typ-Felder und Datenblatt als eine Liste #}
+  <section class="card" id="eigenschaften">
+    <div class="title-row"><h2 class="card-h">Eigenschaften</h2><a class="button small" href="/items/{{ item.id }}/bearbeiten">{{ icon('action.edit', size='sm') }} Bearbeiten</a></div>
+    <dl class="specs" id="typ">
+      <dt>Typ</dt><dd>{% if ctype %}<a href="/sortiment/{{ ctype.key }}">{{ ctype.label }}</a>{% else %}<a href="/items/{{ item.id }}/bearbeiten">kein Typ – zuordnen</a>{% endif %}</dd>
+      {% if ctype %}{% for f in ctype.fields %}{% if cvalues.get(f.key) and f.key not in spec_shown %}<dt>{{ f.label }}</dt><dd>{{ cvalues[f.key] }}{% if f.unit %} {{ f.unit }}{% endif %}</dd>{% endif %}{% endfor %}{% endif %}
+      {% for group, rows in spec_sheet %}{% for label, value in rows %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}{% endfor %}
+      {% if item.model %}<dt>Modell</dt><dd>{{ item.model }}</dd>{% endif %}
+      {% if item.price is not none %}<dt>Preis</dt><dd>{{ '%.2f'|format(item.price)|replace('.', ',') }} €{% if unit_price %} · {{ unit_price }}{% endif %}</dd>{% endif %}
+      {% if item.min_qty is not none %}<dt>Mindestbestand</dt><dd>{{ item.min_qty }}</dd>{% elif tset.min_qty is not none %}<dt>Mindestbestand</dt><dd>{{ tset.min_qty }} (Typ)</dd>{% endif %}
+      {% if item.qty_hint and item.qty is not none %}<dt>Mengenhinweis</dt><dd>{{ item.qty_hint }}</dd>{% endif %}
+      {% if item_type %}<dt>Tag</dt><dd><a href="/typen/{{ item_type.id }}">{{ item_type.name }}</a></dd>{% endif %}
+      {% if item.tags %}<dt>Suchbegriffe</dt><dd class="wrap">{{ item.tags }}</dd>{% endif %}
+    </dl>
+    {% if item.notes %}<p class="notes">{{ item.notes }}</p>{% endif %}
+    <div class="act-row">
+      {% if item.datasheet %}<a class="button" href="/datasheets/{{ item.datasheet }}" target="_blank">{{ icon('content.document', size='sm') }} Datenblatt öffnen (PDF)</a>
+      {% elif item.datasheet_url %}<form method="post" action="/items/{{ item.id }}/datasheet"><button>{{ icon('action.download', size='sm') }} Datenblatt herunterladen</button></form>{% endif %}
+      {% if sheet_search %}<a class="button" href="{{ sheet_search }}" target="_blank" rel="noopener">{{ icon('nav.search', size='sm') }} Datenblatt für {{ item.model }} suchen</a>{% endif %}
+      {% if item.order_url %}<a class="button" href="{{ item.order_url }}" target="_blank" rel="noopener">{{ icon('content.shopping', size='sm') }} Nachbestellen</a>{% endif %}
+    </div>
+  </section>
+</div>
+
+<aside class="folds">
+  <details class="fold" id="verlauf">
+    <summary>{{ icon('content.history', size='sm') }} Verlauf <span class="meta">{{ events|length }}</span></summary>
+    <ul class="history">
+      {% for e in events %}<li>{{ e.ts }} · {{ e.action }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %}</li>{% endfor %}
+    </ul>
+  </details>
+
+  <details class="fold" id="einkaeufe">
+    <summary>{{ icon('content.shopping', size='sm') }} Einkäufe <span class="meta">{{ buys|length }}</span></summary>
+    <ul class="history">
+      {% for b in buys %}<li>{{ b.bought_at }} · {{ b.supplier or 'ohne Lieferant' }}{% if b.qty %} · {{ b.qty }}×{% endif %}{% if b.price is not none %} · {{ euro(b.price) }}{% endif %}{% if b.url %} · <a href="{{ b.url }}" target="_blank" rel="noopener">Link</a>{% endif %}{% if b.note %} · {{ b.note }}{% endif %}
+        <form method="post" action="/purchases/{{ b.id }}/delete" style="display:inline"><input type="hidden" name="to" value="/items/{{ item.id }}#einkaeufe"><button class="link" aria-label="Löschen">{{ icon('nav.close', size='xs') }}</button></form></li>
+      {% else %}<li>Noch kein Einkauf erfasst.</li>{% endfor %}
+    </ul>
+    <form method="post" action="/items/{{ item.id }}/list"><button>{{ icon('content.shopping', size='sm') }} {% if item.on_list %}Von der Einkaufsliste nehmen{% else %}Auf die Einkaufsliste{% endif %}</button></form>
+    <form method="post" action="/items/{{ item.id }}/purchases" class="stack">
+      <b>Einkauf erfassen</b>
+      <input name="supplier" list="supplier-names" placeholder="Lieferant, z. B. Reichelt" autocomplete="off" aria-label="Lieferant">
+      <datalist id="supplier-names">{% for n in supplier_names %}<option value="{{ n }}">{% endfor %}</datalist>
+      <div class="row"><input name="qty" placeholder="Menge" inputmode="numeric" class="short" aria-label="Menge"><input name="price" placeholder="Stückpreis €" inputmode="decimal" class="short" aria-label="Stückpreis"><input name="bought_at" type="date" aria-label="Datum"></div>
+      <input name="url" placeholder="Link zur Bestellung / zum Artikel" aria-label="Link">
+      <input name="note" placeholder="Notiz (Bestellnummer …)" aria-label="Notiz">
+      <button class="primary">Speichern</button>
+    </form>
+  </details>
+
+  <details class="fold" id="karten-box" {% if cards %}open{% endif %}>
+    <summary>{{ icon('content.document', size='sm') }} Karten <span class="meta">{{ cards|length }}</span></summary>
+    {% with card_action='/items/' ~ item.id ~ '/cards', card_nohead=true %}{% include "_cards.html" %}{% endwith %}
+  </details>
+
+  {% if item.material not in ('fil', 'res') %}
+  <details class="fold" id="waage" {% if item.unit_weight %}open{% endif %}>
+    <summary>{{ icon('content.list', size='sm') }} Zählen per Waage{% if item.unit_weight %} <span class="meta">{{ '%.3g'|format(item.unit_weight) }} g/Stück{% if item.tare %} · Tara {{ '%g'|format(item.tare) }} g{% endif %}</span>{% endif %}</summary>
+    {% if item.unit_weight %}
+    <form method="post" action="/items/{{ item.id }}/zaehlen" class="add-item">
+      <input name="gross" inputmode="decimal" placeholder="Gesamtgewicht in g" required aria-label="Gesamtgewicht in Gramm">
+      <button class="primary">Menge übernehmen</button>
+    </form>
+    {% endif %}
+    <form method="post" action="/items/{{ item.id }}/stueckgewicht" class="stack">
+      <span class="meta">Stückgewicht ermitteln: einige Stück abzählen und wiegen (Leergewicht von Tüte/Dose optional).</span>
+      <div class="row"><input name="count" inputmode="numeric" placeholder="Stück" class="short" required aria-label="Stück"><input name="grams" inputmode="decimal" placeholder="Gramm" class="short" required aria-label="Gramm"><input name="tare" inputmode="decimal" placeholder="Tara g" class="short" aria-label="Tara"></div>
+      <button>{% if item.unit_weight %}Neu ermitteln{% else %}Stückgewicht speichern{% endif %}</button>
+    </form>
+  </details>
+  {% endif %}
+
+  <details class="fold" id="ablauf" {% if item.expires %}open{% endif %}>
+    <summary>{{ icon('content.calendar', size='sm') }} Haltbarkeit{% if item.expires %} <span class="meta">bis {{ item.expires }}</span>{% endif %}</summary>
+    <p>{% if item.expires %}Haltbar bis <b>{{ item.expires }}</b>{% else %}Keine Haltbarkeit eingetragen{% endif %}{% if tset.shelf_months %} <span class="meta">· Typ: {{ tset.shelf_months }} Monate nach Öffnen</span>{% endif %}</p>
+    <div class="act-row">
+      <form method="post" action="/items/{{ item.id }}/geoeffnet"><button>Heute geöffnet</button></form>
+      {% if item.expires %}<form method="post" action="/items/{{ item.id }}/verlaengern"><input type="hidden" name="months" value="3"><button>+3 Monate</button></form>{% endif %}
+    </div>
+  </details>
+
   {% if item.material == 'fil' %}
-  <div class="card" id="trocknen">
-    <h2 style="margin-top:0">Trocknen</h2>
+  <details class="fold" id="trocknen" {% if dry_history and dry_history[0].running %}open{% endif %}>
+    <summary>{{ icon('content.time', size='sm') }} Trocknen</summary>
     {% if dry_history %}<ul class="history">{% for h in dry_history %}<li>{{ h.started_at[:16] }} · {{ h.program }} {{ h.temp_c|round|int }} °C / {{ h.hours }} h{% if h.done_at %} · fertig{% elif h.ready %} · <b>fertig, entnehmen</b>{% else %} · läuft ({{ h.left }}){% endif %}
       {% if h.running %}<form method="post" action="/trockner/{{ h.id }}/fertig" style="display:inline"><input type="hidden" name="back" value="/items/{{ item.id }}#trocknen"><button class="link">entnommen</button></form>{% endif %}</li>{% endfor %}</ul>
     {% else %}<p class="meta">Noch nicht getrocknet vermerkt.</p>{% endif %}
@@ -132,143 +191,37 @@
       <button class="primary">Trocknen starten</button>
     </form>
     <p class="meta"><a href="/trockner">Programme und Verlauf</a></p>
-  </div>
+  </details>
   {% endif %}
 
-  {% if item.model or item.datasheet or item.material %}
-  <div class="card" id="datenblatt">
-    <h2 style="margin-top:0">Datenblatt</h2>
-    {% for group, rows in spec_sheet %}
-    <h3>{{ group }}</h3>
-    <dl class="specs">{% for label, value in rows %}<dt>{{ label }}</dt><dd>{{ value }}</dd>{% endfor %}</dl>
-    {% endfor %}
-    {% if item.material %}
-    <details {% if not spec_sheet %}open{% endif %}>
-      <summary>{{ icon('action.edit', size='sm') }} Eigenschaften bearbeiten</summary>
-      <form method="post" action="/items/{{ item.id }}/specs" class="stack">
-        <input type="hidden" name="material" value="{{ item.material }}">
-        {% for gkey, glabels in spec_groups.items() %}{% set fs = spec_fields|selectattr('group', 'equalto', gkey)|list %}{% if fs %}
-        <h3>{{ glabels[0] }}</h3>
-        <div class="spec-grid">{% for f in fs %}
-          <label>{{ f.de }}{% if f.unit %} ({{ f.unit }}){% endif %}
-            <input name="spec_{{ f.key }}" value="{{ specs.get(f.key, '') }}" placeholder="{{ f.hint }}" {% if f.unit and f.unit not in ('',) and f.key not in ('shore',) %}inputmode="decimal"{% endif %}></label>
-        {% endfor %}</div>{% endif %}{% endfor %}
-        <button class="primary">{{ icon('action.save', size='sm') }} Eigenschaften speichern</button>
-      </form>
-    </details>
-    {% endif %}
-    {% if item.datasheet %}
-    <a class="button primary" href="/datasheets/{{ item.datasheet }}" target="_blank">{{ icon('content.document', size='sm') }} Datenblatt öffnen (PDF)</a>
-    {% elif item.datasheet_url %}
-    <form method="post" action="/items/{{ item.id }}/datasheet"><button>{{ icon('action.download', size='sm') }} Datenblatt herunterladen</button></form>
-    {% else %}
-    <p class="meta">Noch kein Datenblatt. URL unter „Bearbeiten“ eintragen – die PDF wird dann automatisch gespeichert.</p>
-    {% endif %}
-    {% if sheet_search %}<p><a href="{{ sheet_search }}" target="_blank" rel="noopener">{{ icon('nav.search', size='sm') }} Datenblatt für {{ item.model }} suchen</a></p>{% endif %}
-  </div>
+  {% if not item.lent_to %}
+  <details class="fold" id="verleihen">
+    <summary>{{ icon('content.lent', size='sm') }} Verleihen</summary>
+    <form method="post" action="/items/{{ item.id }}/lend" class="add-item">
+      <input name="to" placeholder="Verleihen an / in Benutzung bei …" aria-label="Verleihen an">
+      <button>Verleihen</button>
+    </form>
+  </details>
   {% endif %}
 
-  {% if item.notes %}<div class="card notes">{{ item.notes }}</div>{% endif %}
-
-  <section id="einkaeufe">
-    <h2>Einkäufe</h2>
-    <ul class="history">
-      {% for b in buys %}<li>{{ b.bought_at }} · {{ b.supplier or 'ohne Lieferant' }}{% if b.qty %} · {{ b.qty }}×{% endif %}{% if b.price is not none %} · {{ euro(b.price) }}{% endif %}{% if b.url %} · <a href="{{ b.url }}" target="_blank" rel="noopener">Link</a>{% endif %}{% if b.note %} · {{ b.note }}{% endif %}
-        <form method="post" action="/purchases/{{ b.id }}/delete" style="display:inline"><input type="hidden" name="to" value="/items/{{ item.id }}#einkaeufe"><button class="link" aria-label="Löschen">{{ icon('nav.close', size='xs') }}</button></form></li>
-      {% else %}<li>Noch kein Einkauf erfasst.</li>{% endfor %}
-    </ul>
-    <details><summary>{{ icon('action.add', size='sm') }} Einkauf erfassen</summary>
-      <form method="post" action="/items/{{ item.id }}/purchases" class="stack card">
-        <input name="supplier" list="supplier-names" placeholder="Lieferant, z. B. Reichelt" autocomplete="off">
-        <datalist id="supplier-names">{% for n in supplier_names %}<option value="{{ n }}">{% endfor %}</datalist>
-        <div class="row"><input name="qty" placeholder="Menge" inputmode="numeric" class="short"><input name="price" placeholder="Stückpreis €" inputmode="decimal" class="short"><input name="bought_at" type="date" aria-label="Datum"></div>
-        <input name="url" placeholder="Link zur Bestellung / zum Artikel">
-        <input name="note" placeholder="Notiz (Bestellnummer …)">
-        <button class="primary">Speichern</button>
-      </form>
-    </details>
-  </section>
-  {% with card_action='/items/' ~ item.id ~ '/cards' %}{% include "_cards.html" %}{% endwith %}
-
-  <h2>Verlauf</h2>
-  <ul class="history">
-    {% for e in events %}<li>{{ e.ts }} · {{ e.action }}{% if e.delta %} {{ '%+d' % e.delta }}{% endif %}{% if e.note %} · {{ e.note }}{% endif %}</li>{% endfor %}
-  </ul>
-</div>
-
-<aside>
-  <div class="card">
-    <h2 style="margin-top:0">Aktionen</h2>
-    <div class="actions">
-      <form method="post" action="/carry/item/{{ item.id }}"><button class="primary">{{ icon('action.move') }} Umlagern</button></form>
-      <form method="post" action="/items/{{ item.id }}/list"><button>{{ icon('content.shopping') }} {% if item.on_list %}Von Liste{% else %}Auf Einkaufsliste{% endif %}</button></form>
+  <details class="fold" id="etiketten">
+    <summary>{{ icon('content.tag', size='sm') }} Etikett &amp; Kopie</summary>
+    <div class="act-row">
       {% if item.code %}
-      {% if D30 and not item.label_printed %}<form method="post" action="/d30/print" data-d30 data-busy="Druckt …"><input type="hidden" name="code" value="{{ item.code }}"><input type="hidden" name="back" value="/items/{{ item.id }}"><button class="primary d30-btn" disabled><span class="d30-dot" aria-hidden="true"></span> Jetzt auf D30 drucken</button></form>{% endif %}
-      <form method="post" action="/labels/queue/item/{{ item.id }}"><button>{{ icon('content.tag') }} In Warteschlange</button></form>
-      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}"><button>{{ icon('action.print') }} Etikett drucken</button></form>
-      {% else %}
-      <form method="post" action="/items/{{ item.id }}/code"><button>{{ icon('content.tag') }} Etikett vergeben</button></form>
+      <form method="post" action="/labels/queue/item/{{ item.id }}"><button>In Warteschlange</button></form>
+      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="item"><input type="hidden" name="item_id" value="{{ item.id }}"><button>Etikett anpassen</button></form>
+      <form method="post" action="/a4/queue/item/{{ item.id }}"><button>A4-Warteschlange</button></form>
       {% endif %}
-      <form method="post" action="/items/{{ item.id }}/photo" enctype="multipart/form-data">
-        <label class="file-btn">{{ icon('media.camera') }} Foto <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
-      </form>
+      {% if item.ctype %}<a class="button" href="/neu?typ={{ item.ctype }}&vorlage={{ item.id }}" title="Neues Teil mit diesen Angaben anlegen">Duplizieren</a>{% endif %}
     </div>
-  </div>
+  </details>
 
-  <details id="edit-box">
-    <summary>Bearbeiten</summary>
-    <form method="post" action="/items/{{ item.id }}/edit" class="stack">
-      <label>Anzeigename (kurz, fürs Etikett) <input name="name" value="{{ item.name }}" required></label>
-      <label>Vollständiger Name <input name="full_name" value="{{ item.full_name }}" placeholder="z. B. Hersteller, Serie, genaue Bezeichnung"></label>
-      <label>Tag
-        <select name="type_id" data-new-type>
-          <option value="">– kein Tag –</option>
-          {% for t in types %}<option value="{{ t.id }}" {% if t.id == item.type_id %}selected{% endif %}>{{ t.name }} · {{ t.code }}</option>{% endfor %}
-          <option value="neu">Neuer Tag …</option>
-        </select></label>
-      <input name="new_type" placeholder="Name des neuen Typs" hidden>
-      <div class="row">
-        <label>Modellnummer <input name="model" value="{{ item.model }}" placeholder="z. B. ESP32-WROOM-32E"></label>
-        <label>Datenblatt-URL (PDF) <input name="datasheet_url" value="{{ item.datasheet_url }}" inputmode="url" placeholder="https://…"></label>
-      </div>
-      <div class="row">
-        <label>Bestell-Link <input name="order_url" value="{{ item.order_url }}" inputmode="url" placeholder="https://…"></label>
-        <label>Preis (€) <input name="price" value="{{ '%.2f'|format(item.price) if item.price is not none else '' }}" inputmode="decimal" placeholder="z. B. 19,99"></label>
-      </div>
-      <label>Eigenschafts-Profil
-        <select name="material">
-          <option value="" {% if not item.material %}selected{% endif %}>– kein –</option>
-          <option value="fil" {% if item.material == 'fil' %}selected{% endif %}>Filament (FIL)</option>
-          <option value="res" {% if item.material == 'res' %}selected{% endif %}>UV-Harz (RES)</option>
-          <option value="cmp" {% if item.material == 'cmp' %}selected{% endif %}>Elektronikbauteil (CMP)</option>
-          <option value="cbl" {% if item.material == 'cbl' %}selected{% endif %}>Kabel (CBL)</option>
-          <option value="psu" {% if item.material == 'psu' %}selected{% endif %}>Netzteil (PSU)</option>
-        </select></label>
-      <div class="row">
-        <label>Anzahl <input name="qty" value="{{ item.qty if item.qty is not none else '' }}" placeholder="leer = ungezählt" inputmode="numeric"></label>
-        <label>Einheit <input name="unit" value="{{ item.unit }}" placeholder="Stk"></label>
-      </div>
-      <label>Mengenhinweis <input name="qty_hint" value="{{ item.qty_hint }}" placeholder="z. B. viele"></label>
-      <div class="row">
-        <label>Mindestbestand (darunter → Einkaufsliste)
-          <input name="min_qty" value="{{ item.min_qty if item.min_qty is not none else '' }}" inputmode="numeric" placeholder="{% if tset.min_qty is not none %}leer = Typ-Standard {{ tset.min_qty }}{% else %}leer = keiner{% endif %}"></label>
-        <label>Wunschmenge beim Nachkaufen
-          <input name="order_qty" value="{{ item.order_qty if item.order_qty is not none else '' }}" inputmode="numeric" placeholder="leer = bis Mindestbestand"></label>
-      </div>
-      <div class="row">
-        <label>Haltbar bis <input name="expires" type="date" value="{{ item.expires or '' }}"></label>
-        <label>Geöffnet am <input name="opened" type="date" value="{{ item.opened or '' }}"></label>
-      </div>
-      <label>Suchbegriffe <input name="tags" value="{{ item.tags }}"></label>
-      <label>Notizen <textarea name="notes">{{ item.notes }}</textarea></label>
-      <button class="primary">Speichern</button>
-    </form>
-    {% if item.code %}
-    <form method="post" action="/items/{{ item.id }}/code"><input type="hidden" name="remove" value="1"><button>Code entfernen</button></form>
-    {% endif %}
-    <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Teil entfernen?')">
-      <button class="danger">Entfernen</button>
-    </form>
+  <details class="fold danger-zone" id="gefahr">
+    <summary>{{ icon('status.attention', size='sm') }} Gefahrenzone</summary>
+    <div class="act-row">
+      {% if item.code %}<form method="post" action="/items/{{ item.id }}/code" onsubmit="return confirm('Code entfernen?')"><input type="hidden" name="remove" value="1"><button>Code entfernen</button></form>{% endif %}
+      <form method="post" action="/items/{{ item.id }}/delete" onsubmit="return confirm('Teil entfernen?')"><button class="danger">{{ icon('action.delete', size='sm') }} Teil entfernen</button></form>
+    </div>
   </details>
 </aside>
 </div>

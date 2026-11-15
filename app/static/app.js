@@ -205,8 +205,14 @@
     if (!box) return;
     var kind = kindOf(form), kinds = JSON.parse(box.dataset.kinds || "[]");
     var sel = box.querySelector("select"), opts = JSON.parse(sel.dataset.opts || "{}");
-    var show = kinds.indexOf(kind) >= 0, keep = sel.value;
+    var show = kinds.indexOf(kind) >= 0, keep = sel.value || sel.dataset.value || "";
     var list = opts[kind] || opts["*"] || [];
+    var custom0 = form.querySelector("#dims-new input");
+    if (keep && keep !== "neu" && list.indexOf(keep) < 0) {  // Bearbeiten: eigene Maße vorbelegen
+      if (custom0 && !custom0.value) custom0.value = keep;
+      keep = "neu";
+    }
+    sel.dataset.value = "";
     sel.innerHTML = "";
     function add(v, t) { var o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); }
     add("", "– keine Angabe –");
@@ -329,18 +335,20 @@
     function preview() {
       markChips(form);
       clearTimeout(timer);
+      if (!form.dataset.typ) return;  // Teil ohne Typ: kein Name aus Feldern, kein Etikett
       timer = setTimeout(function () {
         var q = new URLSearchParams({ typ: form.dataset.typ });
         form.querySelectorAll("input[name^=f_]").forEach(function (i) { q.set(i.name, i.value); });
         fetch("/neu/vorschau?" + q.toString()).then(function (r) { return r.json(); })
-          .then(function (d) { np.textContent = d.name || "–"; }).catch(function () {});
+          .then(function (d) { if (np) np.textContent = d.name || "–"; }).catch(function () {});
+        if (form.dataset.item) q.set("item", form.dataset.item);
         var img = document.getElementById("label-img");
         if (img) img.src = "/neu/etikett.png?" + q.toString();
       }, 120);
     }
     form.addEventListener("input", preview);
     // Entwurf: Eingaben überleben den Abstecher in den Etikett-Editor (sessionStorage)
-    var dkey = "neu-draft-" + form.dataset.typ;
+    var dkey = "neu-draft-" + (form.dataset.scope || form.dataset.typ);
     function saveDraft() {
       var d = {};
       form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
@@ -352,7 +360,7 @@
       try {
         var saved = JSON.parse(sessionStorage.getItem(dkey) || "null");
         if (saved) form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
-          if (!(i.name in saved)) return;
+          if (!(i.name in saved) || i.name === "typ") return;
           if (i.type === "checkbox") i.checked = !!saved[i.name]; else i.value = saved[i.name];
         });
         sessionStorage.removeItem(dkey);
@@ -360,6 +368,18 @@
     }
     var live = document.getElementById("label-live");
     if (live) live.addEventListener("click", saveDraft);
+    // Bearbeiten: Typwechsel über die Liste nimmt die bisherigen Eingaben mit
+    if (form.dataset.scope) document.addEventListener("click", function (e) {
+      if (e.target.closest(".type-tree a[href*='typ='], .quick-types a")) saveDraft();
+    });
+    // Eigenschafts-Profil: passende Felder zeigen, die anderen nicht mitsenden
+    var prof = form.querySelector("[data-profile-select]");
+    if (prof) prof.addEventListener("change", function () {
+      form.querySelectorAll("fieldset[data-profile]").forEach(function (fs) {
+        var on = fs.dataset.profile === prof.value;
+        fs.hidden = !on; fs.disabled = !on;
+      });
+    });
     form.addEventListener("click", function (e) {
       var b = e.target.closest("button[formaction]");
       if (b) saveDraft();

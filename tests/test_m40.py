@@ -43,7 +43,7 @@ def test_type_min_qty_and_item_override(client: TestClient, tmp_path: Path) -> N
     repo.update_item(conn, m4, min_qty=200)
     assert any(i["id"] == m4 for i in repo.shopping_list(conn))
     assert typesettings.effective_min(conn, repo.get_item(conn, m4)) == (200, False)
-    assert "leer = Typ-Standard 50" in client.get(f"/items/{m3}").text
+    assert "leer = Typ-Standard 50" in client.get(f"/items/{m3}/bearbeiten").text
     assert (
         "ganze Zahl" in client.post("/sortiment/mutter/einstellungen", data={"min_qty": "-1"}).text
     )

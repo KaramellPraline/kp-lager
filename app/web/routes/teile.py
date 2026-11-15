@@ -22,10 +22,12 @@ from app import (
     projects,
     purchases,
     repo,
+    teilform,
     typesettings,
     withdrawals,
 )
 from app.repo import LagerError
+from app.web import formen
 from app.web.shared import (
     Conn,
     Ctx,
@@ -73,12 +75,66 @@ def register(app: FastAPI, ctx: Ctx) -> None:
             cards=cards.for_item(conn, item_id),
             ctype=catalog.lookup(conn, item["ctype"]) if item["ctype"] else None,
             cvalues=catalog.values_of(item),
+            spec_shown=shown_in_sheet(conn, item),
             type_groups=catalog.area_groups(conn) if not item["material"] else [],
             tset=typesettings.get(conn, typesettings.key_of(item)),
             reservations=projects.reservations(conn, item_id),
             buys=purchases.for_item(conn, item_id),
             supplier_names=purchases.names(conn),
         )
+
+    # --- Bearbeiten: dasselbe Formular wie beim Anlegen (/neu), vorbefüllt ------------------
+
+    @app.get("/items/{item_id}/bearbeiten", response_class=HTMLResponse)
+    def item_edit_page(
+        request: Request, item_id: int, conn: Conn, typ: str = "", draft: str = ""
+    ) -> HTMLResponse:
+        item = repo.get_item(conn, item_id)
+        key = "" if typ == "-" else (typ or item["ctype"] or "")
+        t = catalog.lookup(conn, key) if key else None
+        prefill: dict[str, str] = {}
+        if t is not None:
+            own = {f.key for f in t.fields}
+            from_specs = {k: v for k, v in materials.specs(item).items() if k != "weight"}
+            prefill = {
+                k: v for k, v in {**from_specs, **catalog.values_of(item)}.items() if k in own
+            }
+        form = formen.teil(
+            conn, request, t, item=item, prefill=prefill, draft=bool(draft),
+            typ_url=f"/items/{item_id}/bearbeiten?draft=1&typ=",
+        )  # fmt: skip
+        return render(
+            request,
+            conn,
+            "item_edit.html",
+            **form,
+            form_action=f"/items/{item_id}/bearbeiten",
+            path=repo.container_path(conn, item["container_id"]),
+        )
+
+    @app.post("/items/{item_id}/bearbeiten")
+    def item_edit_save(item_id: int, conn: Conn, form: FormDict) -> RedirectResponse:
+        before = repo.get_item(conn, item_id)
+        msg = teilform.save(conn, item_id, form)
+        url = form.get("datasheet_url", "").strip()
+        if url and (url != before["datasheet_url"] or not before["datasheet"]):
+            msg = fetch_datasheet(conn, item_id)
+        return redirect(f"/items/{item_id}", msg)
+
+    def shown_in_sheet(conn: sqlite3.Connection, item: repo.Row) -> set[str]:
+        """Typ-Felder, die schon im Datenblatt stehen (nicht doppelt anzeigen)."""
+        t = catalog.lookup(conn, item["ctype"]) if item["ctype"] else None
+        if t is None or not item["material"] or catalog.profile_of(t) != item["material"]:
+            return set()
+        return catalog.spec_keys(t) & set(materials.specs(item))
+
+    @app.post("/items/{item_id}/einlagern")
+    def item_put(item_id: int, conn: Conn, qty: Annotated[str, Form()] = "1") -> RedirectResponse:
+        amount = opt_int(qty) or 0
+        if amount <= 0:
+            raise LagerError("Bitte eine Menge größer 0 angeben")
+        repo.change_qty(conn, item_id, amount, note="Einlagern")
+        return redirect(f"/items/{item_id}", f"{amount} eingelagert", repo.last_event_id(conn))
 
     @app.post("/items/{item_id}/weigh")
     def item_weigh(item_id: int, conn: Conn, gross: Annotated[str, Form()]) -> RedirectResponse:
@@ -136,6 +192,8 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         codes.mark_used_until(conn, norm[:3], int(norm[4:]))
         if material := materials.PREFIX_MATERIAL.get(norm[:3]):
             materials.save_specs(conn, item_id, material, {})
+        if material:  # Datenblatt gleich ausfüllen: dasselbe Formular wie beim Bearbeiten
+            return redirect(f"/items/{item_id}/bearbeiten", f"„{name.strip()}“ angelegt")
         return redirect(f"/items/{item_id}", f"„{name.strip()}“ angelegt")
 
     # --- Teil bearbeiten: Code, Menge, Stammdaten, Datenblatt -------------------------------

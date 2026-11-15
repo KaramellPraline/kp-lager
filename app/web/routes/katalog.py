@@ -7,8 +7,21 @@ from collections import Counter
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
-from app import cards, catalog, codes, d30, kasten, labelimg, labels, presets, repo, typesettings
+from app import (
+    cards,
+    catalog,
+    codes,
+    d30,
+    kasten,
+    labelimg,
+    labels,
+    presets,
+    repo,
+    teilform,
+    typesettings,
+)
 from app.repo import LagerError
+from app.web import formen
 from app.web.shared import TARGET_COOKIE, Conn, Ctx, FormDict, redirect
 
 TYPE_COOKIE = "kat_typ"
@@ -71,56 +84,23 @@ def register(app: FastAPI, ctx: Ctx) -> None:
     ) -> HTMLResponse:
         key = typ or request.cookies.get(TYPE_COOKIE, "") or "schraube"
         current = catalog.lookup(conn, key) or catalog.BY_KEY["schraube"]
-        kept = typesettings.kept_values(conn, current.key)
-        required = typesettings.required_keys(conn, current.key)
-        last_row = conn.execute(
-            "SELECT * FROM item WHERE ctype = ? ORDER BY id DESC LIMIT 1", (current.key,)
-        ).fetchone()
-        last_vals = catalog.values_of(last_row) if last_row else {}
         base = repo.get_item(conn, int(vorlage)) if vorlage.isdigit() else None
-        prefill = catalog.values_of(base) if base else dict(kept)
-        last = targets_cookie(request)
         recent = conn.execute(
             "SELECT i.id, i.name, i.code, i.qty, c.name AS place FROM item i"
             " JOIN container c ON c.id = i.container_id ORDER BY i.id DESC LIMIT 6"
         ).fetchall()
+        form = formen.teil(
+            conn, request, current,
+            prefill=catalog.values_of(base) if base else None, draft=bool(draft),
+        )  # fmt: skip
         return render(
             request,
             conn,
             "katalog.html",
-            areas=catalog.areas(conn),
-            ctype_area=catalog.area_of(current),
-            favs=catalog.favorite_keys(conn),
+            **form,
+            form_action="/neu",
             print_mode=print_mode(conn),
             print_modes=PRINT_MODES,
-            ctype=current,
-            prefill=prefill,
-            kept=kept,
-            last_vals=last_vals,
-            required=required,
-            sections={
-                "required": catalog.field_rows([f for f in current.fields if f.key in required]),
-                "optional": catalog.field_rows(
-                    [f for f in current.fields if f.key not in required and not f.extra]
-                ),
-                "extra": catalog.field_rows(
-                    [f for f in current.fields if f.key not in required and f.extra]
-                ),
-            },
-            presets=presets.all_for(conn, current.key),
-            opts={f.key: catalog.options_for(conn, f, current) for f in current.fields},
-            draft=bool(draft),
-            series_fields=[f for f in current.fields if catalog.options_for(conn, f, current)],
-            targets=repo.all_paths(conn),
-            target=last[0] if last else None,
-            recent_targets=[
-                {"id": p["id"], "label": repo.path_label(conn, p["id"])}
-                for p in repo.containers_by_ids(conn, last)[:3]
-            ],
-            fav_targets=[
-                {"id": f["id"], "label": repo.path_label(conn, f["id"])}
-                for f in repo.favorites(conn)[:10]
-            ],
             recent=recent,
         )
 
@@ -192,7 +172,13 @@ def register(app: FastAPI, ctx: Ctx) -> None:
             raise LagerError("Unbekannter Teile-Typ")
         vals = {f.key: request.query_params.get(f"f_{f.key}", "").strip() for f in t.fields}
         vals = catalog.derive(t, vals)
-        code = codes.format_code(t.cat, codes.next_number(conn, t.cat))
+        item_id = request.query_params.get("item", "")
+        item = repo.get_item(conn, int(item_id)) if item_id.isdigit() else None
+        code = (
+            item["code"]
+            if item is not None and item["code"]
+            else codes.format_code(t.cat, codes.next_number(conn, t.cat))
+        )
         vals.update({k: "" for k, _ in labels.EXTRA_FIELDS})
         vals.update({"name": catalog.name(t, vals) or t.label, "code": code, "ort": ""})
         stored = typesettings.get(conn, t.key).get("label_layout") or ""
@@ -260,6 +246,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
                         conn, typ, {**values, series_key: v} if v else values, target, qty,
                         standalone=not form.get("no_label"),
                     )  # fmt: skip
+                    teilform.after_create(conn, item_id, t, form)
                     add_note(item_id)
                     row = repo.get_item(conn, item_id)
                     names.append(row["name"])
@@ -287,6 +274,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         item_id = catalog.create(
             conn, typ, values, target, qty, standalone=not form.get("no_label")
         )
+        teilform.after_create(conn, item_id, t, form)
         item = repo.get_item(conn, item_id)
         add_note(item_id)
         msg = f"„{item['name']}“ angelegt ({item['code'] or 'ohne Etikett'})"

@@ -552,3 +552,55 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 .user-row details { border: none; background: none; padding: 0; margin: 0; }
 .user-row summary { flex-wrap: wrap; }
 .user-row summary small { flex-basis: 100%; order: 3; }
+
+/* 2.0: Teil-/Behälter-Seite als klare Ansicht, gemeinsames Formular für Anlegen und Bearbeiten */
+.card-h { margin: 0 0 8px; }
+.head-card .head-sub { margin: 6px 0 0; }
+.head-qty { flex: none; display: flex; flex-direction: column; align-items: flex-end; text-align: right; min-width: 56px; }
+.head-qty b { font: 400 34px/1 var(--font-display); color: var(--fg); }
+.head-qty b.empty { color: var(--critical); }
+.action-card { gap: 12px; }
+.action-card .add-item input.short { width: 5em; }
+.grow-btn { flex: 1 1 auto !important; }
+.act-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.act-row form { margin: 0; display: contents; }
+.act-row > button, .act-row > a.button, .act-row > form > button, .act-row .file-btn { flex: 1 1 130px; }
+.act-row .file-btn { padding: 0 14px; }
+a.button.small, button.small { min-height: 36px; padding: 4px 12px; }
+dl.specs dd.wrap { overflow-wrap: anywhere; text-align: right; }
+.folds { display: flex; flex-direction: column; gap: 0; }
+.folds > details.fold { margin: 0 0 10px; }
+details.fold > summary .meta { font-weight: 400; }
+details.fold > * + * { margin-top: 10px; }
+details.fold #karten > .card { margin: 8px 0; }
+details.fold details { margin: 8px 0 0; }
+.danger-zone > summary { color: var(--critical); }
+@media (min-width: 900px) { .detail-page > aside { position: static; } }
+.form-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.form-actions > .primary { min-width: 160px; }
+.teil-form fieldset, .node-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.teil-form fieldset h3 { font: 12px var(--font-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--sub); margin: 12px 0 6px; }
+.teil-form details.nf, .node-form details.nf { margin: 0; padding: 12px 14px; border-radius: var(--r-lg); }
+.teil-form details.nf > summary + * { margin-top: 10px; }
+.teil-form details.nf .nf + .nf, .teil-form details.nf .frow + .frow, .teil-form details.nf .nf + .frow,
+.teil-form details.nf .frow + .nf { margin-top: 10px; }
+.sect-h { color: var(--sub); }
+.req { color: var(--glow); }
+.keep { color: var(--sub); }
+.frow > .nf.unit-f { flex: 0 1 110px; }
+/* Typ-/Art-Auswahl: am Handy nur „Typ: … ändern“ + Chips, Liste bei Bedarf */
+.typ-bar { display: flex; flex-direction: column; gap: 8px; }
+.typ-bar .typ-change { justify-content: flex-start; width: 100%; font-size: 14px; }
+.typ-bar .typ-change .meta { margin-left: auto; }
+.typ-bar .quick-types { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.typ-bar .quick-types .chip { flex: none; text-decoration: none; color: var(--fg); }
+.typ-bar .quick-types .chip.on { color: var(--accent-fg); }
+@media (max-width: 899px) {
+  #typ-liste:not(:target), #art-liste:not(:target) { display: none; }
+  #typ-liste:target, #art-liste:target { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); padding: 12px; }
+  .neu { gap: 12px; }
+  .detail-page .layout-2, .detail-page { gap: 0; }
+}
+/* Einstellungen: alle Reiter sichtbar (umbrechen statt seitlich wischen) */
+.settings-tabs { flex-wrap: wrap; overflow: visible; border-radius: var(--r-lg); }
+.settings-tabs a { flex: 1 0 auto; padding: 8px 10px; }
