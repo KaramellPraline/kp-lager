@@ -14,8 +14,17 @@ Text des GitHub-Releases übernommen (`tools/release.py notes`).
 - **Einstellungen in Reitern:** Allgemein · Bedienung · Anbindungen · Benutzer · System (Admin heißt jetzt System; `/settings/admin` leitet weiter).
 - **Anbindungen** an einem Ort mit Status und „Testen“: API & Schlüssel, MCP (kopierbare Konfiguration), Home Assistant (YAML mit echter Adresse), Druck (A4/IPP, MQTT-Broker jetzt auch in der App einstellbar, D30-Bridge an/aus), Backup extern. Passwörter werden nie wieder angezeigt; Umgebungsvariablen haben Vorrang.
 - D30-PC-Bridge holt Etikettenbilder über signierte Kurzlinks (funktioniert mit Anmeldung); `tools/d30_print.py --key`.
+- **Hinzufügen = Bearbeiten:** Teile werden mit demselben Formular angelegt (`/neu`) und bearbeitet (`/items/<id>/bearbeiten`): gleiche Anordnung, Typ-Felder, Name aus Vorlage (eigener Anzeigename möglich), Pflichtfelder, Auswahlwerte, Bestand und Ort, Einkauf & Mindestbestand, Datenblatt & Eigenschafts-Profile (Filament, Harz, Elektronik, Kabel, Netzteil), Haltbarkeit, Suchbegriffe, Tag, Notizen. Typwechsel beim Bearbeiten über dieselbe Typ-Liste; gleichnamige Felder bleiben. Beim Anlegen werden die zusätzlichen Felder (Mindestbestand, Preis, Links, Notizen …) gleich mitgespeichert.
+- Behälter ebenso: `/neu/behaelter` und `/n/<id>/bearbeiten` teilen ein Formular (Art, Name, Größe, Luftdicht, Ort, Code, Leergewicht, Notizen).
+- Teil-Seite: „Einlagern“ mit Menge (`POST /items/<id>/einlagern`, offline gemerkt).
 
 ### Geändert
+- **Teil-Seite als klare Ansicht:** oben Name, Code, Ort und Menge, darunter die Aktionen (Entnehmen mit Mengenwahl, Einlagern, Umlagern, Etikett, Bearbeiten, Foto), dann Eigenschaften (Typ-Felder und Datenblatt als eine Liste); Verlauf, Einkäufe, Karten, Waage, Haltbarkeit, Trocknen, Verleihen, Etikett & Kopie und Gefahrenzone einklappbar. Die drei getrennten Bearbeiten-Stellen sind entfallen. Behälter-Seite analog.
+- Neue Filament-/Harz-Spule per Scan öffnet direkt das Bearbeiten-Formular (Datenblatt ausfüllen).
+- Navigation: Seitenleiste nur noch Bestand · Hinzufügen · Scannen · Suche · Drucken, dann Mehr und Einstellungen; „Mehr“ gruppiert (Lager, Werkstatt, Einkauf, System), Seltenes unter „Selten gebraucht“.
+- Hinzufügen am Handy: statt der langen Typ-Liste oben nur „Typ: … ändern“ und Favoriten/zuletzt genutzte Typen als Chips; die volle Liste (Bereich › Gruppe › Typ mit Suche) öffnet sich bei Bedarf. Bei Behältern ebenso („Art: … ändern“).
+- Einstellungen: Reiter brechen auf schmalen Bildschirmen um, alle sind sichtbar.
+- `/etiketten/typ` gegliedert nach Bereich › Gruppe mit Suchfeld wie das Sortiment.
 - Windows-Client merkt sich die Anmeldung (pywebview ohne privaten Modus).
 - Offline-App: Login-Seite wird nie als Offline-Fassung gespeichert; Buchungen, die wegen abgelaufener Anmeldung abgelehnt werden, bleiben gemerkt.
 

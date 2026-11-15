@@ -569,6 +569,8 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 a.button.small, button.small { min-height: 36px; padding: 4px 12px; }
 dl.specs dd.wrap { overflow-wrap: anywhere; text-align: right; }
 .folds { display: flex; flex-direction: column; gap: 0; }
+.detail-page { gap: 12px; }
+details.nf > summary { flex-wrap: wrap; row-gap: 0; }
 .folds > details.fold { margin: 0 0 10px; }
 details.fold > summary .meta { font-weight: 400; }
 details.fold > * + * { margin-top: 10px; }
@@ -599,7 +601,6 @@ details.fold details { margin: 8px 0 0; }
   #typ-liste:not(:target), #art-liste:not(:target) { display: none; }
   #typ-liste:target, #art-liste:target { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); padding: 12px; }
   .neu { gap: 12px; }
-  .detail-page .layout-2, .detail-page { gap: 0; }
 }
 /* Einstellungen: alle Reiter sichtbar (umbrechen statt seitlich wischen) */
 .settings-tabs { flex-wrap: wrap; overflow: visible; border-radius: var(--r-lg); }
@@ -609,3 +610,6 @@ details.fold details { margin: 8px 0 0; }
 .sidenav .nav-sep { height: 1px; background: var(--divider); margin: 10px 12px; }
 details.menu-more { margin-top: 18px; padding: 12px 14px; }
 details.menu-more .list { margin-top: 10px; }
+dl.specs { grid-template-columns: minmax(0, 1fr) minmax(0, auto); }
+dl.specs dd { overflow-wrap: anywhere; }
+dl.specs dd.wrap { grid-column: 1 / -1; text-align: left; color: var(--sub); font-size: 13px; margin-top: -2px; }

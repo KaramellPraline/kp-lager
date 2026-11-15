@@ -61,9 +61,10 @@ Jedes Routenmodul hat dieselbe Form `register(app, ctx)`; `ctx` (`app/web/shared
 | Bereich (Oberfläche) | Pfade | Datei |
 |---|---|---|
 | App-Fabrik, Mounts, Fehler, Middleware | – | `app/web/app.py` (`create_app`, Export über `app/web/__init__.py`) |
+| Gemeinsame Formulare | Kontext für `_teil_form.html`/`_behaelter_form.html` (Anlegen = Bearbeiten), Speichern in `app/teilform.py` | `app/web/formen.py` |
 | Gemeinsames | Templates, `redirect`, Cookies, Formular-Hilfen, `Ctx` | `app/web/shared.py` |
-| Bestand | `/`, `/n/<id>` (Bearbeiten, Code, Foto, Löschen, Einsätze), `/suche`, `/baum`, `/zu-sortieren`, `/platz`, Favorit, `/carry`·`/drop`, `/auswahl`·`/bulk` | `app/web/routes/bestand.py` |
-| Teile | `/items/<id>` (Bearbeiten, Code, Menge, Datenblatt, Foto, Typ, Löschen), `/n/<id>/items`, `/items/new`, `/typen` (Tags), Karten `/cards` | `app/web/routes/teile.py` |
+| Bestand | `/`, `/n/<id>` (`/n/<id>/bearbeiten`, Code, Foto, Löschen, Einsätze), `/suche`, `/baum`, `/zu-sortieren`, `/platz`, Favorit, `/carry`·`/drop`, `/auswahl`·`/bulk` | `app/web/routes/bestand.py` |
+| Teile | `/items/<id>` (`/items/<id>/bearbeiten`, Einlagern, Code, Menge, Datenblatt, Foto, Typ, Löschen), `/n/<id>/items`, `/items/new`, `/typen` (Tags), Karten `/cards` | `app/web/routes/teile.py` |
 | Sortiment | `/sortiment…`, `/material` | `app/web/routes/sortiment.py` |
 | Hinzufügen | `/neu/go`, `/neu/behaelter`, `/neu/material`, `/neu/platz`, `/quickadd`, `/containers`, `/n/<id>/quickadd` | `app/web/routes/hinzufuegen.py` |
 | Hinzufügen › Katalog | `/neu`, `/neu/vorschau`, `/neu/etikett.png`, `/neu/bin` | `app/web/routes/katalog.py` |
