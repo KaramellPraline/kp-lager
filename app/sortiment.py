@@ -37,9 +37,7 @@ def _from_type(t: catalog.Type) -> Kind:
 def _from_material(profile: str) -> Kind:
     de = materials.MATERIALS[profile][0]
     fields = tuple((f.key, f.de, f.unit) for f in materials.FIELDS[profile])
-    return Kind(
-        MAT_PREFIX + profile, de, MAT_GROUP, fields, {}, profile, area=MAT_GROUP
-    )
+    return Kind(MAT_PREFIX + profile, de, MAT_GROUP, fields, {}, profile, area=MAT_GROUP)
 
 
 def kinds(conn: sqlite3.Connection) -> list[Kind]:

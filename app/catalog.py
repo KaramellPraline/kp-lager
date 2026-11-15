@@ -2036,9 +2036,7 @@ def areas(
 
 def area_groups(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
     """Flache Liste für Auswahllisten (optgroup): („Bereich › Gruppe“, Typen)."""
-    return [
-        (g if g == a else f"{a} › {g}", ts) for a, gs in areas(conn) for g, ts in gs
-    ]
+    return [(g if g == a else f"{a} › {g}", ts) for a, gs in areas(conn) for g, ts in gs]
 
 
 def favorite_keys(conn: sqlite3.Connection) -> set[str]:
