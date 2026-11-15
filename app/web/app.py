@@ -10,7 +10,6 @@ from fastapi.staticfiles import StaticFiles
 from app import api, scheduler
 from app.config import Settings
 from app.db import connect
-from app.deps import get_conn
 from app.repo import LagerError
 from app.web.routes import ROUTES
 from app.web.shared import ADD_TABS, APP_DIR, APP_NAME, Ctx, redirect
@@ -27,7 +26,7 @@ def create_app(settings: Settings) -> FastAPI:
     ctx.sheet_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/datasheets", StaticFiles(directory=ctx.sheet_dir), name="datasheets")
 
-    app.include_router(api.build_router(get_conn))
+    app.include_router(api.build_router())
     if settings.auto_backup:
         scheduler.start(settings.data_dir)
 
