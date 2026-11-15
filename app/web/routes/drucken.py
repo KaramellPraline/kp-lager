@@ -350,12 +350,11 @@ def register(app: FastAPI, ctx: Ctx) -> None:
 
     @app.get("/etiketten/typ", response_class=HTMLResponse)
     def label_types(request: Request, conn: Conn) -> HTMLResponse:
-        n = sortiment.counts(conn)
-        groups: dict[str, list[tuple[sortiment.Kind, int, bool]]] = {}
-        for k in sortiment.kinds(conn):
-            custom = bool(typesettings.get(conn, k.key).get("label_layout"))
-            groups.setdefault(k.group, []).append((k, n.get(k.key, 0), custom))
-        return render(request, conn, "etiketten_typen.html", groups=list(groups.items()))
+        """Etiketten-Layout je Typ, gegliedert wie das Sortiment: Bereich › Gruppe › Typ."""
+        all_kinds = sortiment.kinds(conn)
+        custom = {k.key for k in all_kinds if typesettings.get(conn, k.key).get("label_layout")}
+        areas = sortiment.tree(all_kinds, sortiment.counts(conn))
+        return render(request, conn, "etiketten_typen.html", areas=areas, custom=custom)
 
     @app.get("/etiketten/typ/{key}", response_class=HTMLResponse)
     def label_designer(request: Request, key: str, conn: Conn) -> HTMLResponse:

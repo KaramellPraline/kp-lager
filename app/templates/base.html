@@ -34,9 +34,7 @@
     {{ nav_link('/scan', 'action.scan', 'Scannen') }}
     {{ nav_link('/suche', 'nav.search', 'Suche') }}
     {{ nav_link('/labels', 'action.print', 'Drucken', NQUEUE) }}
-    {{ nav_link('/einkauf', 'content.shopping', 'Einkauf') }}
-    {{ nav_link('/platz', 'content.space', 'Freie Plätze') }}
-    {{ nav_link('/verlauf', 'content.history', 'Verlauf') }}
+    <span class="nav-sep" role="separator"></span>
     {{ nav_link('/mehr', 'nav.more', 'Mehr') }}
     {{ nav_link('/settings' if not USER or USER.role == 'admin' else '/settings/benutzer', 'nav.settings', 'Einstellungen') }}
     {% if USER %}

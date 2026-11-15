@@ -606,3 +606,6 @@ details.fold details { margin: 8px 0 0; }
 .settings-tabs a { flex: 1 0 auto; padding: 8px 10px; }
 .fold-link { width: 100%; margin: 0 0 10px; }
 .node-actions { margin: 4px 0 12px; }
+.sidenav .nav-sep { height: 1px; background: var(--divider); margin: 10px 12px; }
+details.menu-more { margin-top: 18px; padding: 12px 14px; }
+details.menu-more .list { margin-top: 10px; }
