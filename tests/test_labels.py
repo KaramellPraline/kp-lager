@@ -167,7 +167,7 @@ def test_auto_code_toggle_and_button(client: TestClient) -> None:
     assert "Code ART-0001 vergeben" in client.post(f"/items/{item}/code").text
     assert "Code entfernt" in client.post(f"/items/{item}/code", data={"remove": "1"}).text
     client.post("/settings", data={"auto_item_code": "1"})
-    assert 'name="auto_item_code" value="1" checked' in client.get("/settings").text
+    assert 'name="auto_item_code" value="1" checked' in client.get("/settings/bedienung").text
 
 
 def test_sortierkasten_labels_one_per_item(client: TestClient) -> None:

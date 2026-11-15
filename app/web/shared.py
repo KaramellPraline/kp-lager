@@ -4,6 +4,7 @@ Formular-Hilfen, kleine Abfragen und der Kontext `Ctx` (Einstellungen, Rendern, 
 Jedes Modul in `app/web/routes/` hat dieselbe Form: `register(app, ctx)`.
 """
 
+import json
 import sqlite3
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -17,6 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from app import (
+    auth,
     cables,
     cards,
     codes,
@@ -26,6 +28,7 @@ from app import (
     kinds,
     labels,
     prefs,
+    printmq,
     psus,
     quick,
     repo,
@@ -263,6 +266,20 @@ class Ctx:
 
     settings: Settings
 
+    def d30_on(self, conn: sqlite3.Connection) -> bool:
+        """Direktdruck möglich: Bluetooth am Server (LAGER_D30) oder MQTT-Druck-Agent."""
+        return self.settings.d30 or printmq.config(conn) is not None
+
+    def bridge_on(self, conn: sqlite3.Connection) -> bool:
+        """PC-Bridge an: LAGER_D30_BRIDGE (Vorrang) oder Schalter unter Anbindungen › Druck."""
+        if self.settings.d30_bridge:
+            return True
+        return not self.settings.d30_bridge_locked and prefs.flag(conn, "d30_bridge")
+
+    def bridge_only(self, conn: sqlite3.Connection) -> bool:
+        """Drucken läuft über die PC-Bridge im Browser (kein Direktdruck am Server)."""
+        return self.bridge_on(conn) and not self.d30_on(conn)
+
     @property
     def photo_dir(self) -> Path:
         return self.settings.data_dir / "photos"
@@ -284,10 +301,16 @@ class Ctx:
         ctx["COMPACT"] = prefs.flag(conn, "compact")
         ctx["NQUEUE"] = labels.queue_count(conn)
         ctx["P"] = prefs.values(conn)
-        ctx["D30"] = self.settings.d30 or self.settings.d30_bridge
+        ctx["D30"] = self.d30_on(conn) or self.bridge_on(conn)
         raw_msg, _, marker = str(ctx["msg"]).partition(BRIDGE_MARK)
         ctx["msg"] = raw_msg
         ctx["bridge_codes"] = marker.removesuffix(BRIDGE_END)
+        # signierte Kurzlinks: die PC-Bridge holt die Etikettenbilder ohne Sitzungs-Cookie
+        ctx["bridge_tokens"] = json.dumps(
+            {c: auth.sign_label(conn, c) for c in ctx["bridge_codes"].split(",") if c}
+        )
+        ctx["USER"] = getattr(request.state, "user", None)
+        ctx["AUTH"] = self.settings.auth
         ctx.setdefault("dims_opts", dims_options(conn))
         ctx.setdefault(
             "dims_kinds", [k for k, _, _ in kinds.ADD_KINDS if k not in ("machine", "dryer")]
@@ -299,9 +322,9 @@ class Ctx:
     def direct_print(self, conn: sqlite3.Connection, codes_: list[str]) -> str:
         """Direktdruck nach dem Eintragen; ein Druckfehler lässt das Eintragen gelten."""
         settings = self.settings
-        if settings.d30_bridge and not settings.d30 and codes_:
+        if self.bridge_only(conn) and codes_:
             return f" · Druck über PC-Bridge{BRIDGE_MARK}{','.join(codes_)}{BRIDGE_END}"
-        if not (settings.d30 and codes_):
+        if not (self.d30_on(conn) and codes_):
             return ""
         try:
             n = d30.print_codes(conn, settings.base_url, codes_)
@@ -314,7 +337,7 @@ class Ctx:
     ) -> RedirectResponse:
         """Druck-Symbol: sofort auf den D30, sonst (Fehler/kein D30) in die Warteschlange."""
         settings = self.settings
-        if settings.d30:
+        if self.d30_on(conn):
             try:
                 d30.print_codes(conn, settings.base_url, [code])
                 return redirect(back, f"Etikett {code} gedruckt")

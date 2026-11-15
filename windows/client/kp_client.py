@@ -10,6 +10,9 @@
     lager-client.exe --bridge-only            # nur die Bridge, kein Fenster
     lager-client.exe --ca C:\\pfad\\ca.crt      # eigene CA des Servers (sonst Windows-Zertifikate)
 
+Anmeldung: Das Fenster merkt sich die Sitzung (Cookie im Profilordner neben config.json), die
+Bridge holt Etikettenbilder über signierte Kurzlinks des Servers – kein Passwort im Client.
+
 Einstellungen: %APPDATA%\\KP Lager Client\\config.json
 """
 
@@ -114,7 +117,9 @@ def open_window(server: str) -> None:
         threading.Event().wait()  # Bridge am Leben halten, bis das Fenster/der Prozess endet
         return
     webview.create_window("KP Lager", server, width=1200, height=800, min_size=(420, 600))
-    webview.start()
+    # Kein privater Modus: Anmelde-Cookie und Offline-Speicher bleiben über Neustarts erhalten
+    profile = config_path().parent / "webview"
+    webview.start(private_mode=False, storage_path=str(profile))
 
 
 def main(argv: list[str] | None = None) -> int:

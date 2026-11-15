@@ -1,0 +1,23 @@
+{# Einstellungen einer oder mehrerer Gruppen (aus app/prefs.py), ohne <form> #}
+{% for group, items in groups.items() %}
+<section class="card">
+  <h2 style="margin-top:0">{{ group }}</h2>
+  <div class="stack">
+  {% for p in items %}
+    {% if p.kind == 'bool' %}
+    <label class="check"><input type="checkbox" name="{{ p.key }}" value="1" {% if values[p.key] == '1' %}checked{% endif %}> {{ p.label }}</label>
+    {% elif p.kind == 'choice' %}
+    <label>{{ p.label }}
+      <select name="{{ p.key }}">{% for v, t in p.choices %}<option value="{{ v }}" {% if values[p.key] == v %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
+    {% elif p.kind == 'int' %}
+    <label>{{ p.label }} <input name="{{ p.key }}" value="{{ values[p.key] }}" inputmode="numeric" type="number" min="{{ p.min }}" max="{{ p.max }}"></label>
+    {% elif p.kind == 'textarea' %}
+    <label>{{ p.label }} <textarea name="{{ p.key }}" rows="7">{{ values[p.key] }}</textarea></label>
+    {% else %}
+    <label>{{ p.label }} <input name="{{ p.key }}" value="{{ values[p.key] }}"></label>
+    {% endif %}
+    {% if p.help %}<small>{{ p.help }}</small>{% endif %}
+  {% endfor %}
+  </div>
+</section>
+{% endfor %}

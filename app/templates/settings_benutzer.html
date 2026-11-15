@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Benutzer · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1>Einstellungen</h1>
+{% include "_settings_tabs.html" %}
+{% if not AUTH %}<p class="msg">Die Anmeldung ist abgeschaltet (<code>LAGER_AUTH=0</code>): jeder im Netz darf alles. Benutzer lassen sich trotzdem schon anlegen.</p>{% endif %}
+<div class="layout-2">
+<div>
+{% if USER %}
+<section class="card" id="konto">
+  <h2 style="margin-top:0">{{ icon('nav.profile') }} Mein Konto</h2>
+  <p>Angemeldet als <b>{{ USER.name }}</b> ({{ roles[USER.role] }}) · {{ sessions }} aktive Sitzung{{ 'en' if sessions != 1 }}</p>
+  <form method="post" action="/settings/konto/passwort" class="stack">
+    <label>Bisheriges Passwort <input name="old" type="password" autocomplete="current-password" required></label>
+    <label>Neues Passwort (mindestens 8 Zeichen) <input name="new" type="password" autocomplete="new-password" minlength="8" required></label>
+    <label>Neues Passwort wiederholen <input name="new2" type="password" autocomplete="new-password" minlength="8" required></label>
+    <button class="primary">Passwort ändern</button>
+  </form>
+  <form method="post" action="/logout" style="margin-top:8px"><button style="width:100%">Abmelden</button></form>
+</section>
+{% endif %}
+{% if admin and groups %}
+<form method="post" action="/settings/benutzer/anmeldung">
+  {% include "_prefs_form.html" %}
+  <button class="primary" style="width:100%">Speichern</button>
+</form>
+{% endif %}
+</div>
+{% if admin %}
+<section class="card" id="benutzer">
+  <h2 style="margin-top:0">Benutzer</h2>
+  <p class="meta"><b>Admin</b> darf alles. <b>Nutzer</b> darf alles außer Einstellungen, Anbindungen, Benutzerverwaltung, Import und Gesamtarchiv.</p>
+  <ul class="list">
+    {% for u in users %}
+    <li class="item user-row">
+      <details style="width:100%">
+        <summary><b>{{ u.name }}</b> <span class="chip">{{ roles[u.role] }}</span>{% if USER and USER.id == u.id %} <span class="chip">ich</span>{% endif %}
+          <small style="display:block">angelegt {{ u.created_at[:16] }} · {{ 'zuletzt ' ~ u.last_login[:16] if u.last_login else 'nie angemeldet' }}</small></summary>
+        <div class="stack">
+          <form method="post" action="/settings/benutzer/{{ u.id }}/rolle" class="add-item">
+            <select name="role" aria-label="Rolle {{ u.name }}">{% for r, t in roles.items() %}<option value="{{ r }}" {% if u.role == r %}selected{% endif %}>{{ t }}</option>{% endfor %}</select>
+            <button>Rolle setzen</button>
+          </form>
+          <form method="post" action="/settings/benutzer/{{ u.id }}/passwort" class="add-item" autocomplete="off">
+            <input name="password" type="password" autocomplete="new-password" minlength="8" placeholder="Neues Passwort" aria-label="Neues Passwort für {{ u.name }}" required>
+            <button>Passwort zurücksetzen</button>
+          </form>
+          <form method="post" action="/settings/benutzer/{{ u.id }}/loeschen" onsubmit="return confirm('Benutzer {{ u.name }} löschen?')">
+            <button class="danger">{{ icon('action.delete', size='sm') }} Löschen</button>
+          </form>
+        </div>
+      </details>
+    </li>
+    {% else %}<li class="empty">Noch keine Benutzer.</li>{% endfor %}
+  </ul>
+  <h3>Neuer Benutzer</h3>
+  <form method="post" action="/settings/benutzer" class="stack" autocomplete="off">
+    <label>Benutzername <input name="name" required autocapitalize="none" autocomplete="off"></label>
+    <label>Passwort (mindestens 8 Zeichen) <input name="password" type="password" minlength="8" autocomplete="new-password" required></label>
+    <label>Rolle <select name="role">{% for r, t in roles.items() %}<option value="{{ r }}">{{ t }}</option>{% endfor %}</select></label>
+    <button class="primary">{{ icon('action.add', size='sm') }} Benutzer anlegen</button>
+  </form>
+</section>
+{% endif %}
+</div>
+{% endblock %}

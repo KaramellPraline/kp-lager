@@ -286,12 +286,13 @@
   document.addEventListener("DOMContentLoaded", function () {
     var toast = document.querySelector(".toast[data-d30-codes]");
     if (!toast) return;
-    var codes = toast.dataset.d30Codes.split(",").filter(Boolean);
+    var codes = toast.dataset.d30Codes.split(",").filter(Boolean), tokens = {};
+    try { tokens = JSON.parse(toast.dataset.d30Tokens || "{}"); } catch (e) { /* ohne Kurzlinks */ }
     var label = toast.querySelector("span");
     function say(text) { if (label) label.textContent = text; toast.removeAttribute("data-autohide"); }
     say("Drucke " + codes.length + " Etikett(en) über die PC-Bridge …");
     fetch(BRIDGE + "/print", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes: codes })
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes: codes, tokens: tokens })
     }).then(function (r) { return r.json(); }).then(function (d) {
       if (!d.ok) throw new Error(d.error || "Druck fehlgeschlagen");
       var f = new FormData(); codes.forEach(function (c) { f.append("code", c); });

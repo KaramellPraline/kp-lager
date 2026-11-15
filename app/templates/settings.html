@@ -2,34 +2,15 @@
 {% block title %}Einstellungen · {{ APP_NAME }}{% endblock %}
 {% block content %}
 <h1>Einstellungen</h1>
-{% with tab="general" %}{% include "_settings_tabs.html" %}{% endwith %}
+{% include "_settings_tabs.html" %}
 <div class="layout-2">
 <form method="post" action="/settings">
-  {% for group, items in groups.items() %}
-  <section class="card">
-    <h2 style="margin-top:0">{{ group }}</h2>
-    <div class="stack">
-    {% for p in items %}
-      {% if p.kind == 'bool' %}
-      <label class="check"><input type="checkbox" name="{{ p.key }}" value="1" {% if values[p.key] == '1' %}checked{% endif %}> {{ p.label }}</label>
-      {% elif p.kind == 'choice' %}
-      <label>{{ p.label }}
-        <select name="{{ p.key }}">{% for v, t in p.choices %}<option value="{{ v }}" {% if values[p.key] == v %}selected{% endif %}>{{ t }}</option>{% endfor %}</select></label>
-      {% elif p.kind == 'int' %}
-      <label>{{ p.label }} <input name="{{ p.key }}" value="{{ values[p.key] }}" inputmode="numeric" type="number" min="{{ p.min }}" max="{{ p.max }}"></label>
-      {% elif p.kind == 'textarea' %}
-      <label>{{ p.label }} <textarea name="{{ p.key }}" rows="7">{{ values[p.key] }}</textarea></label>
-      {% else %}
-      <label>{{ p.label }} <input name="{{ p.key }}" value="{{ values[p.key] }}"></label>
-      {% endif %}
-      {% if p.help %}<small>{{ p.help }}</small>{% endif %}
-    {% endfor %}
-    </div>
-  </section>
-  {% endfor %}
+  <input type="hidden" name="_tab" value="{{ tab }}">
+  {% include "_prefs_form.html" %}
   <button class="primary" style="width:100%">Einstellungen speichern</button>
 </form>
 
+{% if tab == 'allgemein' %}
 <aside>
   <section class="card">
     <h2 style="margin-top:0">Handy einrichten</h2>
@@ -43,17 +24,10 @@
     <h2 style="margin-top:0">Server</h2>
     <ul class="history">
       <li>Adresse in QR-Codes: <b>{{ base_url }}</b> (<code>LAGER_BASE_URL</code>)</li>
+      <li>Anmeldung: <b>{{ 'an' if AUTH else 'aus' }}</b> (<code>LAGER_AUTH</code>{% if not AUTH %}=0 – jeder im Netz darf alles{% endif %})</li>
     </ul>
   </section>
-  <section class="card">
-    <h2 style="margin-top:0">Codes</h2>
-    <p><a class="button" href="/settings/admin">Zähler &amp; Codes verwalten (Admin)</a></p>
-  </section>
-  <section class="card">
-    <h2 style="margin-top:0">Daten</h2>
-    <form method="post" action="/settings/backup"><button style="width:100%">{{ icon('action.save') }} Backup jetzt erstellen</button></form>
-    <p class="row" style="margin-top:8px"><a class="button" href="/export.json">{{ icon('action.download') }} Export (JSON)</a> <a class="button" href="/export.zip">{{ icon('action.download') }} Gesamtarchiv</a> <a class="button" href="/import">{{ icon('action.upload') }} Import</a></p>
-  </section>
 </aside>
+{% endif %}
 </div>
 {% endblock %}

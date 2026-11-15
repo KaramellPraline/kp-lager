@@ -33,6 +33,11 @@ class Settings:
         False  # Drucken über die PC-Bridge des Windows-Clients (Server ohne Bluetooth)
     )
     https_redirect: bool = False  # HTTP-Instanz: alles außer /ca.crt auf HTTPS umleiten
+    # Anmeldung: im Dataclass aus (Tests, Bibliothek), load_settings() schaltet sie standardmäßig an
+    auth: bool = False
+    admin_user: str = ""  # erster Admin beim Start (nur wenn noch kein Benutzer existiert)
+    admin_password_file: str = ""  # Datei mit dessen Passwort (Docker-Secret)
+    d30_bridge_locked: bool = False  # LAGER_D30_BRIDGE gesetzt: Schalter in Anbindungen gesperrt
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "base_url", qr_base(self.base_url))
@@ -54,4 +59,8 @@ def load_settings() -> Settings:
         d30=os.environ.get("LAGER_D30", "1") == "1",
         d30_bridge=os.environ.get("LAGER_D30_BRIDGE", "") == "1",
         https_redirect=os.environ.get("LAGER_HTTPS_REDIRECT", "") == "1",
+        auth=os.environ.get("LAGER_AUTH", "1").strip().lower() not in ("0", "false", "no", "aus"),
+        admin_user=os.environ.get("LAGER_ADMIN_USER", "").strip(),
+        admin_password_file=os.environ.get("LAGER_ADMIN_PASSWORD_FILE", "").strip(),
+        d30_bridge_locked=os.environ.get("LAGER_D30_BRIDGE", "").strip() != "",
     )

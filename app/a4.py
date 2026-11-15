@@ -463,7 +463,9 @@ def ipp_print(
 ) -> None:
     """PDF per IPP an den Drucker (ipp://host[:port]/pfad oder http://…). Fehler -> LagerError."""
     if not url.strip():
-        raise LagerError("Kein A4-Netzwerkdrucker eingetragen (Admin → A4-Drucker)")
+        raise LagerError(
+            "Kein A4-Netzwerkdrucker eingetragen (Einstellungen › Anbindungen › Druck)"
+        )
     p = urlparse(url.strip())
     if p.scheme not in ("ipp", "ipps", "http", "https") or not p.hostname:
         raise LagerError("Drucker-Adresse ungültig, z. B. ipp://192.168.1.50/ipp/print")

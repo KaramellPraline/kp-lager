@@ -1,4 +1,5 @@
-"""System: Einstellungen, Admin (Code-Zähler, API-Schlüssel, Drucker, Node-Typen),
+"""System: Einstellungen (Reiter Allgemein, Bedienung, System mit Code-Zählern und Node-Typen;
+Anbindungen in `anbindungen.py`, Benutzer in `konto.py`),
 Status/Backup, Import/Export, Code-Schema und Arten, Verlauf/Rückgängig, Mehr-Seite,
 Sprache sowie Health, Zertifikat, Manifest, Service Worker und Offline-Seite."""
 
@@ -9,14 +10,12 @@ import tempfile
 import zipfile
 from pathlib import Path
 from typing import Annotated
-from urllib.parse import urlparse
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import (
     __version__,
-    apikeys,
     backup,
     catalog,
     codes,
@@ -146,39 +145,57 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         kinds.delete(conn, kind)
         return redirect("/codes", "Art gelöscht")
 
-    # --- Einstellungen ----------------------------------------------------------------------
+    # --- Einstellungen: Reiter Allgemein · Bedienung · Anbindungen · Benutzer · System ------
 
-    @app.get("/settings", response_class=HTMLResponse)
-    def settings_page(request: Request, conn: Conn) -> HTMLResponse:
+    tab_url = {
+        "allgemein": "/settings",
+        "bedienung": "/settings/bedienung",
+        "anbindungen": "/settings/anbindungen",
+        "benutzer": "/settings/benutzer",
+        "system": "/settings/system",
+    }
+
+    def prefs_tab(request: Request, conn: sqlite3.Connection, tab: str) -> HTMLResponse:
         return render(
             request,
             conn,
             "settings.html",
-            groups=prefs.groups(),
+            tab=tab,
+            groups=prefs.groups(tab),
             values=prefs.values(conn),
-            next_codes={
-                p: codes.format_code(p, codes.next_number(conn, p)) for p in codes.PREFIX_LABELS
-            },
-            prefixes=codes.PREFIX_LABELS,
             base_url=settings.base_url,
             has_ca=settings.ca_cert.exists(),
         )
 
+    @app.get("/settings", response_class=HTMLResponse)
+    def settings_page(request: Request, conn: Conn) -> HTMLResponse:
+        return prefs_tab(request, conn, "allgemein")
+
+    @app.get("/settings/bedienung", response_class=HTMLResponse)
+    def settings_bedienung(request: Request, conn: Conn) -> HTMLResponse:
+        return prefs_tab(request, conn, "bedienung")
+
     @app.post("/settings")
     async def settings_save(request: Request, conn: Conn) -> RedirectResponse:
-        form = await request.form()
-        prefs.save(conn, {k: str(v) for k, v in form.items()})
+        """Einstellungen speichern: mit `_tab` nur die Felder dieses Reiters, sonst alle."""
+        form = {k: str(v) for k, v in (await request.form()).items()}
+        tab = form.get("_tab", "")
+        if tab in prefs.TABS:
+            prefs.save(conn, form, prefs.keys_of(tab))
+            return redirect(tab_url[tab], "Einstellungen gespeichert")
+        prefs.save(conn, form)
         return redirect("/settings", "Einstellungen gespeichert")
 
-    # --- Admin: Code-Zähler, API-Schlüssel --------------------------------------------------
+    # --- System: Betrieb, Daten, Nummernvergabe, Node-Typen ---------------------------------
 
-    @app.get("/settings/admin", response_class=HTMLResponse)
-    def admin_page(request: Request, conn: Conn) -> HTMLResponse:
-        return render_admin(request, conn, new_key=None)
+    @app.get("/settings/admin")
+    def admin_old(request: Request) -> RedirectResponse:
+        """Alte Adresse (bis 1.3): Admin heißt jetzt System (Meldung ?msg= bleibt erhalten)."""
+        query = f"?{request.url.query}" if request.url.query else ""
+        return RedirectResponse(f"/settings/system{query}", status_code=308)
 
-    def render_admin(
-        request: Request, conn: sqlite3.Connection, new_key: str | None
-    ) -> HTMLResponse:
+    @app.get("/settings/system", response_class=HTMLResponse)
+    def system_page(request: Request, conn: Conn) -> HTMLResponse:
         counters = [
             {
                 "prefix": p,
@@ -193,28 +210,13 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         return render(
             request,
             conn,
-            "settings_admin.html",
+            "settings_system.html",
+            tab="system",
             counters=counters,
-            keys=apikeys.all_keys(conn),
+            groups=prefs.groups("system"),
+            values=prefs.values(conn),
             node_types=NL.join(catalog.node_types(conn)),
-            a4_printer=codes.get_setting(conn, "a4_printer", ""),
-            new_key=new_key,
         )
-
-    @app.post("/settings/admin/keys", response_class=HTMLResponse)
-    def admin_create_key(
-        request: Request,
-        conn: Conn,
-        name: Annotated[str, Form()],
-        scope: Annotated[str, Form()] = "write",
-    ) -> HTMLResponse:
-        """Neuen API-Schlüssel erzeugen und genau einmal anzeigen (nie in der URL)."""
-        return render_admin(request, conn, new_key=apikeys.create(conn, name, scope))
-
-    @app.post("/settings/admin/keys/{key_id}/delete")
-    def admin_delete_key(key_id: int, conn: Conn) -> RedirectResponse:
-        apikeys.delete(conn, key_id)
-        return redirect("/settings/admin#api", "Schlüssel gelöscht")
 
     @app.post("/settings/admin/next")
     def admin_set_next(
@@ -225,14 +227,14 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         except ValueError as exc:
             raise LagerError(str(exc)) from None
         nxt = codes.format_code(prefix, number)
-        return redirect("/settings/admin", f"{prefix}: nächster Code ist jetzt {nxt}")
+        return redirect("/settings/system", f"{prefix}: nächster Code ist jetzt {nxt}")
 
     @app.post("/settings/admin/reset")
     def admin_reset(conn: Conn, prefix: Annotated[str, Form()]) -> RedirectResponse:
         if prefix not in codes.PREFIX_KIND:
             raise LagerError(f"Unbekanntes Präfix {prefix}")
         nxt = codes.format_code(prefix, codes.reset_counter(conn, prefix))
-        return redirect("/settings/admin", f"{prefix} zurückgesetzt – nächster Code {nxt}")
+        return redirect("/settings/system", f"{prefix} zurückgesetzt – nächster Code {nxt}")
 
     @app.post("/settings/admin/remove")
     def admin_remove_code(conn: Conn, code: Annotated[str, Form()]) -> RedirectResponse:
@@ -250,14 +252,20 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         else:
             raise LagerError(f"{code} ist nicht vergeben")
         labels.dequeue(conn, [code])
-        return redirect("/settings/admin", f"{code} von „{name}“ entfernt")
+        return redirect("/settings/system", f"{code} von „{name}“ entfernt")
+
+    @app.post("/settings/admin/nodetypen")
+    def admin_node_types(conn: Conn, form: FormDict) -> RedirectResponse:
+        lines = [x.strip() for x in form.get("node_types", "").splitlines() if x.strip()]
+        codes.set_setting(conn, "node_types", "\n".join(dict.fromkeys(lines)))
+        return redirect("/settings/system#nodetypen", "Node-Typen gespeichert")
 
     # --- Backup und Status ------------------------------------------------------------------
 
     @app.post("/settings/backup")
     def settings_backup(conn: Conn) -> RedirectResponse:
         files = backup.run(settings.data_dir, settings.data_dir / "backups")
-        return redirect("/settings", "Backup: " + ", ".join(f.name for f in files))
+        return redirect("/settings/system#daten", "Backup: " + ", ".join(f.name for f in files))
 
     # --- Mehr -------------------------------------------------------------------------------
 
@@ -372,21 +380,3 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         files = backup.run(settings.data_dir, settings.data_dir / "backups",
                            prefs.number(conn, "backup_days"))  # fmt: skip
         return redirect("/status", "Backup erstellt: " + ", ".join(f.name for f in files))
-
-    # --- Admin: A4-Drucker, Node-Typen ------------------------------------------------------
-
-    @app.post("/settings/admin/a4drucker")
-    def admin_a4_printer(conn: Conn, form: FormDict) -> RedirectResponse:
-        url = form.get("a4_printer", "").strip()
-        if url:
-            p = urlparse(url)
-            if p.scheme not in ("ipp", "ipps", "http", "https") or not p.hostname:
-                raise LagerError("Drucker-Adresse ungültig, z. B. ipp://192.168.1.50/ipp/print")
-        codes.set_setting(conn, "a4_printer", url)
-        return redirect("/settings/admin#a4drucker", "A4-Drucker gespeichert")
-
-    @app.post("/settings/admin/nodetypen")
-    def admin_node_types(conn: Conn, form: FormDict) -> RedirectResponse:
-        lines = [x.strip() for x in form.get("node_types", "").splitlines() if x.strip()]
-        codes.set_setting(conn, "node_types", "\n".join(dict.fromkeys(lines)))
-        return redirect("/settings/admin#nodetypen", "Node-Typen gespeichert")

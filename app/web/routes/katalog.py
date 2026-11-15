@@ -57,7 +57,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
 
     def print_set(conn: sqlite3.Connection, codes_: list[str]) -> str:
         """Etikett-Satz: alle auf einmal auf den D30, bei Fehler alle in die Warteschlange."""
-        if not settings.d30:
+        if not ctx.d30_on(conn):
             return print_set_queue(conn, codes_)
         try:
             n = d30.print_codes(conn, settings.base_url, codes_)
@@ -242,7 +242,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         if single:
             qty = 1
         mode = print_mode(conn)  # Regel: einzel = sofort 40x12, sammel = in die Warteschlange
-        wants_print = bool(form.get("d30_print") or mode == "einzel") and bool(settings.d30)
+        wants_print = bool(form.get("d30_print") or mode == "einzel") and ctx.d30_on(conn)
         note = form.get("note", "").strip()
 
         def add_note(item_id: int) -> None:
@@ -383,7 +383,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
             f"Einsatz {node['code']} bei {node['position']} ({size}, "
             f"{len(comps) or 1} {'Fächer' if len(comps) > 1 else 'Fach'}) angelegt, {made} Teile"
         )
-        if form.get("d30_print") and settings.d30:
+        if form.get("d30_print") and ctx.d30_on(conn):
             msg += print_now(conn, [node["code"]])
         resp = redirect(f"/neu/bin?kasten_id={kid}", msg)
         return resp

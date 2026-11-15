@@ -75,6 +75,10 @@ main { padding: 16px; max-width: 1200px; margin: 0 auto; }
     border-radius: var(--r-md); color: var(--fg); text-decoration: none; transition: background var(--dur-fast) var(--ease-out); }
   .sidenav a.nav:hover { background: var(--hover); }
   .sidenav a.nav.active { background: var(--raised); color: var(--glow); }
+  .sidenav .nav-logout { margin-top: auto; }
+  .sidenav button.nav { display: flex; align-items: center; gap: 12px; padding: 0 12px; min-height: 46px; width: 100%;
+    border: none; background: transparent; color: var(--sub); border-radius: var(--r-md); text-align: left; }
+  .sidenav button.nav:hover { background: var(--hover); color: var(--fg); }
   .sidenav .count { margin-left: auto; }
   .topbar .brand, .mobile-only { display: none !important; }
   main { padding: 24px 32px; }
@@ -528,3 +532,17 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 .sort-tree .grp .menu-h { margin: 12px 0 2px; }
 .sort-tree li a.empty span { color: var(--sub); }
 @media (max-width: 899px) { .neu .jump-bar { display: none; } } /* Bereiche stehen oben zugeklappt; Leiste würde Felder verdecken */
+
+/* Anmeldung, Einstellungs-Reiter, Anbindungen */
+.auth-page { max-width: 420px; margin: 0 auto; padding: 32px 16px; }
+.auth-brand { display: block; font-size: 22px; font-weight: 600; margin: 8px 0 16px; text-align: center; }
+.msg.err { background: var(--critical); color: var(--on-status, #fff); }
+.settings-tabs { overflow-x: auto; scrollbar-width: none; }
+.settings-tabs a { flex: 1 0 auto; padding: 10px 12px; white-space: nowrap; }
+.badge.ok { background: var(--ok, #3fa66b); color: var(--on-status, #fff); }
+.badge.err { background: var(--critical); color: var(--on-status, #fff); }
+.conn-card h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 0; }
+.conn-card h2 .badge { margin-left: auto; }
+.conn-card pre { white-space: pre-wrap; word-break: break-all; font: 12px/1.45 var(--font-mono); background: var(--raised);
+  padding: 10px; border-radius: var(--r-md); margin: 6px 0; }
+.userbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

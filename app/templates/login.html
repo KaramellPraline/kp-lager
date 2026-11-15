@@ -1,0 +1,14 @@
+{% extends "_auth_base.html" %}
+{% block title %}Anmelden · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1 style="margin-top:0">Anmelden</h1>
+{% set note = error or request.query_params.get('msg', '') %}
+{% if note %}<p class="msg{% if error %} err{% endif %}" role="alert">{{ note }}</p>{% endif %}
+<form method="post" action="/login" class="stack">
+  <input type="hidden" name="next" value="{{ next }}">
+  <label>Benutzername <input name="name" value="{{ name }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus></label>
+  <label>Passwort <input name="password" type="password" autocomplete="current-password" required></label>
+  <button class="primary" style="width:100%">{{ icon('system.unlock', size='sm') }} Anmelden</button>
+</form>
+<p class="meta">Passwort vergessen? Ein Admin kann es unter Einstellungen › Benutzer neu setzen.</p>
+{% endblock %}

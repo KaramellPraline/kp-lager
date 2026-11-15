@@ -10,9 +10,17 @@ def node_of(r: httpx.Response) -> str:
     return str(r.url.path).rsplit("/", 1)[1]
 
 
+TABS = ("/settings", "/settings/bedienung", "/settings/anbindungen", "/settings/benutzer",
+        "/settings/system")  # fmt: skip
+
+
+def all_tabs(client: TestClient) -> str:
+    return "".join(client.get(url).text for url in TABS)
+
+
 def save(client: TestClient, **changes: str) -> None:
     """Einstellungsseite mit aktuellen Werten + Änderungen absenden (wie im Browser)."""
-    page = client.get("/settings").text
+    page = all_tabs(client)
     form: dict[str, str] = {}
     for p in prefs.PREFS:
         if p.kind == "bool":
@@ -35,9 +43,10 @@ def save(client: TestClient, **changes: str) -> None:
 
 
 def test_settings_page_lists_all_groups(client: TestClient) -> None:
-    page = client.get("/settings").text
+    page = all_tabs(client)
     for group in prefs.groups():
-        assert f">{group}</h2>" in page
+        if group not in prefs.TABS["anbindungen"]:  # dort als Karten mit eigener Überschrift
+            assert f">{group}</h2>" in page
     assert "Zertifikat laden" in page and "Backup jetzt erstellen" in page
 
 
@@ -75,7 +84,7 @@ def test_label_text_max_and_typo_toggle(client: TestClient) -> None:
 
 def test_invalid_values_fall_back(client: TestClient) -> None:
     save(client, label_text_max="abc", theme="neon", home_recent="999")
-    page = client.get("/settings").text
+    page = all_tabs(client)
     assert 'name="label_text_max" value="24"' in page and 'name="home_recent" value="20"' in page
     assert 'data-theme="night"' in page
 

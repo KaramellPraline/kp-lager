@@ -102,9 +102,9 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         if not (len(code) == len(text) == len(extra)):
             raise HTTPException(400, "Tabelle unvollständig")
         entries_ = list(zip(code, text, extra, strict=True))
-        bridge = fmt == "d30" and settings.d30_bridge and not settings.d30
+        bridge = fmt == "d30" and ctx.bridge_only(conn)
         if fmt == "d30" and not bridge:  # erst drucken – nur Gedrucktes wird als gedruckt gebucht
-            if not settings.d30:
+            if not ctx.d30_on(conn):
                 raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
             try:
                 d30.print_labels(
@@ -289,10 +289,10 @@ def register(app: FastAPI, ctx: Ctx) -> None:
     # --- D30-Direktdruck und PC-Bridge ------------------------------------------------------
 
     @app.get("/d30/status")
-    def d30_status() -> JSONResponse:
-        if not settings.d30:
+    def d30_status(conn: Conn) -> JSONResponse:
+        if not ctx.d30_on(conn):
             return JSONResponse(
-                {"enabled": False, "available": False, "msg": "aus", "bridge": settings.d30_bridge}
+                {"enabled": False, "available": False, "msg": "aus", "bridge": ctx.bridge_on(conn)}
             )
         ok, msg = d30.status()
         return JSONResponse({"enabled": True, "available": ok, "msg": msg})
@@ -301,10 +301,10 @@ def register(app: FastAPI, ctx: Ctx) -> None:
     def d30_print(
         conn: Conn, code: Annotated[list[str], Form()], back: Annotated[str, Form()] = "/"
     ) -> RedirectResponse:
-        if settings.d30_bridge and not settings.d30:
+        if ctx.bridge_only(conn):
             marker = f"\u27e6d30:{','.join(dict.fromkeys(code))}\u27e7"
             return redirect(safe_back(back, "/"), "Druck über PC-Bridge" + marker)
-        if not settings.d30:
+        if not ctx.d30_on(conn):
             raise LagerError("Direktdruck ist abgeschaltet (LAGER_D30=1)")
         n = d30.print_codes(conn, settings.base_url, code)
         return redirect(safe_back(back, "/"), f"{n} Etikett{'en' if n != 1 else ''} gedruckt")

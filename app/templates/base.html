@@ -38,7 +38,12 @@
     {{ nav_link('/platz', 'content.space', 'Freie Plätze') }}
     {{ nav_link('/verlauf', 'content.history', 'Verlauf') }}
     {{ nav_link('/mehr', 'nav.more', 'Mehr') }}
-    {{ nav_link('/settings', 'nav.settings', 'Einstellungen') }}
+    {{ nav_link('/settings' if not USER or USER.role == 'admin' else '/settings/benutzer', 'nav.settings', 'Einstellungen') }}
+    {% if USER %}
+    <form method="post" action="/logout" class="nav-logout">
+      <button class="nav" title="Abmelden">{{ icon('nav.profile') }}<span>{{ USER.name }} · Abmelden</span></button>
+    </form>
+    {% endif %}
   </aside>
   <div class="main-col">
     <header class="topbar">
@@ -72,7 +77,7 @@
   {{ navtab('/labels', 'action.print', 'Drucken', NQUEUE) }}
 </nav>
 {% if msg %}
-<div class="toast" role="status" {% if not undo %}data-autohide{% endif %}{% if bridge_codes %} data-d30-codes="{{ bridge_codes }}"{% endif %}>
+<div class="toast" role="status" {% if not undo %}data-autohide{% endif %}{% if bridge_codes %} data-d30-codes="{{ bridge_codes }}" data-d30-tokens="{{ bridge_tokens }}"{% endif %}>
   <span>{{ msg }}</span>
   {% if undo %}<form method="post" action="/undo/{{ undo }}"><button class="link">Rückgängig</button></form>{% endif %}
   <button type="button" class="x" aria-label="Schließen" onclick="this.parentElement.remove()">{{ icon('nav.close', size='sm') }}</button>
