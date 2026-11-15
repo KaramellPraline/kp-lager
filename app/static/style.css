@@ -604,3 +604,5 @@ details.fold details { margin: 8px 0 0; }
 /* Einstellungen: alle Reiter sichtbar (umbrechen statt seitlich wischen) */
 .settings-tabs { flex-wrap: wrap; overflow: visible; border-radius: var(--r-lg); }
 .settings-tabs a { flex: 1 0 auto; padding: 8px 10px; }
+.fold-link { width: 100%; margin: 0 0 10px; }
+.node-actions { margin: 4px 0 12px; }

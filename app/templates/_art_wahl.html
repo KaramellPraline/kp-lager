@@ -1,0 +1,14 @@
+{# Art-Auswahl fürs Behälter-Formular: am Handy nur „Art: … ändern“, Liste bei Bedarf (#art-liste). #}
+<div class="typ-bar mobile-only">
+  <a class="button typ-change" href="#art-liste">{{ icon('content.box', size='sm') }} Art: <b>{% if art == 'neu' %}Neue Art{% else %}{{ KIND_LABELS.get(art, art) }}{% endif %}</b> <span class="meta">ändern</span></a>
+</div>
+<aside class="neu-types" id="art-liste" aria-label="Behälter-Arten">
+  <div class="title-row mobile-only"><b>Art wählen</b><a class="icon-btn" href="#" aria-label="Liste schließen">{{ icon('nav.close') }}</a></div>
+  {% for g, ks in groups %}
+  <details class="grp" {% if art in ks %}open{% endif %}>
+  <summary>{{ g }} <span class="meta">{{ ks|length }}</span></summary>
+  <ul>{% for k in ks %}<li><a href="{{ art_url }}{{ k }}" class="{% if k == art %}on{% endif %}">{{ KIND_LABELS[k] }} <span class="meta">{{ KIND_PREFIX.get(k, '') }}</span></a></li>{% endfor %}</ul>
+  </details>
+  {% endfor %}
+  {% if mode != 'edit' %}<ul><li><a href="{{ art_url }}neu" class="{% if art == 'neu' %}on{% endif %}">+ Neue Art …</a></li></ul>{% endif %}
+</aside>

@@ -26,16 +26,19 @@ from app import (
 )
 from app import search as finder
 from app.repo import LagerError
+from app.web import formen
 from app.web.shared import (
     CARRY_COOKIE,
     RECENT_COOKIE,
     Conn,
     Ctx,
+    FormDict,
     carry_info,
     container_code,
     last_target,
     need_node,
     node_url,
+    pick_dims,
     recent_ids,
     redirect,
     safe_back,
@@ -242,6 +245,42 @@ def register(app: FastAPI, ctx: Ctx) -> None:
 
     # --- Behälter bearbeiten, Code, Löschen, Foto -------------------------------------------
 
+    @app.get("/n/{node_id}/bearbeiten", response_class=HTMLResponse)
+    def node_edit_page(request: Request, node_id: int, conn: Conn, art: str = "") -> HTMLResponse:
+        """Bearbeiten: dasselbe Formular wie Hinzufügen › Behälter, vorbefüllt."""
+        node = need_node(conn, node_id)
+        form = formen.behaelter(
+            conn, request, node["kind"], node=node, art_url=f"/n/{node_id}/bearbeiten?art="
+        )
+        flat = [k for _, ks in form["groups"] for k in ks]
+        chosen = kinds.resolve(art) if art else None
+        if chosen in flat:
+            form["art"] = chosen
+        return render(
+            request, conn, "node_edit.html", **form, form_action=f"/n/{node_id}/bearbeiten",
+            path=repo.container_path(conn, node_id)[:-1],
+        )  # fmt: skip
+
+    @app.post("/n/{node_id}/bearbeiten")
+    def node_edit_save(node_id: int, conn: Conn, form: FormDict) -> RedirectResponse:
+        node = need_node(conn, node_id)
+        name = form.get("name", "").strip()
+        if not name:
+            raise LagerError("Name fehlt")
+        kind = form.get("kind", "") or node["kind"]
+        dims = pick_dims(form.get("dims", ""), form.get("dims_custom", ""), "")
+        repo.update_container(conn, node_id, name, form.get("notes", ""))
+        repo.set_container_tare(conn, node_id, form.get("tare", ""))
+        repo.update_container_shape(conn, node_id, kind, dims, bool(form.get("airtight")))
+        new_code = container_code(form.get("code", ""))
+        if new_code != node["code"]:
+            repo.assign_code(conn, node_id, new_code)
+        parent = form.get("parent_id", "")
+        new_parent = int(parent) if parent.isdigit() else None
+        if new_parent != node["parent_id"]:
+            repo.move_container(conn, node_id, new_parent)
+        return redirect(f"/n/{node_id}", "Gespeichert")
+
     @app.post("/n/{node_id}/edit")
     def edit_container(
         node_id: int,
@@ -253,15 +292,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
     ) -> RedirectResponse:
         node = need_node(conn, node_id)
         repo.update_container(conn, node_id, name, notes)
-        raw = tare.strip().replace(",", ".")
-        try:
-            grams = float(raw) if raw else None
-        except ValueError:
-            raise LagerError(f"„{tare}“ ist kein Gewicht in Gramm") from None
-        if grams is not None and grams < 0:
-            raise LagerError("Gewicht darf nicht negativ sein")
-        with conn:
-            conn.execute("UPDATE container SET tare = ? WHERE id = ?", (grams, node_id))
+        repo.set_container_tare(conn, node_id, tare)
         new_code = container_code(code)
         if new_code != node["code"]:
             repo.assign_code(conn, node_id, new_code)

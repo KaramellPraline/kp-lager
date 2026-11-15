@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ node.name }} bearbeiten · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<nav class="crumbs">
+  <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
+</nav>
+<div class="neu">
+  {% include "_art_wahl.html" %}
+  <section class="neu-main">
+    {% include "_behaelter_form.html" %}
+  </section>
+</div>
+{% endblock %}

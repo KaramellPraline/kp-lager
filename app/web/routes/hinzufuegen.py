@@ -23,6 +23,7 @@ from app import (
     repo,
 )
 from app.repo import LagerError
+from app.web import formen
 from app.web.shared import (
     ADD_TABS,
     TARGET_COOKIE,
@@ -81,9 +82,8 @@ def register(app: FastAPI, ctx: Ctx) -> None:
     @app.get("/neu/behaelter", response_class=HTMLResponse)
     def add_container_page(request: Request, conn: Conn, art: str = "") -> HTMLResponse:
         """Hinzufügen › Behälter: wie der Teile-Katalog (Art links, Felder rechts)."""
-        offered = [(g, [k for k in ks if k not in ("compartment", "bin", "level")])
-                   for g, ks in kinds.KIND_GROUPS]  # fmt: skip
-        flat = [k for _, ks in offered for k in ks]
+        form = formen.behaelter(conn, request, art)
+        flat = [k for _, ks in form["groups"] for k in ks]
         key = art if art == "neu" else (kinds.resolve(art) if art else None)
         if key != "neu" and key not in flat:
             recent = recent_list(request, "qa_kinds")
@@ -91,16 +91,11 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         recent_rows = conn.execute(
             "SELECT id, name, code, kind, parent_id FROM container ORDER BY id DESC LIMIT 6"
         ).fetchall()
+        form["art"] = key
         return render(
-            request,
-            conn,
-            "neu_behaelter.html",
-            groups=[(g, ks) for g, ks in offered if ks],
-            art=key,
-            targets=repo.all_paths(conn),
-            target=last_target(request),
+            request, conn, "neu_behaelter.html", **form, form_action="/containers",
             recent=recent_rows,
-        )
+        )  # fmt: skip
 
     # --- Schnelleingabe (Startseite) --------------------------------------------------------
 
@@ -299,6 +294,8 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         queue: Annotated[str, Form()] = "",
         d30_print: Annotated[str, Form()] = "",
         back: Annotated[str, Form()] = "",
+        notes: Annotated[str, Form()] = "",
+        tare: Annotated[str, Form()] = "",
     ) -> RedirectResponse:
         if not name.strip():
             raise LagerError("Name fehlt")
@@ -317,7 +314,10 @@ def register(app: FastAPI, ctx: Ctx) -> None:
             model=model_key,
             dims=pick_dims(dims, dims_custom, dims_other),
             airtight=bool(airtight),
+            notes=notes,
         )
+        if tare.strip():
+            repo.set_container_tare(conn, cid, tare)
         msg = f"„{name.strip()}“ angelegt"
         created = repo.get_container(conn, cid)
         prefix = codes.KIND_PREFIX.get(kind)

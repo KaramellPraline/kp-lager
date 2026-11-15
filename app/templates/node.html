@@ -5,7 +5,7 @@
   <a href="/">{{ APP_NAME }}</a>{% for p in path %} › <a href="/n/{{ p.id }}">{{ p.name }}</a>{% endfor %}
 </nav>
 
-<div class="layout-2">
+<div class="layout-2 detail-page">
 <div>
   <div class="sticky-mini" aria-hidden="true"><b>{{ node.name }}</b>{% if node.code %}<span class="code">{{ node.code }}</span>{% endif %}</div>
   <div class="card head-card" id="head-card">
@@ -28,14 +28,15 @@
     </div>
   </div>
 
-  <div class="icon-row" role="toolbar" aria-label="Schnellaktionen">
-    {% if node.code %}<form method="post" action="/labels/quick/node/{{ node.id }}"><button title="Etikett drucken (sonst Warteschlange)" aria-label="Etikett drucken">{{ icon('action.print') }}</button></form>{% endif %}
+  <div class="act-row node-actions" role="toolbar" aria-label="Aktionen">
+    {% if node.kind != 'compartment' %}<form method="post" action="/carry/node/{{ node.id }}"><button>{{ icon('action.move', size='sm') }} Umlagern</button></form>{% endif %}
+    {% if node.code %}<form method="post" action="/labels/quick/node/{{ node.id }}"><button title="Etikett drucken (sonst Warteschlange)">{{ icon('action.print', size='sm') }} Etikett</button></form>
+    {% elif KIND_PREFIX.get(node.kind) %}<form method="post" action="/n/{{ node.id }}/code"><button>{{ icon('content.tag', size='sm') }} {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>{% endif %}
+    <a class="button" href="/n/{{ node.id }}/bearbeiten">{{ icon('action.edit', size='sm') }} Bearbeiten</a>
     <form method="post" action="/n/{{ node.id }}/photo" enctype="multipart/form-data">
-      <label class="file-btn" title="Foto" aria-label="Foto">{{ icon('media.camera') }}
+      <label class="file-btn" title="Foto">{{ icon('media.camera', size='sm') }} Foto
         <input type="file" name="photo" accept="image/*" capture="environment" onchange="this.form.submit()" hidden></label>
     </form>
-    {% if node.kind != 'compartment' %}<form method="post" action="/carry/node/{{ node.id }}"><button title="Umlagern" aria-label="Umlagern">{{ icon('action.move') }}</button></form>{% endif %}
-    <button type="button" data-open="edit-box" title="Bearbeiten" aria-label="Bearbeiten">{{ icon('action.edit') }}</button>
   </div>
 
   {% if topview %}{% include "_topview.html" %}{% endif %}
@@ -53,38 +54,28 @@
   {% endif %}
 </div>
 
-<aside>
-  <div class="card">
-    <h2 style="margin-top:0">Aktionen</h2>
-    <div class="actions">
-      {% if node.code %}
-      <form method="post" action="/labels/queue/node/{{ node.id }}"><button>{{ icon('content.tag') }} In Warteschlange</button></form>
-      {% elif KIND_PREFIX.get(node.kind) %}
-      <form method="post" action="/n/{{ node.id }}/code"><button>{{ icon('content.tag') }} {{ KIND_PREFIX[node.kind] }}-Code vergeben</button></form>
-      {% endif %}
-      {% if node.code or node.kind == 'bin' %}
-      <form method="post" action="/a4/queue/node/{{ node.id }}"><button>{{ icon('action.print') }} {{ 'Seitenetikett' if node.kind == 'bin' else 'Etikett' }} → A4-Warteschlange</button></form>
-      {% endif %}
-      {% if node.kind in ('bin', 'compartment') %}
-      <form method="post" action="/labels/content/node/{{ node.id }}"><button>{{ icon('content.tag') }} Inhaltsetikett</button></form>
-      {% endif %}
+<aside class="folds">
+  <details class="fold" id="etiketten" open>
+    <summary>{{ icon('content.tag', size='sm') }} Etiketten</summary>
+    <div class="act-row">
+      {% if node.code %}<form method="post" action="/labels/queue/node/{{ node.id }}"><button>In Warteschlange</button></form>{% endif %}
+      {% if node.code or node.kind == 'bin' %}<form method="post" action="/a4/queue/node/{{ node.id }}"><button>{{ 'Seitenetikett' if node.kind == 'bin' else 'Etikett' }} → A4-Warteschlange</button></form>{% endif %}
+      {% if node.kind in ('bin', 'compartment') %}<form method="post" action="/labels/content/node/{{ node.id }}"><button>Inhaltsetikett</button></form>{% endif %}
       {% if items or kids %}
-      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>{{ icon('action.print') }} Teile-Etiketten</button></form>
-      <form method="post" action="/labels/sammel/{{ node.id }}"><button>{{ icon('content.tag') }} Alle ungedruckten (Sammeldruck)</button></form>
+      <form method="post" action="/labels/preview"><input type="hidden" name="source" value="container"><input type="hidden" name="node_id" value="{{ node.id }}"><button>Teile-Etiketten</button></form>
+      <form method="post" action="/labels/sammel/{{ node.id }}"><button>Alle ungedruckten (Sammeldruck)</button></form>
       {% endif %}
-      {% if items or kids %}
-      <a class="button" href="/auswahl?node={{ node.id }}">{{ icon('action.edit') }} Mehrere bearbeiten</a>
-      {% endif %}
+      {% if node.kind == 'bin' %}<a class="button" href="/n/{{ node.id }}/etikett">Etikett-Editor (A4)</a>{% endif %}
     </div>
-    {% if node.kind == 'bin' %}
-    <p class="meta">3D-Druck dieses Einsatzes:<br><code>{{ cad }}</code></p>
-    <a class="button" href="/n/{{ node.id }}/etikett">{{ icon('content.tag', size='sm') }} Etikett-Editor (A4)</a>
-    {% endif %}
-  </div>
+  </details>
+  {% if items or kids %}
+  <a class="button fold-link" href="/auswahl?node={{ node.id }}">{{ icon('action.edit', size='sm') }} Mehrere bearbeiten</a>
+  {% endif %}
 
   {% if node.kind == 'bin' %}
-  <details id="cad">
-    <summary>Druck-Parameter (3D-Generator)</summary>
+  <details class="fold" id="cad">
+    <summary>{{ icon('action.tune', size='sm') }} Druck-Parameter (3D-Generator)</summary>
+    <p class="meta">3D-Druck dieses Einsatzes:<br><code>{{ cad }}</code></p>
     <form method="post" action="/n/{{ node.id }}/cad" class="stack">
       <p class="meta">Gehen in die Bin-Druckdatei (Drucken → Dateien). Leer = Standard.</p>
       {% for k, f in cad_fields.items() %}
@@ -99,22 +90,17 @@
   </details>
   {% endif %}
 
-  <details id="edit-box">
-    <summary>Bearbeiten</summary>
-    <form method="post" action="/n/{{ node.id }}/edit" class="stack">
-      <label>Name <input name="name" value="{{ node.name }}" required></label>
-      <label>Code <input name="code" value="{{ node.code or '' }}" placeholder="z. B. EUR-001" autocapitalize="characters"></label>
-      <label>Leergewicht <span class="meta">(g, optional – fürs Zählen per Waage)</span> <input name="tare" inputmode="decimal" value="{{ '%g'|format(node.tare) if node.tare is not none else '' }}"></label>
-      <label>Notizen <textarea name="notes">{{ node.notes }}</textarea></label>
-      <button class="primary">Speichern</button>
-    </form>
-    <form method="post" action="/n/{{ node.id }}/delete" onsubmit="return confirm('Behälter löschen?')">
-      <button class="danger">Löschen (nur wenn leer)</button>
-    </form>
+  <details class="fold" id="karten-box" {% if cards %}open{% endif %}>
+    <summary>{{ icon('content.document', size='sm') }} Karten <span class="meta">{{ cards|length }}</span></summary>
+    {% with card_action='/n/' ~ node.id ~ '/cards', card_nohead=true %}{% include "_cards.html" %}{% endwith %}
   </details>
 
-
+  <details class="fold danger-zone" id="gefahr">
+    <summary>{{ icon('status.attention', size='sm') }} Gefahrenzone</summary>
+    <form method="post" action="/n/{{ node.id }}/delete" onsubmit="return confirm('Behälter löschen?')">
+      <button class="danger">{{ icon('action.delete', size='sm') }} Löschen (nur wenn leer)</button>
+    </form>
+  </details>
 </aside>
 </div>
-{% with card_action='/n/' ~ node.id ~ '/cards' %}{% include "_cards.html" %}{% endwith %}
 {% endblock %}
