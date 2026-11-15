@@ -230,7 +230,6 @@ def authenticate(conn: sqlite3.Connection, name: str, password: str, ip: str) ->
     pair, _ = _keys(name, ip)
     with conn:
         conn.execute("DELETE FROM login_fail WHERE key = ?", (pair,))
-        conn.execute("UPDATE app_user SET last_login = datetime('now') WHERE id = ?", (row["id"],))
     user: Row = row
     return user
 

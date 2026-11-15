@@ -28,6 +28,10 @@ def register(app: FastAPI, ctx: Ctx) -> None:
 
     def logged_in(request: Request, conn: Conn, user_id: int, target: str) -> RedirectResponse:
         days = prefs.number(conn, "session_days")
+        with conn:
+            conn.execute(
+                "UPDATE app_user SET last_login = datetime('now') WHERE id = ?", (user_id,)
+            )
         token = auth.new_session(
             conn, user_id, days, client_ip(request), request.headers.get("user-agent", "")
         )

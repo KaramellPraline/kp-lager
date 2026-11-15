@@ -311,3 +311,14 @@ def test_bridge_tokens_in_toast(tmp_path: Path) -> None:
         c.post("/logout")
         r = c.get(f"/labels/img/KIS-001.png?t={token.group(1)}", follow_redirects=False)
         assert r.status_code == 200
+
+
+def test_service_worker_keeps_rejected_bookings(client: TestClient) -> None:
+    js = client.get("/sw.js").text
+    assert "needsLogin(resp)) return false" in js  # 401/403/Login: behalten, nicht verwerfen
+    assert "isLoginPage(resp)" in js and "/einrichten" in js  # Login-Seite nie cachen
+
+
+def test_login_page_not_cacheable(anon: TestClient) -> None:
+    r = anon.get("/einrichten")
+    assert r.headers["cache-control"] == "no-store" and r.headers["x-lager-login"] == "1"
