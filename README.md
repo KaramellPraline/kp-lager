@@ -70,7 +70,7 @@ Kamera-Scan und Mikrofon funktionieren im Browser nur über HTTPS. Für LAN-Betr
 ## Projektstruktur
 
 ```
-app/            FastAPI-App (Routen: web.py, web_ops.py, web_katalog.py, api.py), Fachlogik je Modul
+app/            FastAPI-App (Routen: web/routes/<bereich>.py, REST: api/), Fachlogik je Modul
 app/templates/  Jinja2-Seiten und Partials     app/static/  CSS, JS, vendored htmx/jsQR, Schriften
 app/migrations/ nummerierte SQL-Migrationen (einzige Quelle für Schemaänderungen)
 tests/          pytest (conftest.py: Test-Client mit temporärem Datenverzeichnis)
