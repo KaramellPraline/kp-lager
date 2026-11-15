@@ -43,6 +43,7 @@ class Type:
     )
     single: bool = False  # Einzelstücke: jede Spule/Flasche eigenes Teil mit eigenem Code
     label_lines: tuple[str, ...] = ()  # Etikett: Zeile 1 (Typ + Spezifikation), Zeile 2 (Maße)
+    extras: str = "basis"  # Profil der Zusatzfelder („Weitere Angaben“), siehe EXTRAS
 
 
 def F(
@@ -79,17 +80,26 @@ def default_label_layout(t: Type) -> dict[str, object]:
 THREAD = "M2|M2.5|M3|M4|M5|M6|M8|M10|M12"
 LENGTH = "4|5|6|8|10|12|16|20|25|30|35|40|50|60"
 
-GROUPS = (
-    "Schrauben & Befestigung", "Klebstoff & Verbrauch", "Mechanik & Pneumatik",
-    "Kabel & Elektrik", "Elektronik", "Werkzeug", "Druckerteile & Laser", "Material & Holz",
-    "Netzwerk", "Filament & Harz", "Schutzausrüstung",
+# Gliederung: Bereich › Gruppe › Typ. Die Reihenfolge hier ist die Anzeige-Reihenfolge; die
+# Reihenfolge in TYPES bleibt fest (bei Gleichstand gewinnt in `guess` der frühere Typ).
+AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Befestigung", ("Schrauben & Muttern", "Dübel, Nieten & Stifte", "Schellen, Haken & Beschläge")),
+    ("Mechanik & Antrieb", ("Lager & Führung", "Antrieb & Bewegung", "Federn, Dichtungen & Pneumatik", "Profile & Magnete")),
+    ("Elektronik", ("Bauteile", "Module & Boards", "Prototyping & Gehäuse")),
+    ("Elektrik & Strom", ("Kabel & Leitungen", "Verbinden & Installation", "Akkus & Netzteile")),
+    ("Werkzeug & Messen", ("Handwerkzeug", "Bohren, Fräsen & Sägen", "Schleifen & Trennen", "Messen & Sets")),
+    ("3D-Druck & Laser", ("Filament & Harz", "Druckerteile", "Laser", "Ordnung & Etiketten")),
+    ("Material & Chemie", ("Holz, Metall & Kunststoff", "Kleben & Dichten", "Löten, Schmieren & Reinigen", "Farbe & Oberfläche")),
+    ("Netzwerk & IT", ("Netzwerk", "Computer & Speicher")),
+    ("Haus & Schutz", ("Schutzausrüstung", "Sicherheit & Erste Hilfe", "Haushalt, Licht & Sonstiges")),
 )  # fmt: skip
+GROUPS: tuple[str, ...] = tuple(g for _a, gs in AREAS for g in gs)
+AREA_OF: dict[str, str] = {g: a for a, gs in AREAS for g in gs}
 
 TYPES: tuple[Type, ...] = (
-    # --- Schrauben & Befestigung -------------------------------------------------
     Type(
         "schraube",
-        GROUPS[0],
+        "Schrauben & Muttern",
         "Schraube (Maschinenschraube)",
         "CNS",
         (
@@ -110,10 +120,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{head}",), ("{thread}x{length}", "{thread}")),
         label_lines=("{head} {thread}", "{length}mm {drive}"),
+        extras="befestigung",
     ),
     Type(
         "mutter",
-        GROUPS[0],
+        "Schrauben & Muttern",
         "Mutter",
         "CNS",
         (
@@ -128,10 +139,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{thread}",)),
         label_lines=("{kind} {thread}", "{finish}"),
+        extras="befestigung",
     ),
     Type(
         "insert",
-        GROUPS[0],
+        "Schrauben & Muttern",
         "Einschmelzmutter / Insert",
         "CNS",
         (
@@ -181,10 +193,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{thread}",), ("L{length}",), ("Ø{od}",)),
         label_lines=("{kind} {thread}", "{length} x {od}mm"),
+        extras="befestigung",
     ),
     Type(
         "scheibe",
-        GROUPS[0],
+        "Schrauben & Muttern",
         "Unterlegscheibe",
         "CNS",
         (
@@ -201,10 +214,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{thread}",), ("Ø{od}",), ("{thickness}mm",)),
         label_lines=("{kind} {thread}", "Ø{od} x {thickness}mm"),
+        extras="befestigung",
     ),
     Type(
         "holzschraube",
-        GROUPS[0],
+        "Schrauben & Muttern",
         "Holzschraube (Spax)",
         "CNS",
         (
@@ -216,10 +230,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{brand}",), ("{dia}x{length}",), ("{head}",)),
         label_lines=("{brand} {head}", "{dia} x {length}mm"),
+        extras="befestigung",
     ),
     Type(
         "duebel",
-        GROUPS[0],
+        "Dübel, Nieten & Stifte",
         "Dübel",
         "CNS",
         (
@@ -227,10 +242,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maße", "5x25|6x30|8x40|10x50|6x30 Holz|8x40 Holz", "mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="befestigung",
     ),
     Type(
         "gewindestange",
-        GROUPS[0],
+        "Schrauben & Muttern",
         "Gewindestange / Stift",
         "CNS",
         (
@@ -239,10 +255,11 @@ TYPES: tuple[Type, ...] = (
             F("length", "Länge", "100|200|300|500|1000", "mm"),
         ),
         (("{kind}",), ("{thread}x{length}", "{thread}")),
+        extras="befestigung",
     ),
     Type(
         "kleinteil",
-        GROUPS[0],
+        "Schellen, Haken & Beschläge",
         "Kleinteil (Klett, Gleiter, Kabelbinder …)",
         "CNS",
         (
@@ -254,11 +271,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maß / Variante", "", hint="z. B. 3x150, 20 mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="befestigung",
     ),
-    # --- Klebstoff & Verbrauch ------------------------------------------------------
     Type(
         "kleber",
-        GROUPS[1],
+        "Kleben & Dichten",
         "Klebstoff",
         "CNS",
         (
@@ -270,10 +287,11 @@ TYPES: tuple[Type, ...] = (
             F("brand", "Marke", "UHU|Pattex|Loctite|Bosch|Weicon"),
         ),
         (("{kind}",), ("{brand}",)),
+        extras="verbrauch",
     ),
     Type(
         "klebeband",
-        GROUPS[1],
+        "Kleben & Dichten",
         "Klebeband",
         "CNS",
         (
@@ -285,10 +303,11 @@ TYPES: tuple[Type, ...] = (
             F("width", "Breite", "6|10|12|19|25|38|50", "mm"),
         ),
         (("Klebeband {kind}", "Klebeband"), ("{width}mm",)),
+        extras="verbrauch",
     ),
     Type(
         "loeten",
-        GROUPS[1],
+        "Löten, Schmieren & Reinigen",
         "Löten (Zinn, Flussmittel …)",
         "CNS",
         (
@@ -296,10 +315,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Stärke / Variante", "0.5 mm|0.8 mm|1.0 mm|100 g|250 g|bleifrei"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="verbrauch",
     ),
     Type(
         "schmierung",
-        GROUPS[1],
+        "Löten, Schmieren & Reinigen",
         "Öl / Fett / Reiniger",
         "CNS",
         (
@@ -310,10 +330,11 @@ TYPES: tuple[Type, ...] = (
             ),
         ),
         (("{kind}",),),
+        extras="verbrauch",
     ),
     Type(
         "batterie",
-        GROUPS[1],
+        "Akkus & Netzteile",
         "Batterie / Akku",
         "CNS",
         (
@@ -321,10 +342,11 @@ TYPES: tuple[Type, ...] = (
             F("brand", "Marke", "Varta|Duracell|Energizer|Basic"),
         ),
         (("{kind}",), ("{brand}",)),
+        extras="verbrauch",
     ),
     Type(
         "schleifen",
-        GROUPS[1],
+        "Schleifen & Trennen",
         "Schleifmittel",
         "CNS",
         (
@@ -332,11 +354,11 @@ TYPES: tuple[Type, ...] = (
             F("grit", "Körnung", "80|120|180|240|320|400|600|800|1000|2000"),
         ),
         (("{kind}",), ("K{grit}",)),
+        extras="verbrauch",
     ),
-    # --- Mechanik & Pneumatik ------------------------------------------------------
     Type(
         "lager",
-        GROUPS[2],
+        "Lager & Führung",
         "Kugellager / Lager",
         "CNS",
         (
@@ -349,10 +371,11 @@ TYPES: tuple[Type, ...] = (
             ),
         ),
         (("{kind}",), ("{size}",)),
+        extras="mechanik",
     ),
     Type(
         "kupplung",
-        GROUPS[2],
+        "Antrieb & Bewegung",
         "Wellenkupplung / Riemen",
         "CNS",
         (
@@ -364,10 +387,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maße", "5x5|5x8|8x8|6 mm|9 mm|20T|16T", "mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="mechanik",
     ),
     Type(
         "pneumatik",
-        GROUPS[2],
+        "Federn, Dichtungen & Pneumatik",
         "Pneumatik (Fitting, Schlauch, Ventil)",
         "CNS",
         (
@@ -380,10 +404,11 @@ TYPES: tuple[Type, ...] = (
             F("thread", "Gewinde", "M5|G1/8|G1/4|G3/8|G1/2"),
         ),
         (("{kind}",), ("Ø{dia}",), ("{thread}",)),
+        extras="mechanik",
     ),
     Type(
         "magnet",
-        GROUPS[2],
+        "Profile & Magnete",
         "Magnet",
         "CNS",
         (
@@ -391,10 +416,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maße", "5x2|10x3|10x5|20x5|20x10|30x5", "mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="mechanik",
     ),
     Type(
         "profil",
-        GROUPS[2],
+        "Profile & Magnete",
         "Alu-Profil / Verbinder",
         "CNS",
         (
@@ -406,11 +432,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Länge / Größe", "", hint="z. B. 500 mm, M5, 20x20"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="mechanik",
     ),
-    # --- Kabel & Elektrik -----------------------------------------------------------
     Type(
         "schrumpf",
-        GROUPS[3],
+        "Kabel & Leitungen",
         "Schrumpfschlauch",
         "CNS",
         (
@@ -418,18 +444,20 @@ TYPES: tuple[Type, ...] = (
             F("color", "Farbe", "Schwarz|Rot|Blau|Transparent|Gelb"),
         ),
         (("Schrumpfschlauch {dia}",), ("{color}",)),
+        extras="elektrik",
     ),
     Type(
         "huelse",
-        GROUPS[3],
+        "Verbinden & Installation",
         "Aderendhülse",
         "CNS",
         (F("size", "Querschnitt", "0.5|0.75|1.0|1.5|2.5|4.0|6.0|Sortiment", "mm²"),),
         (("Aderendhülse {size}",),),
+        extras="elektrik",
     ),
     Type(
         "kabelschuh",
-        GROUPS[3],
+        "Verbinden & Installation",
         "Kabelschuh",
         "CNS",
         (
@@ -441,10 +469,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Querschnitt", "0.5-1.5|1.5-2.5|2.5-4.0|4.0-6.0", "mm²"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="elektrik",
     ),
     Type(
         "klemme",
-        GROUPS[3],
+        "Verbinden & Installation",
         "Klemme / Verbinder",
         "CNS",
         (
@@ -456,10 +485,11 @@ TYPES: tuple[Type, ...] = (
             F("poles", "Polzahl", "2|3|4|5|8"),
         ),
         (("{kind}",), ("{poles}-polig",)),
+        extras="elektrik",
     ),
     Type(
         "sicherung",
-        GROUPS[3],
+        "Verbinden & Installation",
         "Sicherung",
         "CNS",
         (
@@ -467,11 +497,11 @@ TYPES: tuple[Type, ...] = (
             F("amp", "Strom", "0.5|1|2|3.15|5|10|16", "A"),
         ),
         (("{kind}",), ("{amp}A",)),
+        extras="elektrik",
     ),
-    # --- Elektronik (Datenblatt-Profil Elektronikbauteil) -----------------------------
     Type(
         "mcu",
-        GROUPS[4],
+        "Module & Boards",
         "Mikrocontroller / Board",
         "CMP",
         (
@@ -485,10 +515,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "sensor",
-        GROUPS[4],
+        "Module & Boards",
         "Sensor",
         "CMP",
         (
@@ -502,11 +533,12 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{model}",), ("{kind}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "aktor",
-        GROUPS[4],
-        "Aktor / Motor",
+        "Module & Boards",
+        "Aktor (Pumpe, Ventil, Summer …)",
         "CMP",
         (
             F(
@@ -519,10 +551,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "anzeige",
-        GROUPS[4],
+        "Module & Boards",
         "Anzeige / Display",
         "CMP",
         (
@@ -535,10 +568,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",),),
         True,
+        extras="elektronik",
     ),
     Type(
         "schalter",
-        GROUPS[4],
+        "Bauteile",
         "Schalter / Taster / Eingabe",
         "CMP",
         (
@@ -551,10 +585,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "treiber",
-        GROUPS[4],
+        "Module & Boards",
         "Relais / MOSFET / Treiber",
         "CMP",
         (
@@ -567,10 +602,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "strom",
-        GROUPS[4],
+        "Module & Boards",
         "Stromversorgung / Wandler",
         "CMP",
         (
@@ -584,10 +620,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "funk",
-        GROUPS[4],
+        "Module & Boards",
         "Funk / Kommunikation",
         "CMP",
         (
@@ -600,10 +637,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "led",
-        GROUPS[4],
+        "Bauteile",
         "LED / Licht",
         "CMP",
         (
@@ -616,10 +654,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{color}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "passiv",
-        GROUPS[4],
+        "Bauteile",
         "Widerstand / Kondensator / Spule",
         "CMP",
         (
@@ -637,10 +676,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{value}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "halbleiter",
-        GROUPS[4],
+        "Bauteile",
         "Transistor / Diode / IC",
         "CMP",
         (
@@ -653,10 +693,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "stecker",
-        GROUPS[4],
+        "Prototyping & Gehäuse",
         "Stecker / Buchse / Header",
         "CMP",
         (
@@ -669,10 +710,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{pins}-polig",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "proto",
-        GROUPS[4],
+        "Prototyping & Gehäuse",
         "Platine / Prototyping / Kabel",
         "CMP",
         (
@@ -685,10 +727,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{size}",)),
         True,
+        extras="elektronik",
     ),
     Type(
         "smarthome",
-        GROUPS[4],
+        "Module & Boards",
         "Smart-Home-Modul",
         "CMP",
         (
@@ -701,11 +744,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{brand}",), ("{kind}",)),
         True,
+        extras="elektronik",
     ),
-    # --- Werkzeug ---------------------------------------------------------------------
     Type(
         "zange",
-        GROUPS[5],
+        "Handwerkzeug",
         "Zange / Schneider",
         "TOL",
         (
@@ -717,10 +760,11 @@ TYPES: tuple[Type, ...] = (
             F("brand", "Marke", "Xuron|Knipex|Wera|Wiha|Bosch"),
         ),
         (("{kind}",), ("{brand}",)),
+        extras="werkzeug",
     ),
     Type(
         "schrauber",
-        GROUPS[5],
+        "Handwerkzeug",
         "Schraubendreher / Bits / Schlüssel",
         "TOL",
         (
@@ -732,10 +776,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Größe", "", hint="z. B. 2.5 mm, PH2, 10 mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="werkzeug",
     ),
     Type(
         "bohrer",
-        GROUPS[5],
+        "Bohren, Fräsen & Sägen",
         "Bohrer / Gewinde / Senker",
         "TOL",
         (
@@ -747,10 +792,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maß", "", hint="z. B. 3.2 mm, M4, 4-12 mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="werkzeug",
     ),
     Type(
         "messen",
-        GROUPS[5],
+        "Messen & Sets",
         "Messen / Anreißen",
         "TOL",
         (
@@ -762,10 +808,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Variante", "", hint="z. B. 150 mm, 5 m"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="werkzeug",
     ),
     Type(
         "schneiden",
-        GROUPS[5],
+        "Handwerkzeug",
         "Schneiden / Feilen / Entgraten",
         "TOL",
         (
@@ -777,10 +824,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Variante", ""),
         ),
         (("{kind}",), ("{size}",)),
+        extras="werkzeug",
     ),
     Type(
         "werkzeug_sonst",
-        GROUPS[5],
+        "Handwerkzeug",
         "Anderes Werkzeug",
         "TOL",
         (
@@ -792,11 +840,11 @@ TYPES: tuple[Type, ...] = (
             F("brand", "Marke", "Makita|Bosch|Wera|Hobby Zone"),
         ),
         (("{kind}",), ("{brand}",)),
+        extras="werkzeug",
     ),
-    # --- 3D-Druck & Laser ---------------------------------------------------------------
     Type(
         "duese",
-        GROUPS[6],
+        "Druckerteile",
         "Düse / Hotend",
         "CMP",
         (
@@ -810,10 +858,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{size}mm",), ("{model}",)),
         True,
+        extras="drucker",
     ),
     Type(
         "druckerteil",
-        GROUPS[6],
+        "Druckerteile",
         "Druckerteil",
         "CMP",
         (
@@ -826,10 +875,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="drucker",
     ),
     Type(
         "netzteil",
-        GROUPS[6],
+        "Akkus & Netzteile",
         "Netzteil",
         "CMP",
         (
@@ -845,10 +895,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{volt}V",), ("{amp}A",), ("{plug}",), ("{model}",)),
         True,
+        extras="drucker",
     ),
     Type(
         "laser",
-        GROUPS[6],
+        "Laser",
         "Laser-Zubehör",
         "CMP",
         (
@@ -861,10 +912,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="drucker",
     ),
     Type(
         "etiketten",
-        GROUPS[6],
+        "Ordnung & Etiketten",
         "Etikettenrolle / Druckzubehör",
         "CNS",
         (
@@ -876,12 +928,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Größe", "12x40 mm|14x30 mm|15x30 mm"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="drucker",
     ),
-    # --- Material & Holz -----------------------------------------------------------------
-    # --- Netzwerk -----------------------------------------------------------------------
     Type(
         "netzwerkkabel",
-        GROUPS[8],
+        "Netzwerk",
         "Netzwerkkabel (Patchkabel)",
         "CMP",
         (
@@ -891,10 +942,11 @@ TYPES: tuple[Type, ...] = (
             F("shield", "Schirmung", "UTP|F/UTP|S/FTP"),
         ),
         (("Netzwerkkabel",), ("{kind}",), ("{length}m",), ("{color}",)),
+        extras="netzwerk",
     ),
     Type(
         "rj45",
-        GROUPS[8],
+        "Netzwerk",
         "RJ45 / Keystone / Dose",
         "CMP",
         (
@@ -906,10 +958,11 @@ TYPES: tuple[Type, ...] = (
             F("cat", "Kategorie", "Cat5e|Cat6|Cat6a|Cat7"),
         ),
         (("{kind}",), ("{cat}",)),
+        extras="netzwerk",
     ),
     Type(
         "netzwerkgeraet",
-        GROUPS[8],
+        "Netzwerk",
         "Netzwerkgerät (Switch, Router, Adapter)",
         "CMP",
         (
@@ -922,10 +975,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("{kind}",), ("{model}",)),
         True,
+        extras="netzwerk",
     ),
     Type(
         "holz",
-        GROUPS[7],
+        "Holz, Metall & Kunststoff",
         "Holz / Platte",
         "RAW",
         (
@@ -937,10 +991,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maße", "", hint="z. B. 3 mm, 20x40x1000"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="material",
     ),
     Type(
         "metall",
-        GROUPS[7],
+        "Holz, Metall & Kunststoff",
         "Metall / Kunststoff",
         "RAW",
         (
@@ -949,10 +1004,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maße", "", hint="z. B. 2 mm, 20x2, Ø8"),
         ),
         (("{kind}",), ("{form}",), ("{size}",)),
+        extras="material",
     ),
     Type(
         "kabel",
-        GROUPS[3],
+        "Kabel & Leitungen",
         "Kabel (USB, Strom, Audio, Meterware)",
         "ART",
         (
@@ -965,10 +1021,11 @@ TYPES: tuple[Type, ...] = (
             F("length", "Länge", "0.5|1|2|3|5|10", "m"),
         ),
         (("{kind}",), ("{ends}",), ("{length}m",)),
+        extras="elektrik",
     ),
     Type(
         "gridfinity",
-        GROUPS[6],
+        "Ordnung & Etiketten",
         "Gridfinity (Bin / Baseplate)",
         "ART",
         (
@@ -978,10 +1035,11 @@ TYPES: tuple[Type, ...] = (
             F("color", "Farbe", "Schwarz|Weiß|Grau|Rot|Blau|Grün|Orange|Gelb"),
         ),
         (("Gridfinity {kind}",), ("{size}",), ("{height}",), ("{color}",)),
+        extras="drucker",
     ),
     Type(
         "bohrersatz",
-        GROUPS[5],
+        "Messen & Sets",
         "Set / Sortiment (ein Etikett für viele)",
         "ART",
         (
@@ -990,10 +1048,11 @@ TYPES: tuple[Type, ...] = (
             F("brand", "Hersteller"),
         ),
         (("{kind}",), ("{detail}",), ("{brand}",)),
+        extras="werkzeug",
     ),
     Type(
         "heissleim",
-        GROUPS[1],
+        "Kleben & Dichten",
         "Heißkleber / Epoxid / Dichtmasse",
         "ART",
         (
@@ -1005,10 +1064,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Größe", "", hint="z. B. 11 mm, 25 ml"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="verbrauch",
     ),
     Type(
         "farbe",
-        GROUPS[1],
+        "Farbe & Oberfläche",
         "Farbe / Lack / Spray",
         "ART",
         (
@@ -1017,10 +1077,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Menge", "", hint="z. B. 400 ml"),
         ),
         (("{kind}",), ("{color}",), ("{size}",)),
+        extras="verbrauch",
     ),
     Type(
         "kabelbinder",
-        GROUPS[3],
+        "Kabel & Leitungen",
         "Kabelbinder / Kabelkanal / Schlauch",
         "ART",
         (
@@ -1033,10 +1094,11 @@ TYPES: tuple[Type, ...] = (
             F("color", "Farbe", "Schwarz|Weiß|Natur|Rot|Blau"),
         ),
         (("{kind}",), ("{size}",), ("{color}",)),
+        extras="elektrik",
     ),
     Type(
         "akku",
-        GROUPS[4],
+        "Akkus & Netzteile",
         "Akku / Ladegerät / Powerbank",
         "ART",
         (
@@ -1045,10 +1107,11 @@ TYPES: tuple[Type, ...] = (
             F("volt", "Spannung", "3.7V|7.4V|11.1V|12V|24V"),
         ),
         (("{kind}",), ("{cap}",), ("{volt}",)),
+        extras="elektronik",
     ),
     Type(
         "gehaeuse",
-        GROUPS[4],
+        "Prototyping & Gehäuse",
         "Gehäuse / Halter / Montage",
         "ART",
         (
@@ -1060,27 +1123,29 @@ TYPES: tuple[Type, ...] = (
             F("size", "Maße", "", hint="z. B. 80x60x30"),
         ),
         (("{kind}",), ("{size}",)),
+        extras="elektronik",
     ),
     Type(
         "buero",
-        GROUPS[1],
+        "Haushalt, Licht & Sonstiges",
         "Büro / Haushalt / Sonstiges Verbrauch",
         "ART",
         (F("name", "Bezeichnung", "", hint="z. B. Handschuhe, Isolierband"),),
         (("{name}",),),
+        extras="verbrauch",
     ),
     Type(
         "allgemein",
-        GROUPS[7],
+        "Haushalt, Licht & Sonstiges",
         "Sonstiges (freier Name)",
         "ART",
         (F("name", "Bezeichnung", "", hint="z. B. Zahnrad 20 Zähne"),),
         (("{name}",),),
+        extras="material",
     ),
-    # --- Filament & Harz, Strom, Schutz, Bins (früher eigenes Menü „Kabel & Material“) -----
     Type(
         "filament",
-        GROUPS[9],
+        "Filament & Harz",
         "Filament-Spule",
         "FIL",
         (
@@ -1115,10 +1180,11 @@ TYPES: tuple[Type, ...] = (
         (("{brand}",), ("{material}",), ("{color}",)),
         material="fil",
         single=True,
+        extras="basis",
     ),
     Type(
         "harz",
-        GROUPS[9],
+        "Filament & Harz",
         "UV-Harz-Flasche",
         "RES",
         (
@@ -1143,10 +1209,11 @@ TYPES: tuple[Type, ...] = (
         (("{brand}",), ("{material}",), ("{color}",), ("{volume}ml",)),
         material="res",
         single=True,
+        extras="basis",
     ),
     Type(
         "steckernetzteil",
-        GROUPS[3],
+        "Akkus & Netzteile",
         "Steckernetzteil (mit Eingang)",
         "PSU",
         (
@@ -1157,10 +1224,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("Netzteil",), ("{volt}V",), ("{amp}A",), ("{plug}",)),
         material="psu",
+        extras="elektrik",
     ),
     Type(
         "kabel_stecker",
-        GROUPS[3],
+        "Kabel & Leitungen",
         "Kabel mit Steckern (Länge, Stecker A/B)",
         "CBL",
         (
@@ -1170,10 +1238,11 @@ TYPES: tuple[Type, ...] = (
         ),
         (("Kabel",), ("{plug_a}",), ("{plug_b}",), ("{length}m",)),
         material="cbl",
+        extras="elektrik",
     ),
     Type(
         "werkzeug_allg",
-        GROUPS[5],
+        "Handwerkzeug",
         "Werkzeug (allgemein)",
         "TOL",
         (
@@ -1182,10 +1251,11 @@ TYPES: tuple[Type, ...] = (
             F("size", "Größe / Maß", "", hint="z. B. 3 mm, PH2"),
         ),
         (("{kind}",), ("{brand}",), ("{size}",)),
+        extras="werkzeug",
     ),
     Type(
         "ppe",
-        GROUPS[10],
+        "Schutzausrüstung",
         "Schutzausrüstung (PPE)",
         "PPE",
         (
@@ -1198,10 +1268,11 @@ TYPES: tuple[Type, ...] = (
             F("material", "Material", "Nitril|Latex|Leder|Stoff"),
         ),
         (("{kind}",), ("{size}",), ("{material}",)),
+        extras="basis",
     ),
     Type(
         "norb16_bin",
-        GROUPS[6],
+        "Ordnung & Etiketten",
         "Norb16-Bin (3D-Druck)",
         "ART",
         (
@@ -1209,8 +1280,562 @@ TYPES: tuple[Type, ...] = (
             F("state", "Zustand", "nicht gedruckt|gedruckt"),
         ),
         (("Norb16 Bin",), ("{size}",), ("({state})",)),
+        extras="drucker",
     ),
 )
+
+# Seit 2.0: weitere Werkstatt-Typen. Sie stehen hinter den bisherigen, damit `guess` bei
+# Gleichstand weiterhin die bisherigen Typen bevorzugt.
+# fmt: off
+TYPES_2_0: tuple[Type, ...] = (
+    # Befestigung
+    Type(
+        "niete", "Dübel, Nieten & Stifte", "Niete / Einnietmutter", "CNS",
+        (
+            F("kind", "Art", "Blindniete|Popniete|Hohlniete|Vollniete|Einnietmutter|Spreizniete"),
+            F("dia", "Durchmesser / Gewinde", "2.4|3|3.2|4|4.8|5|6|M3|M4|M5|M6|M8", "mm"),
+            F("length", "Länge", "6|8|10|12|14|16|20|25", "mm"),
+            F("material", "Material", "Aluminium|Stahl|Edelstahl|Kupfer|Kunststoff"),
+        ),
+        (("{kind}",), ("{dia}x{length}", "{dia}")),
+        extras="kleinteile",
+    ),
+    Type(
+        "sicherungsring", "Dübel, Nieten & Stifte", "Sicherungsring / Splint / Stift", "CNS",
+        (
+            F("kind", "Art", "Sicherungsring Welle (DIN 471)|Sicherungsring Bohrung (DIN 472)|"
+              "Sicherungsscheibe (DIN 6799)|Splint|Federstecker|Klappstecker|Zylinderstift|"
+              "Spannstift|Kegelstift"),
+            F("size", "Größe (Welle / Ø)", "2|3|4|5|6|8|10|12|15|20|25", "mm"),
+            F("length", "Länge (Stifte)", "10|16|20|30|40|50", "mm"),
+            F("material", "Material", "Federstahl|Edelstahl|Stahl verzinkt"),
+        ),
+        (("{kind}",), ("{size}x{length}", "{size}mm")),
+        extras="kleinteile",
+    ),
+    Type(
+        "schelle", "Schellen, Haken & Beschläge", "Schlauch- / Rohrschelle", "CNS",
+        (
+            F("kind", "Art", "Schlauchschelle|Ohrklemme|Federbandschelle|Rohrschelle|Kabelschelle|"
+              "P-Clip|Gelenkbolzenschelle|Rohrhalter"),
+            F("range", "Spannbereich / Ø", "6-12|8-16|10-16|12-22|16-27|20-32|25-40|32-50", "mm"),
+            F("width", "Bandbreite", "6|9|12", "mm", extra=True),
+            F("material", "Material", "Stahl verzinkt|Edelstahl W4|Kunststoff|Gummi"),
+        ),
+        (("{kind}",), ("{range}mm",)),
+        extras="kleinteile",
+    ),
+    Type(
+        "haken", "Schellen, Haken & Beschläge", "Haken / Öse / Karabiner", "CNS",
+        (
+            F("kind", "Art", "Schraubhaken|Ringschraube|Augenschraube|Ringmutter|S-Haken|Wandhaken|"
+              "Karabiner|Schäkel|Seilklemme|Spannschloss"),
+            F("size", "Größe / Gewinde", "M4|M5|M6|M8|M10|30|40|50|60|80", hint="Gewinde oder Länge in mm"),
+            F("material", "Material", "Stahl verzinkt|Edelstahl|Messing"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="kleinteile",
+    ),
+    Type(
+        "beschlag", "Schellen, Haken & Beschläge", "Scharnier / Beschlag / Winkel", "CNS",
+        (
+            F("kind", "Art", "Scharnier|Klavierband|Topfband|Winkel|Flachverbinder|Lochband|"
+              "Möbelverbinder|Schubladenauszug|Griff|Riegel|Magnetschnäpper"),
+            F("size", "Größe", "20|25|30|40|50|60|80|100|150", "mm"),
+            F("material", "Material", "Stahl verzinkt|Edelstahl|Messing|Aluminium|Kunststoff"),
+        ),
+        (("{kind}",), ("{size}mm",)),
+        extras="kleinteile",
+    ),
+    # Mechanik & Antrieb
+    Type(
+        "dichtung", "Federn, Dichtungen & Pneumatik", "O-Ring / Dichtung", "CNS",
+        (
+            F("kind", "Art", "O-Ring|Flachdichtung|Dichtring Kupfer|Dichtring Aluminium|"
+              "Wellendichtring|Gummitülle|Quad-Ring|O-Ring-Sortiment"),
+            F("id", "Innen-Ø", "3|4|5|6|8|10|12|15|20|25|30", "mm", row="ring"),
+            F("cs", "Schnurstärke / Dicke", "1|1.5|1.9|2|2.5|3|3.5|4", "mm", row="ring"),
+            F("material", "Material", "NBR|FKM (Viton)|EPDM|Silikon|PTFE|Kupfer|Fiber"),
+        ),
+        (("{kind}",), ("{id}x{cs}", "Ø{id}"), ("{material}",)),
+        label_lines=("{kind} {id}x{cs}", "{material}"),
+        extras="mechanik",
+    ),
+    Type(
+        "feder", "Federn, Dichtungen & Pneumatik", "Feder", "CNS",
+        (
+            F("kind", "Art", "Druckfeder|Zugfeder|Schenkelfeder|Tellerfeder|Gasdruckfeder|Federsortiment"),
+            F("od", "Außen-Ø", "3|4|5|6|8|10|12|15|20", "mm", row="dim"),
+            F("length", "Länge", "5|10|15|20|25|30|40|50", "mm", row="dim"),
+            F("wire", "Drahtstärke", "0.3|0.5|0.6|0.8|1|1.2|1.5|2", "mm", extra=True),
+            F("force", "Kraft (Gasfeder)", "50|100|150|200|300|500", "N", extra=True),
+        ),
+        (("{kind}",), ("Ø{od}",), ("L{length}",)),
+        extras="mechanik",
+    ),
+    Type(
+        "zahnriemen", "Antrieb & Bewegung", "Zahnriemen", "CNS",
+        (
+            F("profile", "Profil", "GT2|GT3|HTD 3M|HTD 5M|T2.5|T5|XL"),
+            F("width", "Breite", "6|9|10|12|15|20", "mm"),
+            F("kind", "Ausführung", "Meterware (offen)|Geschlossen|Mit Stahlcord|Mit Glasfaser"),
+            F("length", "Länge (geschlossen)", "110|158|200|280|400|610|852", "mm"),
+        ),
+        (("Zahnriemen {profile}",), ("{width}mm",), ("L{length}",)),
+        extras="mechanik",
+    ),
+    Type(
+        "riemenscheibe", "Antrieb & Bewegung", "Riemenscheibe / Umlenkrolle", "CNS",
+        (
+            F("kind", "Art", "Zahnriemenscheibe|Umlenkrolle gezahnt|Umlenkrolle glatt|Spannrolle|Keilriemenscheibe"),
+            F("profile", "Profil", "GT2|GT3|HTD 3M|HTD 5M|T5"),
+            F("teeth", "Zähne", "16|20|30|36|40|60", row="dim"),
+            F("bore", "Bohrung", "3|5|6|6.35|8|10", "mm", row="dim"),
+            F("width", "Für Riemenbreite", "6|9|10|15", "mm", extra=True),
+        ),
+        (("{kind}",), ("{profile}",), ("{teeth}Z",), ("B{bore}",)),
+        extras="mechanik",
+    ),
+    Type(
+        "zahnrad", "Antrieb & Bewegung", "Zahnrad / Zahnstange / Getriebe", "CNS",
+        (
+            F("kind", "Art", "Stirnrad|Kegelrad|Schnecke|Schneckenrad|Zahnstange|Planetengetriebe|Getriebemotor-Zahnrad"),
+            F("module", "Modul", "0.5|0.8|1|1.5|2|2.5"),
+            F("teeth", "Zähne", "10|12|15|20|25|30|40|50|60", row="dim"),
+            F("bore", "Bohrung", "3|4|5|6|8|10|12", "mm", row="dim"),
+            F("material", "Material", "Stahl|Messing|POM|Nylon|Kunststoff"),
+        ),
+        (("{kind}",), ("M{module}",), ("{teeth}Z",)),
+        extras="mechanik",
+    ),
+    Type(
+        "linear", "Lager & Führung", "Linearführung / Welle", "CNS",
+        (
+            F("kind", "Art", "Linearwelle|Linearschiene|Führungswagen|Linearkugellager|Wellenhalter|"
+              "Wellenbock|V-Slot-Rolle|Linearmodul"),
+            F("size", "Ø / Baugröße", "6|8|10|12|16|20|MGN7|MGN9|MGN12|MGN15|LM8UU|SK8|SHF8"),
+            F("length", "Länge", "100|200|300|400|500|600|1000", "mm"),
+        ),
+        (("{kind}",), ("{size}x{length}", "{size}")),
+        extras="mechanik",
+    ),
+    Type(
+        "gleitlager", "Lager & Führung", "Gleitlager / Buchse / Distanzhülse", "CNS",
+        (
+            F("kind", "Art", "Gleitlager Sinterbronze|Gleitlager Kunststoff (igus)|Flanschbuchse|"
+              "Messingbuchse|Distanzhülse|Distanzrolle|Anlaufscheibe"),
+            F("id", "Innen-Ø", "3|4|5|6|8|10|12|16", "mm", row="dim"),
+            F("od", "Außen-Ø", "5|6|8|10|12|14|16|20", "mm", row="dim"),
+            F("length", "Länge", "3|4|5|6|8|10|12|16|20", "mm", row="dim"),
+        ),
+        (("{kind}",), ("{id}x{od}x{length}", "{id}x{od}", "Ø{id}")),
+        extras="mechanik",
+    ),
+    Type(
+        "spindel", "Lager & Führung", "Gewindespindel / Trapezmutter", "CNS",
+        (
+            F("kind", "Art", "Trapezgewindespindel|Trapezmutter|Anti-Backlash-Mutter|"
+              "Kugelumlaufspindel|Kugelumlaufmutter|Spindel mit Schrittmotor"),
+            F("size", "Gewinde", "Tr8x2|Tr8x4|Tr8x8|Tr10x2|Tr12x3|Tr16x4|SFU1204|SFU1605|SFU1610"),
+            F("length", "Länge", "100|200|300|400|500|600|1000", "mm"),
+            F("material", "Material", "Edelstahl|Stahl|Messing|POM|Bronze"),
+        ),
+        (("{kind}",), ("{size}",), ("{length}mm",)),
+        extras="mechanik",
+    ),
+    Type(
+        "rolle", "Lager & Führung", "Rolle / Rad / Gleiter", "CNS",
+        (
+            F("kind", "Art", "Lenkrolle|Lenkrolle mit Bremse|Bockrolle|Kugelrolle|Möbelrolle|Rad|"
+              "Laufrolle|Schwerlastrolle|Möbelgleiter"),
+            F("dia", "Rad-Ø", "25|30|40|50|75|100|125|160", "mm"),
+            F("mount", "Befestigung", "Anschraubplatte|Gewindezapfen|Steckzapfen|Achse|Kleben"),
+            F("load", "Tragkraft", "20|30|50|75|100|150|250", "kg"),
+        ),
+        (("{kind}",), ("Ø{dia}",)),
+        extras="mechanik",
+    ),
+    Type(
+        "motor", "Antrieb & Bewegung", "Motor / Servo (Schritt, DC, BLDC)", "CMP",
+        (
+            F("kind", "Art", "Schrittmotor|Schrittmotor NEMA17|Schrittmotor NEMA14|Schrittmotor NEMA23|"
+              "Schrittmotor 28BYJ-48|Gleichstrommotor|Getriebemotor|Servo SG90|Servo MG996R|"
+              "Brushless|Vibrationsmotor"),
+            F("voltage", "Spannung", "3.3|5|6|12|24|48", "V"),
+            F("current", "Strom", "0.5|1|1.5|2|2.5|3", "A", extra=True),
+            F("model", "Modell / Typ", hint="z. B. 17HS4401, LDO-42STH40"),
+        ),
+        (("{kind}",), ("{model}",), ("{voltage}V",)),
+        cmp=True,
+        extras="basis",
+    ),
+    Type(
+        "luefter", "Antrieb & Bewegung", "Lüfter", "CMP",
+        (
+            F("size", "Baugröße", "2510|3010|4010|4020|5015|6015|6025|8025|9225|12025|14025"),
+            F("voltage", "Spannung", "5|12|24", "V"),
+            F("kind", "Bauart", "Axial|Radial (Blower)|Querstrom"),
+            F("plug", "Anschluss", "2-Pin|3-Pin|4-Pin PWM|JST-XH|USB", extra=True),
+            F("bearing", "Lager", "Gleitlager|Kugellager|Hydraulik", extra=True),
+        ),
+        (("Lüfter",), ("{size}",), ("{voltage}V",), ("{kind}",)),
+        cmp=True,
+        extras="basis",
+    ),
+    # Elektronik
+    Type(
+        "relais", "Bauteile", "Relais", "CMP",
+        (
+            F("kind", "Art", "Printrelais|Hutschienenrelais|Kfz-Relais|Reed-Relais|Solid-State-Relais|Zeitrelais|Stromstoßschalter"),
+            F("voltage", "Spulenspannung", "3|5|12|24|230", "V"),
+            F("contacts", "Kontakte", "1 Schließer|1 Wechsler|2 Wechsler|4 Wechsler"),
+            F("current", "Schaltstrom", "1|2|5|10|16|30|40", "A"),
+            F("model", "Modell", hint="z. B. SRD-05VDC-SL-C", extra=True),
+        ),
+        (("{kind}",), ("{voltage}V",), ("{contacts}",)),
+        cmp=True,
+        extras="elektronik",
+    ),
+    Type(
+        "quarz", "Bauteile", "Quarz / Oszillator", "CMP",
+        (
+            F("kind", "Art", "Quarz|Quarzoszillator|Keramikresonator|Uhrenquarz|MEMS-Oszillator"),
+            F("frequency", "Frequenz", "32.768 kHz|4 MHz|8 MHz|12 MHz|16 MHz|20 MHz|25 MHz|27 MHz"),
+            F("package", "Bauform", "HC-49|HC-49S|SMD 3225|SMD 5032|DIP-4|SOP-4"),
+        ),
+        (("{kind}",), ("{frequency}",), ("{package}",)),
+        cmp=True,
+        extras="elektronik",
+    ),
+    Type(
+        "kuehlkoerper", "Prototyping & Gehäuse", "Kühlkörper / Wärmeleitmaterial", "CMP",
+        (
+            F("kind", "Art", "Kühlkörper|Kühlkörper TO-220|Kühlkörper Raspberry Pi|Wärmeleitpad|"
+              "Wärmeleitpaste|Wärmeleitkleber|Isolierscheibe|Heatpipe"),
+            F("size", "Größe", "9x9|14x14|20x20|40x40|60x60|100x100", "mm"),
+            F("thickness", "Dicke / Höhe", "0.5|1|1.5|2|3|5|10|20", "mm"),
+            F("conductivity", "Wärmeleitfähigkeit", "1.5|3|6|8|12", "W/mK", extra=True),
+        ),
+        (("{kind}",), ("{size}",), ("{thickness}mm",)),
+        extras="drucker",
+    ),
+    # Netzwerk & IT
+    Type(
+        "speicher", "Computer & Speicher", "Speicherkarte / USB-Stick / SSD", "CMP",
+        (
+            F("kind", "Art", "microSD|SD-Karte|USB-Stick|SSD SATA|SSD NVMe|HDD 2.5|HDD 3.5|eMMC-Modul"),
+            F("capacity", "Kapazität", "4|8|16|32|64|128|256|512|1000|2000|4000", "GB"),
+            F("speed", "Klasse / Standard", "Class 10|U1|U3|A1|A2|USB 2.0|USB 3.0|SATA III|PCIe 3.0|PCIe 4.0"),
+        ),
+        (("{kind}",), ("{capacity}GB",), ("{speed}",)),
+        extras="netzwerk",
+    ),
+    Type(
+        "adapter", "Computer & Speicher", "Adapter / Hub / Kartenleser", "CMP",
+        (
+            F("kind", "Art", "USB-C auf USB-A|USB-Hub|USB-C-Dock|HDMI auf DVI|DisplayPort auf HDMI|"
+              "USB-C auf HDMI|Kartenleser|SATA auf USB|USB-Seriell (UART)|Klinke 3.5 auf 6.3|"
+              "Reiseadapter|Gender Changer"),
+            F("ports", "Anschlüsse", "1|2|3|4|7", hint="Anzahl Ports (Hub)"),
+            F("model", "Modell", hint="z. B. CH340, CP2102"),
+        ),
+        (("{kind}",), ("{ports}-fach",), ("{model}",)),
+        extras="netzwerk",
+    ),
+    Type(
+        "pc", "Computer & Speicher", "PC-Komponente / Peripherie", "CMP",
+        (
+            F("kind", "Art", "Arbeitsspeicher (RAM)|Prozessor|Grafikkarte|PC-Netzteil|Mainboard|"
+              "Gehäuselüfter|Tastatur|Maus|Webcam|Monitor|Mini-PC"),
+            F("model", "Modell", hint="z. B. DDR4 16GB 3200"),
+            F("iface", "Anschluss / Sockel", "USB|DDR4|DDR5|SO-DIMM|AM4|AM5|LGA1700|PCIe|SATA"),
+        ),
+        (("{kind}",), ("{model}",)),
+        extras="netzwerk",
+    ),
+    # Elektrik & Strom
+    Type(
+        "akkuzelle", "Akkus & Netzteile", "Akkuzelle (18650, LiPo …)", "ART",
+        (
+            F("form", "Bauform", "18650|21700|14500|26650|AA|AAA|Pouch (LiPo)|9V|C|D"),
+            F("chem", "Chemie", "Li-Ion|LiFePO4|LiPo|NiMH|NiCd"),
+            F("cap", "Kapazität", "500|800|1000|2000|2500|3000|3500|5000", "mAh"),
+            F("volt", "Nennspannung", "1.2|3.2|3.6|3.7|7.4|11.1", "V"),
+            F("prot", "Schutzschaltung", "Geschützt|Ungeschützt|Mit Lötfahne|Flat Top|Button Top", extra=True),
+        ),
+        (("{form}",), ("{chem}",), ("{cap}mAh",)),
+        extras="basis",
+    ),
+    Type(
+        "werkzeugakku", "Akkus & Netzteile", "Werkzeug-Akku", "ART",
+        (
+            F("brand", "System / Marke", "Makita LXT|Bosch Professional|Bosch Grün|Parkside X20V|"
+              "Ryobi ONE+|DeWalt|Einhell Power X-Change|Metabo CAS|Milwaukee"),
+            F("volt", "Spannung", "10.8|12|18|20|36|40", "V"),
+            F("cap", "Kapazität", "1.5|2|2.5|3|4|5|6|8|12", "Ah"),
+        ),
+        (("Akku",), ("{brand}",), ("{volt}V",), ("{cap}Ah",)),
+        single=True,
+        extras="basis",
+    ),
+    Type(
+        "ladegeraet", "Akkus & Netzteile", "Ladegerät", "ART",
+        (
+            F("kind", "Art", "Akku-Ladegerät (Rundzellen)|Werkzeug-Ladegerät|Modellbau-Lader|"
+              "USB-Ladegerät|USB-C PD Ladegerät|Kfz-Ladegerät|Solar-Laderegler|Blei-Ladegerät"),
+            F("chem", "Für Chemie", "Li-Ion|LiFePO4|LiPo|NiMH|Blei|Universal"),
+            F("power", "Leistung", "10|18|20|30|45|65|100|140", "W"),
+            F("slots", "Schächte / Ports", "1|2|4|8", extra=True),
+        ),
+        (("{kind}",), ("{chem}",), ("{power}W",)),
+        extras="basis",
+    ),
+    Type(
+        "steckdosenleiste", "Verbinden & Installation", "Steckdosenleiste / Verlängerung", "ART",
+        (
+            F("kind", "Art", "Steckdosenleiste|Steckdosenleiste schaltbar|Kabeltrommel|Verlängerung|"
+              "Mehrfachstecker|Zwischenstecker|Zeitschaltuhr|Smarte Steckdose"),
+            F("sockets", "Steckdosen", "1|2|3|4|5|6|8", row="dim"),
+            F("length", "Kabellänge", "1.5|2|3|5|10|25|50", "m", row="dim"),
+            F("plug", "Stecker", "Schuko|CEE 16A blau|CEE 16A rot|Euro|Kaltgerät", extra=True),
+        ),
+        (("{kind}",), ("{sockets}-fach",), ("{length}m",)),
+        extras="elektrik",
+    ),
+    Type(
+        "installation", "Verbinden & Installation", "Elektroinstallation (Dose, Schalter, LS)", "CNS",
+        (
+            F("kind", "Art", "Unterputzdose|Abzweigdose|Aufputzdose|Schalter UP|Steckdose UP|"
+              "Leitungsschutzschalter|FI-Schutzschalter|Hutschienenklemme|Mantelleitung NYM|Leerrohr"),
+            F("size", "Größe / Typ", "B6|B10|B16|C16|3x1.5|3x2.5|5x2.5|M16|M20|M25|Ø60"),
+            F("poles", "Pole", "1|2|3|4", extra=True),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="elektrik",
+    ),
+    # Werkzeug & Messen
+    Type(
+        "gewindebohrer", "Bohren, Fräsen & Sägen", "Gewindebohrer / Schneideisen", "TOL",
+        (
+            F("kind", "Art", "Gewindebohrer|Maschinengewindebohrer|Handgewindebohrer-Satz|Schneideisen|"
+              "Gewindeformer|Gewindereparatur-Satz|Windeisen"),
+            F("thread", "Gewinde", THREAD + "|G1/8|G1/4|1/4-20|UNC 6-32"),
+            F("material", "Material", "HSS|HSS-E (Co)|HSS-TiN|Hartmetall"),
+        ),
+        (("{kind}",), ("{thread}",)),
+        extras="basis",
+    ),
+    Type(
+        "fraeser", "Bohren, Fräsen & Sägen", "Fräser / Gravierstichel", "TOL",
+        (
+            F("kind", "Art", "Schaftfräser|Nutfräser|Abrundfräser|Fasefräser|Bündigfräser|"
+              "Kugelfräser|V-Nut-Fräser|Gravierstichel|Planfräser|Fräser-Satz"),
+            F("dia", "Durchmesser", "1|1.5|2|3|3.175|4|6|8|10|12", "mm", row="dim"),
+            F("shank", "Schaft", "3.175|4|6|6.35|8|12", "mm", row="dim"),
+            F("flutes", "Schneiden", "1|2|3|4", extra=True),
+            F("material", "Material", "Hartmetall|HSS|HM beschichtet|Diamant", extra=True),
+        ),
+        (("{kind}",), ("Ø{dia}",), ("S{shank}",)),
+        extras="basis",
+    ),
+    Type(
+        "saegeblatt", "Bohren, Fräsen & Sägen", "Sägeblatt / Lochsäge", "TOL",
+        (
+            F("kind", "Art", "Kreissägeblatt|Stichsägeblatt|Säbelsägeblatt|Multitool-Sägeblatt|"
+              "Bandsägeblatt|Metallsägeblatt|Japansägeblatt|Lochsäge"),
+            F("for", "Für", "Holz|Metall|Kunststoff|Laminat|Alu|Universal|Stein"),
+            F("size", "Ø / Länge", "20|32|50|75|100|160|190|210|254", "mm"),
+            F("teeth", "Zähne", "24|40|48|60|80", extra=True),
+            F("bore", "Aufnahme", "T-Schaft|U-Schaft|Starlock|OIS|16|20|30", extra=True),
+        ),
+        (("{kind}",), ("{for}",), ("{size}mm",)),
+        extras="basis",
+    ),
+    Type(
+        "bit", "Bohren, Fräsen & Sägen", "Bit / Stecknuss", "TOL",
+        (
+            F("kind", "Art", "Bit|Kraftbit|Stecknuss|Bithalter|Bit-Verlängerung|Steckschlüssel-Adapter"),
+            F("profile", "Profil", "PH|PZ|TX|HEX|SL|SW|Vierkant", row="p"),
+            F("size", "Größe", "1|2|3|2.5|4|5|6|8|10|13|15|20|25|30|40", row="p"),
+            F("length", "Länge", "25|50|75|90|150", "mm"),
+            F("drive", "Aufnahme", "1/4 Zoll|3/8 Zoll|1/2 Zoll", extra=True),
+        ),
+        (("{kind}",), ("{profile}{size}", "{size}"), ("L{length}",)),
+        extras="basis",
+    ),
+    Type(
+        "trennscheibe", "Schleifen & Trennen", "Trenn- / Schleifscheibe", "TOL",
+        (
+            F("kind", "Art", "Trennscheibe|Schruppscheibe|Fächerschleifscheibe|Fiberscheibe|"
+              "Diamanttrennscheibe|Klett-Schleifscheibe|Polierscheibe|Drahtbürste|Schleifhülse"),
+            F("dia", "Durchmesser", "32|50|76|115|125|150|180|230", "mm"),
+            F("for", "Für / Körnung", "Metall|Inox|Stein|Holz|K40|K60|K80|K120|K240"),
+        ),
+        (("{kind}",), ("Ø{dia}",), ("{for}",)),
+        extras="basis",
+    ),
+    # Material & Chemie
+    Type(
+        "pinsel", "Farbe & Oberfläche", "Pinsel / Roller", "TOL",
+        (
+            F("kind", "Art", "Flachpinsel|Rundpinsel|Lackierpinsel|Heizkörperpinsel|Künstlerpinsel|"
+              "Farbroller|Schaumstoffroller|Abstreifgitter|Spachtel"),
+            F("width", "Breite", "10|20|25|35|50|70|100|180|250", "mm"),
+            F("for", "Für", "Lack|Lasur|Dispersion|Öl|Kleber|Harz"),
+        ),
+        (("{kind}",), ("{width}mm",)),
+        extras="basis",
+    ),
+    Type(
+        "reiniger", "Löten, Schmieren & Reinigen", "Reiniger / Lösungsmittel", "CNS",
+        (
+            F("kind", "Art", "Isopropanol|Aceton|Spiritus|Bremsenreiniger|Waschbenzin|Verdünnung|"
+              "Entfetter|Kontaktreiniger|Glasreiniger|Handreiniger|Silikonentferner|Druckluftspray"),
+            F("conc", "Konzentration", "70|90|99|99.9", "%"),
+            F("content", "Inhalt", "100|250|400|500|1000|5000", "ml"),
+        ),
+        (("{kind}",), ("{conc}%",), ("{content}ml",)),
+        extras="verbrauch",
+    ),
+    Type(
+        "spachtel", "Kleben & Dichten", "Silikon / Acryl / Spachtel", "ART",
+        (
+            F("kind", "Art", "Sanitärsilikon|Acryl-Fugenmasse|Montagekleber|Holzspachtel|Feinspachtel|"
+              "Gips|Bauschaum|Fugenmörtel|Dichtband|Karosseriespachtel"),
+            F("color", "Farbe", "Weiß|Transparent|Grau|Braun|Schwarz|Buche|Eiche"),
+            F("content", "Inhalt", "100|250|300|310|500|750|1000", "ml/g"),
+        ),
+        (("{kind}",), ("{color}",), ("{content}ml",)),
+        extras="verbrauch",
+    ),
+    Type(
+        "schlauch", "Federn, Dichtungen & Pneumatik", "Schlauch (Wasser, Silikon, PTFE)", "CNS",
+        (
+            F("kind", "Art", "PVC-Schlauch|Silikonschlauch|PTFE-Schlauch|Gartenschlauch|"
+              "Druckluftschlauch|Gewebeschlauch|Benzinschlauch|Vakuumschlauch"),
+            F("id", "Innen-Ø", "1.9|2|3|4|5|6|8|10|12|13|19", "mm", row="dim"),
+            F("od", "Außen-Ø", "4|5|6|8|10|12|16|20", "mm", row="dim"),
+            F("length", "Länge", "0.5|1|2|5|10|25|50", "m"),
+        ),
+        (("{kind}",), ("{id}x{od}", "Ø{id}"), ("{length}m",)),
+        extras="mechanik",
+    ),
+    # 3D-Druck & Laser
+    Type(
+        "druckbett", "Druckerteile", "Druckbett / Druckplatte", "CMP",
+        (
+            F("kind", "Art", "PEI glatt|PEI texturiert|PEI pulverbeschichtet|Glasplatte|G10 / Garolite|"
+              "Federstahlblech|Magnetfolie|Heizbett|BuildTak|Kaltplatte"),
+            F("size", "Größe", "180x180|220x220|235x235|256x256|300x300|310x310|350x350", "mm"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="drucker",
+    ),
+    Type(
+        "heizung", "Druckerteile", "Heizpatrone / Thermistor", "CMP",
+        (
+            F("kind", "Art", "Heizpatrone|Thermistor NTC 100k|Thermistor 104GT|PT100|PT1000|"
+              "Thermoelement Typ K|Heizmatte Silikon|Thermosicherung|Keramikheizer"),
+            F("volt", "Spannung", "12|24|230", "V", row="el"),
+            F("watt", "Leistung", "30|40|50|60|80|100|200", "W", row="el"),
+            F("size", "Maße", "6x15|6x20|6x30|3x15", "mm"),
+        ),
+        (("{kind}",), ("{volt}V",), ("{watt}W",)),
+        extras="drucker",
+    ),
+    Type(
+        "laserplatte", "Laser", "Laser-Platte / Zuschnitt", "RAW",
+        (
+            F("kind", "Material", "Pappel-Sperrholz|Birke-Sperrholz|MDF|HDF|Acryl klar|Acryl farbig|"
+              "Acryl gespiegelt|Leder|Kork|Filz|Karton|Graupappe|Moosgummi|Furnier"),
+            F("thickness", "Stärke", "1|1.5|2|3|4|5|6|8|10", "mm"),
+            F("size", "Format", "200x300|300x300|300x400|400x400|400x600|600x400|A4|A3"),
+            F("color", "Farbe", "Natur|Schwarz|Weiß|Rot|Blau|Grün|Gold|Silber|Transparent"),
+        ),
+        (("{kind}",), ("{thickness}mm",), ("{size}",)),
+        label_lines=("{kind} {thickness}mm", "{size} {color}"),
+        extras="material",
+    ),
+    # Haus & Schutz
+    Type(
+        "handschuhe", "Schutzausrüstung", "Handschuhe", "PPE",
+        (
+            F("kind", "Art", "Nitril Einweg|Latex Einweg|Montagehandschuhe|Schnittschutz|"
+              "Lederhandschuhe|Hitzeschutz|Chemikalienschutz|Schweißerhandschuhe"),
+            F("size", "Größe", "S|M|L|XL|XXL|7|8|9|10|11"),
+            F("pack", "Packung", "1 Paar|10|50|100", "Stk"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="basis",
+    ),
+    Type(
+        "augenschutz", "Schutzausrüstung", "Schutzbrille / Laserschutz", "PPE",
+        (
+            F("kind", "Art", "Schutzbrille|Überbrille|Vollsichtbrille|Laserschutzbrille|Gesichtsschutz|"
+              "Schweißschirm|Schweißerbrille"),
+            F("protect", "Schutzbereich", "Klar|Getönt|190-540 nm OD6+|445 nm OD5+|1064 nm OD6+|"
+              "10600 nm (CO2)|DIN 9-13"),
+        ),
+        (("{kind}",), ("{protect}",)),
+        extras="basis",
+    ),
+    Type(
+        "atemschutz", "Schutzausrüstung", "Atemschutz / Filter", "PPE",
+        (
+            F("kind", "Art", "FFP2-Maske|FFP3-Maske|Halbmaske|Vollmaske|Filter|Vorfilter"),
+            F("class", "Klasse / Filter", "FFP2|FFP3|P2|P3|A1|A2|A2P3|ABEK1"),
+            F("size", "Größe", "S|M|L", extra=True),
+        ),
+        (("{kind}",), ("{class}",)),
+        extras="basis",
+    ),
+    Type(
+        "gehoerschutz", "Schutzausrüstung", "Gehörschutz", "PPE",
+        (
+            F("kind", "Art", "Kapselgehörschutz|Ohrstöpsel|Bügelgehörschutz|Otoplastik|Gehörschutz mit Radio"),
+            F("snr", "Dämmwert (SNR)", "20|25|28|30|33|37", "dB"),
+        ),
+        (("{kind}",), ("SNR {snr}",)),
+        extras="basis",
+    ),
+    Type(
+        "brandschutz", "Sicherheit & Erste Hilfe", "Feuerlöscher / Melder", "PPE",
+        (
+            F("kind", "Art", "Feuerlöscher|Löschspray|Löschdecke|Rauchmelder|CO-Melder|Hitzemelder|"
+              "Wassermelder"),
+            F("agent", "Löschmittel / Klasse", "Schaum AB|Pulver ABC|CO2|Wasser|Fettbrand F|Lithium"),
+            F("size", "Inhalt", "0.4 l|1 kg|2 kg|6 kg|6 l|9 l|12 kg"),
+            F("due", "Nächste Prüfung", hint="z. B. 2027-03", extra=True),
+        ),
+        (("{kind}",), ("{agent}",), ("{size}",)),
+        single=True,
+        extras="basis",
+    ),
+    Type(
+        "erstehilfe", "Sicherheit & Erste Hilfe", "Erste Hilfe", "PPE",
+        (
+            F("kind", "Art", "Verbandkasten|Pflaster|Pflasterstrips|Mullbinde|Kompresse|Augenspülung|"
+              "Brandgel|Kühlpack|Splitterpinzette|Rettungsdecke"),
+            F("size", "Größe / Norm", "DIN 13157|DIN 13164|6 cm|8 cm|10 cm"),
+            F("expiry", "Haltbar bis", hint="z. B. 2028-06", extra=True),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="basis",
+    ),
+    Type(
+        "leuchtmittel", "Haushalt, Licht & Sonstiges", "Leuchtmittel", "ART",
+        (
+            F("kind", "Art", "LED-Lampe|Filament-LED|LED-Röhre|Leuchtstoffröhre|Halogen|Smarte Lampe|"
+              "LED-Spot|Glühlampe"),
+            F("socket", "Sockel", "E27|E14|GU10|GU5.3|G9|G4|T8|R7s|B22"),
+            F("watt", "Leistung", "2|4|5|7|9|12|15|18|24", "W"),
+            F("tone", "Lichtfarbe", "Warmweiß 2700K|Warmweiß 3000K|Neutralweiß 4000K|Tageslicht 6500K|RGB"),
+        ),
+        (("{kind}",), ("{socket}",), ("{watt}W",)),
+        extras="basis",
+    ),
+)
+# fmt: on
 
 # --- Optionale Zusatzfelder (eingeklappt unter „Weitere Angaben“) ---------------------------
 _BRAND = F("brand", "Hersteller / Marke", extra=True)
@@ -1226,8 +1851,10 @@ _STANDARD = F("standard", "Norm / Serie", extra=True)
 _PACK = F("pack", "Packungsgröße", "10|50|100|200|500|1000", "Stk", extra=True)
 _NODE = F("node", "Node (Nut-Typ / Einbauort)", hint="für welchen Node / welche Nut", extra=True)
 
-GROUP_EXTRAS: dict[str, tuple[Field, ...]] = {
-    GROUPS[0]: (
+# Profil -> Zusatzfelder. Die Profile der bisherigen Typen entsprechen ihren früheren Gruppen
+# (Feld-Schlüssel am Teil bleiben so unverändert).
+EXTRAS: dict[str, tuple[Field, ...]] = {
+    "befestigung": (
         F(
             "standard",
             "Norm",
@@ -1248,7 +1875,7 @@ GROUP_EXTRAS: dict[str, tuple[Field, ...]] = {
         _BRAND,
         _SOURCE,
     ),
-    GROUPS[1]: (
+    "verbrauch": (
         F("content", "Inhalt", "5|10|20|50|100|250|500", "ml/g", extra=True),
         F("cure", "Aushärtezeit", "5 min|30 min|24 h", extra=True),
         F("temp", "Temperaturbereich", "", "°C", extra=True),
@@ -1256,21 +1883,21 @@ GROUP_EXTRAS: dict[str, tuple[Field, ...]] = {
         _BRAND,
         _SOURCE,
     ),
-    GROUPS[2]: (
+    "mechanik": (
         _MATERIAL,
         F("load", "Belastbarkeit", "", "N", extra=True),
         _STANDARD,
         _BRAND,
         _SOURCE,
     ),
-    GROUPS[3]: (
+    "elektrik": (
         _COLOR,
         F("rated", "Nennstrom", "1|2|3|5|10|16", "A", extra=True),
         F("rvolt", "Nennspannung", "5|12|24|48|230", "V", extra=True),
         _BRAND,
         _SOURCE,
     ),
-    GROUPS[4]: (
+    "elektronik": (
         F(
             "package",
             "Bauform / Gehäuse",
@@ -1282,8 +1909,8 @@ GROUP_EXTRAS: dict[str, tuple[Field, ...]] = {
         _BRAND,
         _SOURCE,
     ),
-    GROUPS[5]: (F("size", "Größe", extra=True), _MATERIAL, _BRAND, _SOURCE),
-    GROUPS[6]: (
+    "werkzeug": (F("size", "Größe", extra=True), _MATERIAL, _BRAND, _SOURCE),
+    "drucker": (
         F(
             "compat",
             "Passend für",
@@ -1294,10 +1921,10 @@ GROUP_EXTRAS: dict[str, tuple[Field, ...]] = {
         _BRAND,
         _SOURCE,
     ),
-    GROUPS[7]: (F("dims", "Maße", extra=True), _MATERIAL, _COLOR, _BRAND, _SOURCE),
-    GROUPS[8]: (_COLOR, _BRAND, _SOURCE),
-    GROUPS[9]: (_BRAND, _SOURCE),
-    GROUPS[10]: (_BRAND, _SOURCE),
+    "material": (F("dims", "Maße", extra=True), _MATERIAL, _COLOR, _BRAND, _SOURCE),
+    "netzwerk": (_COLOR, _BRAND, _SOURCE),
+    "kleinteile": (_STANDARD, _PACK, _BRAND, _SOURCE),
+    "basis": (_BRAND, _SOURCE),
 }
 
 
@@ -1305,18 +1932,22 @@ def _with_extras(types: tuple[Type, ...]) -> tuple[Type, ...]:
     out = []
     for t in types:
         have = {f.key for f in t.fields}
-        add = tuple(f for f in GROUP_EXTRAS.get(t.group, ()) if f.key not in have)
+        add = tuple(f for f in EXTRAS[t.extras] if f.key not in have)
         out.append(replace(t, fields=t.fields + add) if add else t)
     return tuple(out)
 
 
-TYPES = _with_extras(TYPES)
+# Bisherige Typen bewerten in `guess` wie bisher (kurze Werte dürfen mehrfach zählen); neue Typen
+# zählen jeden kurzen Wert nur einmal, damit z. B. „5-polig“ keine Maß-Felder doppelt trifft.
+_LEGACY_KEYS = frozenset(t.key for t in TYPES)
+TYPES = _with_extras(TYPES + TYPES_2_0)
 
 
 BY_KEY = {t.key: t for t in TYPES}
 
 
 CUSTOM_GROUP = "Eigene Typen"
+FAVORITES = "Favoriten"
 
 
 DEFAULT_NODES = (
@@ -1370,7 +2001,13 @@ def options_for(
     return f.options
 
 
+def area_of(t: Type) -> str:
+    """Bereich eines Typs; eigene Typen stehen immer im Bereich „Eigene Typen“."""
+    return AREA_OF.get(t.group, CUSTOM_GROUP) if t.key in BY_KEY else CUSTOM_GROUP
+
+
 def grouped(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
+    """Flache Liste (Gruppe, Typen) – Favoriten zuerst, eigene Typen am Ende."""
     out = [(g, [t for t in TYPES if t.group == g]) for g in GROUPS]
     if conn is None:
         return out
@@ -1380,7 +2017,28 @@ def grouped(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type
     favs = favorite_keys(conn)  # Favoriten: je Gruppe ganz oben, dazu eine Gruppe „Favoriten“
     out = [(g, sorted(ts, key=lambda t: t.key not in favs)) for g, ts in out]
     top = [t for _g, ts in out for t in ts if t.key in favs]
-    return ([("Favoriten", top)] if top else []) + out
+    return ([(FAVORITES, top)] if top else []) + out
+
+
+def areas(
+    conn: sqlite3.Connection | None = None,
+) -> list[tuple[str, list[tuple[str, list[Type]]]]]:
+    """Zwei Ebenen: [(Bereich, [(Gruppe, Typen)])]. Favoriten bilden einen eigenen Bereich
+    ganz oben, eigene Typen den Bereich „Eigene Typen“ am Ende; leere Gruppen entfallen."""
+    out: dict[str, list[tuple[str, list[Type]]]] = {}
+    for g, ts in grouped(conn):
+        if not ts:
+            continue
+        area = FAVORITES if g == FAVORITES else area_of(ts[0])
+        out.setdefault(area, []).append((g, ts))
+    return list(out.items())
+
+
+def area_groups(conn: sqlite3.Connection | None = None) -> list[tuple[str, list[Type]]]:
+    """Flache Liste für Auswahllisten (optgroup): („Bereich › Gruppe“, Typen)."""
+    return [
+        (g if g == a else f"{a} › {g}", ts) for a, gs in areas(conn) for g, ts in gs
+    ]
 
 
 def favorite_keys(conn: sqlite3.Connection) -> set[str]:
@@ -1605,16 +2263,17 @@ def create(
     return item_id
 
 
-GROUP_TAGS = {
-    "Schrauben & Befestigung": "befestigung verbindung",
-    "Klebstoff & Verbrauch": "verbrauchsmaterial",
-    "Mechanik & Pneumatik": "mechanik",
-    "Kabel & Elektrik": "elektrik kabel",
-    "Elektronik": "elektronik bauteil",
-    "Werkzeug": "werkzeug",
-    "Druckerteile & Laser": "3d-druck laser drucker",
-    "Material & Holz": "rohmaterial",
-    "Netzwerk": "netzwerk lan it",
+PROFILE_TAGS = {
+    "befestigung": "befestigung verbindung",
+    "kleinteile": "befestigung",
+    "verbrauch": "verbrauchsmaterial",
+    "mechanik": "mechanik",
+    "elektrik": "elektrik kabel",
+    "elektronik": "elektronik bauteil",
+    "werkzeug": "werkzeug",
+    "drucker": "3d-druck laser drucker",
+    "material": "rohmaterial",
+    "netzwerk": "netzwerk lan it",
 }
 # Wert (Teilstring, klein) -> zusätzliche Tags
 VALUE_TAGS = (
@@ -1636,7 +2295,7 @@ VALUE_TAGS = (
 
 def auto_tags(t: Type, values: dict[str, str]) -> str:
     """Tags automatisch: Typ, Gruppe, Feldwerte und Stichwort-Regeln (ohne Doppelte)."""
-    words = [t.label.lower(), GROUP_TAGS.get(t.group, t.group.lower())]
+    words = [t.label.lower(), PROFILE_TAGS.get(t.extras, t.group.lower())]
     words += [v.lower() for v in values.values() if v]
     blob = " ".join(words)
     for needles, extra in VALUE_TAGS:
@@ -1766,24 +2425,66 @@ def _label_words(t: Type) -> list[str]:
     return [w.removesuffix("en").removesuffix("e") if len(w) > 6 else w for w in words]
 
 
+_NUM = r"\d+(?:[.,]\d+)?"
+
+
+def _option_re(option: str, legacy: bool = False) -> str:
+    """Suchmuster für einen Auswahlwert; bei neuen Typen Zahlen nicht mitten in anderen Zahlen
+    („5“ in „0.5“). Bisherige Typen behalten ihr altes Muster (Ergebnisse bleiben gleich)."""
+    o = re.escape(option.casefold())
+    if option[:1].isdigit() and not legacy:
+        return rf"(?<![\w.,]){o}(?![\w]|[.,]\d)"
+    return rf"(?<![\w]){o}(?![\w])"
+
+
+def _slot(options: tuple[str, ...]) -> str:
+    """Platzhalter im Vorlagen-Muster: Zahl oder einer der (nicht-numerischen) Auswahlwerte."""
+    words = [re.escape(o.casefold()) for o in options if not re.fullmatch(_NUM, o)]
+    return "(" + "|".join([*sorted(words, key=len, reverse=True), _NUM]) + ")"
+
+
+def _template_res(t: Type) -> list[tuple[str, list[str]]]:
+    """Muster aus der Namensvorlage für Maßangaben wie „{width}mm“, „Ø{od}“ oder „{id}x{od}“."""
+    out = []
+    for alts in t.parts:
+        for alt in (alts,) if isinstance(alts, str) else alts:
+            keys = re.findall(r"{(\w+)}", alt)
+            literal = re.sub(r"{\w+}", "", alt).strip()
+            if not keys or not literal or " " in alt:
+                continue
+            opts = {f.key: f.options for f in t.fields}
+            pattern = "".join(
+                _slot(opts.get(p[1:-1], ())) if p.startswith("{") else re.escape(p.casefold())
+                for p in re.split(r"({\w+})", alt)
+                if p
+            )
+            out.append((rf"(?<![\w.,]){pattern}(?![\w])", keys))
+    return out
+
+
 def guess(conn: sqlite3.Connection | None, text: str) -> tuple[str, dict[str, str], int] | None:
     """(Typ, Felder, Punkte) für einen vorhandenen Teilenamen – oder None, wenn nichts passt."""
     low = text.casefold()
     best: tuple[str, dict[str, str], int] | None = None
     types = list(TYPES) + (custom_types(conn) if conn is not None else [])
     for t in types:
-        score, vals = 0, {}
+        score, vals, seen = 0, {}, set()
+        legacy = t.key in _LEGACY_KEYS
         if any(w in low for w in _label_words(t)):
             score += 3
         for f in t.fields:
-            hits = [
-                o
-                for o in f.options
-                if re.search(rf"(?<![\w]){re.escape(o.casefold())}(?![\w])", low)
-            ]
+            hits = [o for o in f.options if re.search(_option_re(o, legacy), low)]
             if hits:
                 vals[f.key] = max(hits, key=len)
-                score += 2 if len(vals[f.key]) < 4 else 3
+                short = len(vals[f.key]) < 4
+                if not short or legacy or vals[f.key].casefold() not in seen:
+                    seen.add(vals[f.key].casefold())
+                    score += 2 if short else 3
+        if not legacy:  # Maße aus der Namensvorlage („6mm“, „Ø8“, „5x2“)
+            for pattern, tkeys in _template_res(t):
+                if (tm := re.search(pattern, low)) and not all(k in vals for k in tkeys):
+                    vals.update({k: v for k, v in zip(tkeys, tm.groups(), strict=True)})
+                    score += 2
         keys = {f.key for f in t.fields}
         m = re.search(r"\b(m\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\b", low)
         if m and {"thread", "length"} <= keys:

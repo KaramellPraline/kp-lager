@@ -30,7 +30,8 @@ def test_insert_and_washer_have_outer_diameter_and_thickness() -> None:
 
 def test_netzwerk_group_and_printer_psu_exist() -> None:
     assert catalog.BY_KEY["netzwerkkabel"].group == "Netzwerk"
-    assert catalog.BY_KEY["netzteil"].group.startswith("Druckerteile")
+    assert catalog.area_of(catalog.BY_KEY["netzwerkkabel"]) == "Netzwerk & IT"
+    assert catalog.BY_KEY["netzteil"].group == "Akkus & Netzteile"  # seit 2.0 bei Strom
     name = catalog.name(catalog.BY_KEY["netzteil"], {"kind": "Netzteil", "volt": "24", "amp": "10"})
     assert name == "Netzteil 24V 10A"
 

@@ -73,7 +73,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
             cards=cards.for_item(conn, item_id),
             ctype=catalog.lookup(conn, item["ctype"]) if item["ctype"] else None,
             cvalues=catalog.values_of(item),
-            type_groups=catalog.grouped(conn) if not item["material"] else [],
+            type_groups=catalog.area_groups(conn) if not item["material"] else [],
             tset=typesettings.get(conn, typesettings.key_of(item)),
             reservations=projects.reservations(conn, item_id),
             buys=purchases.for_item(conn, item_id),

@@ -3,16 +3,21 @@
 {% block content %}
 {% include "_add_tabs.html" %}
 <div class="neu">
-  <aside class="neu-types" aria-label="Teile-Typen">
+  <aside class="neu-types type-tree" aria-label="Teile-Typen">
     <input type="search" id="type-filter" placeholder="Typ suchen … (z. B. Schraube)" aria-label="Typ suchen">
+    {% for a, groups in areas %}
+    <details class="area" id="a{{ loop.index }}" data-a="{{ a }}" {% if a == ctype_area or a == 'Favoriten' %}open{% endif %}>
+    <summary>{{ a }} <span class="meta">{{ groups|sum(attribute=1, start=[])|length }}</span></summary>
     {% for g, types in groups %}
-    <details class="grp" id="g{{ loop.index }}" data-g="{{ g }}" {% if ctype in types or loop.first and g == 'Favoriten' %}open{% endif %}>
-    <summary>{{ g }} <span class="meta">{{ types|length }}</span></summary>
-    <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
+    <div class="grp" data-g="{{ g }}">
+    {% if g != a %}<h3>{{ g }}</h3>{% endif %}
+    <ul>{% for t in types %}<li><a href="/neu?typ={{ t.key }}" class="{% if t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g ~ ' ' ~ a)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
+    </div>
+    {% endfor %}
     </details>
     {% endfor %}
   </aside>
-  <nav class="jump-bar" aria-label="Zu Kategorie springen">{% for g, types in groups %}<a href="#g{{ loop.index }}" data-jump="g{{ loop.index }}" title="{{ g }}">{{ g[:2] }}</a>{% endfor %}</nav>
+  <nav class="jump-bar" aria-label="Zu Bereich springen">{% for a, groups in areas %}<a href="#a{{ loop.index }}" data-jump="a{{ loop.index }}" title="{{ a }}">{{ a[:2] }}</a>{% endfor %}</nav>
 
   <section class="neu-main">
     <form method="post" action="/neu" id="neu-form" class="card stack" data-typ="{{ ctype.key }}" data-draft="{{ 1 if draft else 0 }}">

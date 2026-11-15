@@ -229,11 +229,12 @@ def register(router: APIRouter) -> None:
         """Alle Typen (Katalog + eigene) mit Feldern und Auswahlwerten, plus Anzahl Teile."""
         n = sortiment.counts(conn)
         return [
-            {"key": t.key, "label": t.label, "group": g, "category": t.cat,
+            {"key": t.key, "label": t.label, "group": g, "area": catalog.area_of(t),
+             "category": t.cat,
              "items": n.get(t.key, 0),
              "fields": [{"key": f.key, "label": f.label, "unit": f.unit, "options": list(f.options)}
                         for f in t.fields]}
-            for g, ts in catalog.grouped(conn) for t in ts
+            for g, ts in catalog.grouped(conn) if g != catalog.FAVORITES for t in ts
         ]  # fmt: skip
 
     @router.get("/types/catalog/{key}/items")

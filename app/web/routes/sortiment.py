@@ -28,13 +28,10 @@ def register(app: FastAPI, ctx: Ctx) -> None:
 
     @app.get("/sortiment", response_class=HTMLResponse)
     def sortiment_page(request: Request, conn: Conn) -> HTMLResponse:
-        n = sortiment.counts(conn)
-        groups: dict[str, list[tuple[sortiment.Kind, int]]] = {}
-        for k in sortiment.kinds(conn):
-            groups.setdefault(k.group, []).append((k, n.get(k.key, 0)))
+        tree = sortiment.tree(sortiment.kinds(conn), sortiment.counts(conn))
         return render(
             request, conn, "sortiment.html",
-            groups=list(groups.items()), n_untyped=sortiment.count_untyped(conn),
+            areas=tree, n_untyped=sortiment.count_untyped(conn),
         )  # fmt: skip
 
     # --- Eigene Typen -----------------------------------------------------------------------
@@ -69,7 +66,7 @@ def register(app: FastAPI, ctx: Ctx) -> None:
         rows = sortiment.untyped(conn)
         return render(
             request, conn, "sortiment_zuordnen.html",
-            rows=rows, total=sortiment.count_untyped(conn), groups=catalog.grouped(conn),
+            rows=rows, total=sortiment.count_untyped(conn), groups=catalog.area_groups(conn),
             label={t.key: t.label for _, ts in catalog.grouped(conn) for t in ts},
         )  # fmt: skip
 

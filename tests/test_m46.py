@@ -14,8 +14,8 @@ def _box(c: TestClient) -> int:
 def test_type_favorites_come_first(client: TestClient) -> None:
     client.post("/neu/favorit", data={"typ": "gridfinity"})
     page = client.get("/neu").text
-    assert page.index('data-g="Favoriten"') < page.index('data-g="Schrauben &amp; Befestigung"')
-    assert "Gridfinity" in page and 'data-jump="g1"' in page
+    assert page.index('data-a="Favoriten"') < page.index('data-g="Schrauben &amp; Muttern"')
+    assert "Gridfinity" in page and 'data-jump="a1"' in page
 
 
 def test_auto_tags_and_no_label(client: TestClient) -> None:

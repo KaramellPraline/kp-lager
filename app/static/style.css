@@ -395,11 +395,15 @@ dd.bad, .bad { color: var(--danger, #e5484d); }
 .tree-items li a { text-decoration: none; color: var(--fg); }
 .tree-items li a:hover { color: var(--glow); }
 
-.neu-types details.grp { border-bottom: 1px solid var(--divider); }
-.neu-types details.grp > summary { cursor: pointer; padding: 9px 4px; font: 12px var(--font-mono); letter-spacing: .1em;
-  text-transform: uppercase; color: var(--sub); display: flex; justify-content: space-between; }
-.neu-types details.grp > summary:hover { color: var(--fg); }
-.neu-types details.grp[open] > summary { color: var(--fg); }
+/* Typ-Liste: Bereich (aufklappbar) › Gruppe (Zwischenüberschrift) › Typ */
+.neu-types details.area { border-bottom: 1px solid var(--divider); }
+.neu-types details.area > summary { cursor: pointer; min-height: 44px; padding: 10px 4px; font-weight: 600; font-size: 15px;
+  color: var(--sub); display: flex; justify-content: space-between; align-items: center; }
+.neu-types details.area > summary:hover { color: var(--fg); }
+.neu-types details.area[open] > summary { color: var(--fg); }
+.neu-types details.area > .grp:last-child { padding-bottom: 8px; }
+.neu-types .grp h3 { margin: 8px 0 2px 4px; font-size: 11px; }
+.neu-types li a { min-height: 40px; display: flex; align-items: center; }
 
 /* Hinzufügen: Reiter Teile · Behälter · Kabel & Material · Einsatz */
 .add-tabs { margin: 0 0 14px; }
@@ -517,3 +521,9 @@ label.chip input[type=checkbox] { width: 16px; height: 16px; min-height: 0; padd
 
 .a4-live { width: 100%; max-width: 560px; height: auto; background: #fff; border-radius: 6px; border: 1px solid var(--line); display: block; }
 .layout-line { display: flex; flex-direction: column; gap: 6px; }
+
+/* Sortiment: Bereich › Gruppe › Typ, Suchfeld */
+.type-search { width: 100%; margin: 12px 0 8px; min-height: 44px; }
+.sort-tree details.area > summary { cursor: pointer; min-height: 44px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.sort-tree .grp .menu-h { margin: 12px 0 2px; }
+.sort-tree li a.empty span { color: var(--sub); }

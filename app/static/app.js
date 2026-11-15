@@ -406,18 +406,6 @@
     form.addEventListener("change", syncReq);
     syncReq();
     preview();
-    var filter = document.getElementById("type-filter");
-    if (filter) filter.addEventListener("input", function () {
-      var q = filter.value.trim().toLowerCase();
-      document.querySelectorAll(".neu-types li a").forEach(function (a) {
-        a.parentElement.hidden = !!q && a.dataset.name.indexOf(q) < 0;
-      });
-      document.querySelectorAll(".neu-types details.grp").forEach(function (g) {
-        var hit = !!g.querySelector("li:not([hidden])");
-        g.hidden = !!q && !hit;
-        if (q && hit) g.open = true;
-      });
-    });
   });
 
   // Einsatz-Assistent: freie Zellen je Kasten, Zeilen je Fach
@@ -473,7 +461,7 @@
 
 /* Typ-Liste: Scrollposition und aufgeklappte Gruppen bleiben beim Wechsel erhalten */
 (function () {
-  var KEY_SCROLL = "neu_types_scroll", KEY_OPEN = "neu_types_open";
+  var KEY_SCROLL = "neu_types_scroll", KEY_OPEN = "neu_types_areas";
   function get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
   function put(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* ohne Speicher */ } }
   document.addEventListener("DOMContentLoaded", function () {
@@ -481,11 +469,13 @@
     if (!list) return;
     var open = null;
     try { open = JSON.parse(get(KEY_OPEN) || "null"); } catch (e) { open = null; }
-    list.querySelectorAll("details.grp").forEach(function (g) {
-      if (open && open.indexOf(g.dataset.g) >= 0) g.open = true;
+    var filter = document.getElementById("type-filter");
+    list.querySelectorAll("details.area").forEach(function (g) {
+      if (open && open.indexOf(g.dataset.a) >= 0) g.open = true;
       g.addEventListener("toggle", function () {
-        var names = Array.prototype.filter.call(list.querySelectorAll("details.grp"), function (x) { return x.open; })
-          .map(function (x) { return x.dataset.g; });
+        if (filter && filter.value.trim()) return;  // Suche klappt nur vorübergehend auf
+        var names = Array.prototype.filter.call(list.querySelectorAll("details.area"), function (x) { return x.open; })
+          .map(function (x) { return x.dataset.a; });
         put(KEY_OPEN, JSON.stringify(names));
       });
     });
@@ -832,4 +822,24 @@ document.addEventListener("DOMContentLoaded", function () {
   svg.addEventListener("click", function (e) {
     if (on) { e.preventDefault(); e.stopPropagation(); }
   }, true);
+});
+
+/* Typ-Liste (Anlegen, Sortiment): Suchfeld filtert über Bereiche › Gruppen › Typen */
+document.addEventListener("DOMContentLoaded", function () {
+  var filter = document.getElementById("type-filter"), tree = document.querySelector(".type-tree");
+  if (!filter || !tree) return;
+  filter.addEventListener("input", function () {
+    var q = filter.value.trim().toLowerCase();
+    tree.querySelectorAll("li a[data-name]").forEach(function (a) {
+      a.parentElement.hidden = !!q && a.dataset.name.indexOf(q) < 0;
+    });
+    tree.querySelectorAll(".grp, details.area").forEach(function (g) {
+      var hit = !!g.querySelector("li:not([hidden])");
+      g.hidden = !!q && !hit;
+      if (g.tagName !== "DETAILS") return;
+      if (q && !g.dataset.was) g.dataset.was = g.open ? "1" : "0";
+      if (q) g.open = hit;
+      else if (g.dataset.was) { g.open = g.dataset.was === "1"; delete g.dataset.was; }
+    });
+  });
 });
