@@ -9,6 +9,11 @@ services:
       LAGER_BASE_URL: https://${LAGER_HOST:-lager.home.lan}
       LAGER_D30: "0"       # Etikettendruck läuft über den Windows-Client (D30-Bridge)
       LAGER_D30_BRIDGE: "1"
+      # Anmeldung ist an: beim ersten Aufruf /einrichten (Admin anlegen). LAGER_AUTH: "0" schaltet sie ab.
+      # Optional Admin vorab: LAGER_ADMIN_USER + Passwort als Docker-Secret (siehe README):
+      # LAGER_ADMIN_USER: admin
+      # LAGER_ADMIN_PASSWORD_FILE: /run/secrets/lager_admin
+    # secrets: [lager_admin]
     volumes:
       - ./data:/data       # Datenbank, Fotos, Backups – diesen Ordner sichern
 
@@ -25,3 +30,7 @@ services:
 
 volumes:
   caddy_data:
+
+# secrets:
+#   lager_admin:
+#     file: ./admin-passwort.txt   # eine Zeile, nicht ins Git

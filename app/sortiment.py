@@ -12,6 +12,7 @@ from app import catalog, materials, repo
 from app.repo import LagerError
 
 MAT_PREFIX = "mat:"
+MAT_GROUP = "Material & Datenblatt"  # Teile ohne Typ, nur mit Datenblatt-Profil
 
 
 @dataclass(frozen=True)
@@ -22,25 +23,41 @@ class Kind:
     fields: tuple[tuple[str, str, str], ...]  # (Schlüssel, Name, Einheit)
     options: dict[str, tuple[str, ...]]
     material: str = ""  # Profil (fil, cbl …) – dann stehen die Werte in item.specs
+    area: str = ""  # Bereich (Befestigung, Elektronik …), siehe catalog.AREAS
 
 
 def _from_type(t: catalog.Type) -> Kind:
     return Kind(
         t.key, t.label, t.group,
         tuple((f.key, f.label, f.unit) for f in t.fields),
-        {f.key: f.options for f in t.fields},
+        {f.key: f.options for f in t.fields}, area=catalog.area_of(t),
     )  # fmt: skip
 
 
 def _from_material(profile: str) -> Kind:
     de = materials.MATERIALS[profile][0]
     fields = tuple((f.key, f.de, f.unit) for f in materials.FIELDS[profile])
-    return Kind(MAT_PREFIX + profile, de, "Material & Datenblatt", fields, {}, profile)
+    return Kind(MAT_PREFIX + profile, de, MAT_GROUP, fields, {}, profile, area=MAT_GROUP)
 
 
 def kinds(conn: sqlite3.Connection) -> list[Kind]:
-    out = [_from_type(t) for _, types in catalog.grouped(conn) for t in types]
+    out = [
+        _from_type(t)
+        for g, types in catalog.grouped(conn)
+        if g != catalog.FAVORITES  # Favoriten stehen zusätzlich in ihrer Gruppe
+        for t in types
+    ]
     return out + [_from_material(p) for p in materials.MATERIALS]
+
+
+def tree(
+    kinds_: list[Kind], counts_: dict[str, int]
+) -> list[tuple[str, list[tuple[str, list[tuple[Kind, int]]]]]]:
+    """Zwei Ebenen für Übersichten: [(Bereich, [(Gruppe, [(Typ, Anzahl)])])]."""
+    out: dict[str, dict[str, list[tuple[Kind, int]]]] = {}
+    for k in kinds_:
+        out.setdefault(k.area, {}).setdefault(k.group, []).append((k, counts_.get(k.key, 0)))
+    return [(a, list(gs.items())) for a, gs in out.items()]
 
 
 def kind(conn: sqlite3.Connection, key: str) -> Kind:

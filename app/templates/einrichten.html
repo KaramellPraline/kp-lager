@@ -1,0 +1,14 @@
+{% extends "_auth_base.html" %}
+{% block title %}Einrichten · {{ APP_NAME }}{% endblock %}
+{% block content %}
+<h1 style="margin-top:0">Einrichten</h1>
+<p>Erster Start: Lege den Admin-Zugang an. Weitere Benutzer folgen unter Einstellungen › Benutzer.</p>
+{% if not auth_on %}<p class="meta">Die Anmeldung ist abgeschaltet (<code>LAGER_AUTH=0</code>) – der Zugang wird erst benutzt, wenn sie eingeschaltet wird.</p>{% endif %}
+{% if error %}<p class="msg err" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/einrichten" class="stack">
+  <label>Benutzername <input name="name" value="{{ name }}" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required autofocus></label>
+  <label>Passwort (mindestens 8 Zeichen) <input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+  <label>Passwort wiederholen <input name="password2" type="password" autocomplete="new-password" minlength="8" required></label>
+  <button class="primary" style="width:100%">{{ icon('system.lock', size='sm') }} Admin anlegen</button>
+</form>
+{% endblock %}

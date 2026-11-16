@@ -31,7 +31,11 @@ def test_catalog_stores_type_and_fields(client: TestClient, tmp_path: Path) -> N
         "length": "10",
     }
     page = client.get(f"/items/{item['id']}").text
-    assert 'id="typ"' in page and "Typ: <a" in page and "<dd>M3</dd>" in page
+    assert (
+        'id="typ"' in page
+        and '<dt>Typ</dt><dd><a href="/sortiment/schraube">' in page
+        and "<dd>M3</dd>" in page
+    )
     r = client.post(f"/items/{item['id']}/typ", data={"typ": "schraube", "f_head": "Senkkopfschraube",
                     "f_thread": "M3", "f_length": "12", "rename": "1"})  # fmt: skip
     assert "Senkkopfschraube M3x12" in r.text

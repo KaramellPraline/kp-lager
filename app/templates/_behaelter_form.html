@@ -1,0 +1,58 @@
+{# Gemeinsames Behälter-Formular: mode='neu' (/neu/behaelter) oder mode='edit' (/n/<id>/bearbeiten). #}
+{% set edit = mode == 'edit' %}
+<form method="post" action="{{ form_action }}" id="container-form" class="card stack node-form">
+  <h1 style="margin:0">{% if edit %}{{ node.name }}{% elif art == 'neu' %}Neue Art von Behälter{% else %}{{ KIND_LABELS[art] }}{% endif %}</h1>
+  {% if edit %}<p class="meta" style="margin:0">Art: <b>{{ KIND_LABELS.get(art, art) }}</b>{% if node.code %} · {{ node.code }}{% endif %} · Art wechseln über die Liste</p>{% endif %}
+  {% if not edit %}<input type="hidden" name="back" value="/neu/behaelter">{% endif %}
+  {% if art == 'neu' %}
+  <input type="hidden" name="kind" value="neu">
+  <div class="frow">
+    <div class="nf">
+      <label for="new_kind">Name der Art</label>
+      <input id="new_kind" name="new_kind" placeholder="z. B. Schublade" required autocomplete="off">
+    </div>
+    <div class="nf">
+      <label for="new_prefix">Präfix für den Code <span class="meta">(3 Buchstaben)</span></label>
+      <input id="new_prefix" name="new_prefix" placeholder="SCH" maxlength="3" required autocomplete="off" class="short" style="text-transform:uppercase">
+    </div>
+  </div>
+  {% else %}
+  <input type="hidden" name="kind" value="{{ art }}">
+  {% endif %}
+  <div class="nf">
+    <label for="name">Name</label>
+    <input id="name" name="name" value="{{ node.name if edit else '' }}" placeholder="{% if art == 'room' %}z. B. Werkstatt{% elif art == 'shelf' %}z. B. Regal links{% else %}z. B. Werkzeugkiste blau{% endif %}" required autocomplete="off">
+  </div>
+  {% with dims_value=node.dims if edit else '', airtight_value=node.airtight if edit else false %}{% include "_dims.html" %}{% endwith %}
+  {% if art == 'sortingbox' %}
+  {% if edit %}<p class="meta">Kastenmodell: {{ MODELS[node.model].name if node.model in MODELS else (node.grid and 'eigenes Raster ' ~ node.grid) or 'keins' }}</p>
+  {% else %}<div class="nf">{% include "_model_select.html" %}</div>{% endif %}
+  {% endif %}
+  <div class="nf">
+    <label for="parent_id">{% if edit %}Ort{% else %}Wohin?{% endif %}</label>
+    <select id="parent_id" name="parent_id">
+      <option value="">Oberste Ebene (eigener Ort)</option>
+      {% for p in targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+    </select>
+  </div>
+  {% set more_open = edit and (node.code or node.notes or node.tare is not none) %}
+  <details class="nf" id="bf-mehr" {% if more_open %}open{% endif %}><summary>Code, Leergewicht, Notizen <span class="meta">(optional)</span></summary>
+    <div class="frow">
+      <div class="nf"><label for="code">Code <span class="meta">({% if edit %}leer = ohne Etikett{% else %}leer = automatisch beim Etikett{% endif %})</span></label>
+        <input id="code" name="code" value="{{ (node.code or '') if edit else '' }}" placeholder="z. B. {{ KIND_PREFIX.get(art, 'EUR') }}-001" autocapitalize="characters" autocomplete="off"></div>
+      <div class="nf"><label for="tare">Leergewicht <span class="meta">(g, fürs Zählen per Waage)</span></label>
+        <input id="tare" name="tare" inputmode="decimal" value="{{ '%g'|format(node.tare) if edit and node.tare is not none else '' }}"></div>
+    </div>
+    <div class="nf"><label for="notes">Notizen</label><textarea id="notes" name="notes" rows="3">{{ node.notes if edit else '' }}</textarea></div>
+  </details>
+  {% if not edit %}
+  <label class="check"><input type="checkbox" name="queue" value="1" {% if P.queue_on_place == '1' %}checked{% endif %}> Etikett in die Warteschlange</label>
+  {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" disabled>
+    <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
+  <div class="form-actions"><button class="primary">{{ icon('action.add', size='sm') }} Anlegen</button>
+    <span class="meta">Enter legt an · danach bleibt diese Art mit leerem Namen offen</span></div>
+  {% else %}
+  <div class="form-actions"><button class="primary">{{ icon('action.save', size='sm') }} Speichern</button>
+    <a class="button" href="/n/{{ node.id }}">Abbrechen</a></div>
+  {% endif %}
+</form>

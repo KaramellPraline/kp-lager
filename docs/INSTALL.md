@@ -19,6 +19,7 @@ echo "LAGER_HOST=lager.home.lan" >> .env
 docker login ghcr.io -u <github-name>   # Token mit Recht read:packages (Repo ist privat)
 docker compose pull && docker compose up -d
 ```
+Danach `https://lager.home.lan` öffnen und den Admin anlegen (`/einrichten`; Login ist Standard, siehe `docs/SICHERHEIT.md`).
 Daten liegen in `deploy/data/` (SQLite, Fotos, Backups). Weiteres: `deploy/README.md` (DNS, Zertifikat, externes Backup).
 
 **Aktualisieren:** `LAGER_VERSION` auf die neue Nummer setzen, `docker compose pull && docker compose up -d`.
@@ -27,7 +28,7 @@ Datenbank-Migrationen laufen beim Start automatisch; vorher ein Backup (`docker 
 
 ## 2. Windows-Client
 1. `KP-Lager-Client-Setup-<Version>.exe` aus dem Release laden und ausführen (kein Administrator nötig).
-2. Beim ersten Start die Server-Adresse eintragen, z. B. `https://lager.home.lan`.
+2. Beim ersten Start die Server-Adresse eintragen, z. B. `https://lager.home.lan`, und einmal anmelden – die Sitzung bleibt erhalten (Profil unter `%APPDATA%\KP Lager Client\webview`).
 3. Zertifikat des Servers (`http://lager.home.lan/ca.crt`) in Windows als vertrauenswürdige Stammzertifizierungsstelle installieren.
 4. Für D30-Druck: Bluetooth am PC, D30 einschalten und koppeln. Details: `docs/WINDOWS.md`.
 

@@ -118,8 +118,8 @@ def test_api_write_key_can_be_turned_off(client: TestClient) -> None:
     b = box(client)
     body = {"container": str(b), "text": "Debug-Teil"}
     assert client.post("/api/v1/items", json=body).status_code == 401  # Standard: Schlüssel nötig
-    page = client.get("/settings").text
-    assert "API: Schreiben nur mit Schlüssel" in page
+    page = client.get("/settings/anbindungen").text
+    assert "Schreiben nur mit Schlüssel" in page
     client.post("/settings", data={})  # Schalter aus (Checkbox nicht gesetzt)
     r = client.post("/api/v1/items", json=body)
     assert r.status_code in (200, 201), r.text

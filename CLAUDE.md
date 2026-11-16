@@ -8,10 +8,13 @@ Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite 
 - Bins (3D-Druck): `uv run --group cad python cad/norb_bins.py 2x1 --div 3x1` (siehe `docs/NORB16.md`)
 - Test: `uv run python -m pytest -q --ignore=tests/test_cad.py` (CAD-Tests: `uv sync --group cad`, dann `tests/test_cad.py`)
 - Lint/Typecheck: `uv run ruff check . && uv run ruff format --check . && uv run mypy app`
-- API/CLI/MCP: REST `/api/v1` (Lesen offen oder per Einstellung nur mit Schlüssel, Schreiben mit Schreib-Schlüssel aus Einstellungen → Admin, siehe `docs/API.md`); `uv run python tools/lager_cli.py suche lötzinn`; MCP: `uv run --group mcp python tools/lager_mcp.py` (Vorlage `docs/mcp.example.json`)
+- API/CLI/MCP: REST `/api/v1` (Lesen offen oder per Einstellung nur mit Schlüssel, Schreiben mit Schreib-Schlüssel aus Einstellungen › Anbindungen, siehe `docs/API.md`); `uv run python tools/lager_cli.py suche lötzinn`; MCP: `uv run --group mcp python tools/lager_mcp.py` (Vorlage `docs/mcp.example.json`)
 - Deploy: `cd deploy && docker compose up -d --build` (siehe `deploy/README.md`); Windows nur Client: `windows/build.ps1` (siehe `docs/WINDOWS.md`); Server nur Docker
 - Backup: `python -m app.backup [ziel] [tage]`
 - Release: `uv run python tools/release.py bump X.Y.Z`, CHANGELOG.md ausfüllen, Tag `vX.Y.Z` pushen (siehe `docs/RELEASE.md`, Installation `docs/INSTALL.md`)
+
+## Anmeldung
+- Login ist Standard (`LAGER_AUTH=1`, erster Aufruf `/einrichten`); `Settings(auth=False)` im Dataclass, damit Tests ohne Login laufen. Modell: `docs/SICHERHEIT.md` (`app/auth.py`, `app/web/guard.py`).
 
 ## Secrets
 - `LAGER_API_KEY` (nur lokal für CLI/MCP-Schreibzugriff, nie committen). Das System enthält keine KI-Bausteine (seit 2026-11-03, siehe DECISIONS).
@@ -27,8 +30,8 @@ Stack: Python ≥3.12, FastAPI, Jinja2 + HTMX (vendored, kein JS-Build), SQLite 
 - Keine externen CDNs (läuft offline im LAN).
 
 Neu (2026-11): Katalog `/neu` (`app/catalog.py`), Einsatz-Assistent `/neu/bin`, Baum `/baum`, D30-Direktdruck (`app/d30.py`, Env `LAGER_D30*`), Trockner-Scan, Filament/Harz-Dropdowns (`app/choices.py`). Hinzufügen: Katalog (Favoriten, Auto-Tags, Live-Etikett, Varianten-Reihe, Pflichtfelder; auch Filament, Harz, Netzteil, Kabel, PPE, Norb16-Bin), Behälter (`/neu/behaelter`). Druck-Agent: eigenes Repo `kp-print-agent`. Typen am Teil (`item.ctype`/`cfields`, `app/sortiment.py`, `/sortiment`), Offline-App (`app/static/sw.js`).
-Cloud/CI: Hardware (D30-Bluetooth) ist nur gemockt testbar; Rest läuft überall. Einstieg: `docs/DEVELOPMENT.md`.
+Cloud/CI: Hardware (D30-Bluetooth) ist nur gemockt testbar; Rest läuft überall. Einstieg: `docs/DEVELOPMENT.md`. Code-Ort: Routen je Bereich in `app/web/routes/<bereich>.py`, REST in `app/api/`, Karte in `docs/ARCHITECTURE.md`.
 
 A4/Etiketten: `docs/A4.md` (nie automatisch, Warteschlange → IPP nach Bestätigung); Filament/Harz: `docs/VERBRAUCH.md`; Einsätze/`bins.json`: `docs/BINS.md`. Kein XLSX mehr. Dezimalzahlen immer mit Punkt.
 
-Mehr: `README.md`, `docs/DEVELOPMENT.md`, `docs/CONFIG.md`, `docs/DEPLOYMENT.md`, `docs/FEATURES.md`, `docs/API.md`, `docs/WINDOWS.md`, `docs/ANDROID.md`, `docs/HOME_ASSISTANT.md`, `docs/INSTALL.md`, `docs/RELEASE.md`, `docs/STATUS.md` (Stand + Meilensteine), `docs/ARCHITECTURE.md` (Datenmodell), `docs/DECISIONS.md`, `docs/ETIKETTEN.md` (Code-Schema, D30), `docs/PRINT_MQTT.md` (Druck per MQTT)
+Mehr: `README.md`, `docs/DEVELOPMENT.md`, `docs/CONFIG.md`, `docs/DEPLOYMENT.md`, `docs/FEATURES.md`, `docs/API.md`, `docs/WINDOWS.md`, `docs/ANDROID.md`, `docs/HOME_ASSISTANT.md`, `docs/INSTALL.md`, `docs/RELEASE.md`, `docs/STATUS.md` (Stand + Meilensteine), `docs/ARCHITECTURE.md` (Datenmodell), `docs/DECISIONS.md`, `docs/ETIKETTEN.md` (Code-Schema, D30), `docs/PRINT_MQTT.md` (Druck per MQTT), `docs/SICHERHEIT.md` (Login, CSRF, was geschützt ist)

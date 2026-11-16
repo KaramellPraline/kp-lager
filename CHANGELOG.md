@@ -3,6 +3,43 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [2.0.0] – 2026-11-15
+
+Vollversion: Betrieb als gehosteter Dienst mit Anmeldung, Anlegen und Bearbeiten über dasselbe Formular,
+117 Typen in Bereichen, alle externen Anbindungen an einem Ort, aufgeräumte Oberfläche und Code-Struktur.
+
+**Vor dem Update:** Backup erstellen. Beim ersten Aufruf führt `/einrichten` durch das Anlegen des Admin-Kontos
+(oder `LAGER_ADMIN_USER` + `LAGER_ADMIN_PASSWORD_FILE` setzen). Windows-Clients mit D30-Bridge aktualisieren.
+Migration 029 läuft automatisch.
+
+### Neu
+- Typen in zwei Ebenen: 9 Bereiche (Befestigung · Mechanik & Antrieb · Elektronik · Elektrik & Strom · Werkzeug & Messen · 3D-Druck & Laser · Material & Chemie · Netzwerk & IT · Haus & Schutz) mit Gruppen; beim Anlegen und im Sortiment mit Suchfeld, eigene Typen im Bereich „Eigene Typen“.
+- 46 neue Typen, u. a. O-Ring/Dichtung, Feder, Zahnriemen, Riemenscheibe, Zahnrad, Linearführung, Gleitlager, Gewindespindel, Rolle, Motor, Lüfter, Relais, Quarz, Kühlkörper, Akkuzelle, Werkzeug-Akku, Ladegerät, Steckdosenleiste, Fräser, Sägeblatt, Bit, Trennscheibe, Reiniger, Laser-Platte, Druckbett, Heizpatrone, Handschuhe, Atemschutz, Feuerlöscher, Leuchtmittel.
+- API `GET /api/v1/types/catalog`: Feld `area` je Typ; Favoriten erscheinen dort nicht mehr doppelt.
+- **Anmeldung** für den Betrieb als Dienst (Standard an, `LAGER_AUTH=0` schaltet ab): erster Start `/einrichten`, Benutzer mit Rolle Admin/Nutzer, Passwörter mit scrypt, Sitzung 30 Tage gleitend, Sperre nach 5 Fehlversuchen, Rücksprung zum gescannten Code nach dem Login. Optional Admin per `LAGER_ADMIN_USER` + `LAGER_ADMIN_PASSWORD_FILE` (Docker-Secret). Modell: `docs/SICHERHEIT.md`.
+- Schutz gegen fremde Formulare (Origin-Prüfung) für alle schreibenden Anfragen der Oberfläche, auch ohne Login.
+- **Einstellungen in Reitern:** Allgemein · Bedienung · Anbindungen · Benutzer · System (Admin heißt jetzt System; `/settings/admin` leitet weiter).
+- **Anbindungen** an einem Ort mit Status und „Testen“: API & Schlüssel, MCP (kopierbare Konfiguration), Home Assistant (YAML mit echter Adresse), Druck (A4/IPP, MQTT-Broker jetzt auch in der App einstellbar, D30-Bridge an/aus), Backup extern. Passwörter werden nie wieder angezeigt; Umgebungsvariablen haben Vorrang.
+- D30-PC-Bridge holt Etikettenbilder über signierte Kurzlinks (funktioniert mit Anmeldung); `tools/d30_print.py --key`.
+- **Hinzufügen = Bearbeiten:** Teile werden mit demselben Formular angelegt (`/neu`) und bearbeitet (`/items/<id>/bearbeiten`): gleiche Anordnung, Typ-Felder, Name aus Vorlage (eigener Anzeigename möglich), Pflichtfelder, Auswahlwerte, Bestand und Ort, Einkauf & Mindestbestand, Datenblatt & Eigenschafts-Profile (Filament, Harz, Elektronik, Kabel, Netzteil), Haltbarkeit, Suchbegriffe, Tag, Notizen. Typwechsel beim Bearbeiten über dieselbe Typ-Liste; gleichnamige Felder bleiben. Beim Anlegen werden die zusätzlichen Felder (Mindestbestand, Preis, Links, Notizen …) gleich mitgespeichert.
+- Behälter ebenso: `/neu/behaelter` und `/n/<id>/bearbeiten` teilen ein Formular (Art, Name, Größe, Luftdicht, Ort, Code, Leergewicht, Notizen).
+- Teil-Seite: „Einlagern“ mit Menge (`POST /items/<id>/einlagern`, offline gemerkt).
+
+### Geändert
+- **Teil-Seite als klare Ansicht:** oben Name, Code, Ort und Menge, darunter die Aktionen (Entnehmen mit Mengenwahl, Einlagern, Umlagern, Etikett, Bearbeiten, Foto), dann Eigenschaften (Typ-Felder und Datenblatt als eine Liste); Verlauf, Einkäufe, Karten, Waage, Haltbarkeit, Trocknen, Verleihen, Etikett & Kopie und Gefahrenzone einklappbar. Die drei getrennten Bearbeiten-Stellen sind entfallen. Behälter-Seite analog.
+- Neue Filament-/Harz-Spule per Scan öffnet direkt das Bearbeiten-Formular (Datenblatt ausfüllen).
+- Navigation: Seitenleiste nur noch Bestand · Hinzufügen · Scannen · Suche · Drucken, dann Mehr und Einstellungen; „Mehr“ gruppiert (Lager, Werkstatt, Einkauf, System), Seltenes unter „Selten gebraucht“.
+- Hinzufügen am Handy: statt der langen Typ-Liste oben nur „Typ: … ändern“ und Favoriten/zuletzt genutzte Typen als Chips; die volle Liste (Bereich › Gruppe › Typ mit Suche) öffnet sich bei Bedarf. Bei Behältern ebenso („Art: … ändern“).
+- Einstellungen: Reiter brechen auf schmalen Bildschirmen um, alle sind sichtbar.
+- `/etiketten/typ` gegliedert nach Bereich › Gruppe mit Suchfeld wie das Sortiment.
+- Windows-Client merkt sich die Anmeldung (pywebview ohne privaten Modus).
+- Offline-App: Login-Seite wird nie als Offline-Fassung gespeichert; Buchungen, die wegen abgelaufener Anmeldung abgelehnt werden, bleiben gemerkt.
+- Code-Struktur: Routen nach Bereichen in `app/web/routes/` und `app/api/` (Karte in `docs/ARCHITECTURE.md`); Verhalten unverändert.
+- Lange Namen werden mit Silbentrennung umbrochen statt mitten im Wort.
+
+### Behoben
+- Suche nach einem einzelnen Buchstaben ergab einen Serverfehler (HTTP 500), in Oberfläche und API.
+
 ## [1.3.0] – 2026-11-04
 
 ### Behoben

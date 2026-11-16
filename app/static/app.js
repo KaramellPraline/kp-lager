@@ -205,8 +205,14 @@
     if (!box) return;
     var kind = kindOf(form), kinds = JSON.parse(box.dataset.kinds || "[]");
     var sel = box.querySelector("select"), opts = JSON.parse(sel.dataset.opts || "{}");
-    var show = kinds.indexOf(kind) >= 0, keep = sel.value;
+    var show = kinds.indexOf(kind) >= 0, keep = sel.value || sel.dataset.value || "";
     var list = opts[kind] || opts["*"] || [];
+    var custom0 = form.querySelector("#dims-new input");
+    if (keep && keep !== "neu" && list.indexOf(keep) < 0) {  // Bearbeiten: eigene Maße vorbelegen
+      if (custom0 && !custom0.value) custom0.value = keep;
+      keep = "neu";
+    }
+    sel.dataset.value = "";
     sel.innerHTML = "";
     function add(v, t) { var o = document.createElement("option"); o.value = v; o.textContent = t; sel.appendChild(o); }
     add("", "– keine Angabe –");
@@ -286,12 +292,13 @@
   document.addEventListener("DOMContentLoaded", function () {
     var toast = document.querySelector(".toast[data-d30-codes]");
     if (!toast) return;
-    var codes = toast.dataset.d30Codes.split(",").filter(Boolean);
+    var codes = toast.dataset.d30Codes.split(",").filter(Boolean), tokens = {};
+    try { tokens = JSON.parse(toast.dataset.d30Tokens || "{}"); } catch (e) { /* ohne Kurzlinks */ }
     var label = toast.querySelector("span");
     function say(text) { if (label) label.textContent = text; toast.removeAttribute("data-autohide"); }
     say("Drucke " + codes.length + " Etikett(en) über die PC-Bridge …");
     fetch(BRIDGE + "/print", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes: codes })
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ codes: codes, tokens: tokens })
     }).then(function (r) { return r.json(); }).then(function (d) {
       if (!d.ok) throw new Error(d.error || "Druck fehlgeschlagen");
       var f = new FormData(); codes.forEach(function (c) { f.append("code", c); });
@@ -328,18 +335,20 @@
     function preview() {
       markChips(form);
       clearTimeout(timer);
+      if (!form.dataset.typ) return;  // Teil ohne Typ: kein Name aus Feldern, kein Etikett
       timer = setTimeout(function () {
         var q = new URLSearchParams({ typ: form.dataset.typ });
         form.querySelectorAll("input[name^=f_]").forEach(function (i) { q.set(i.name, i.value); });
         fetch("/neu/vorschau?" + q.toString()).then(function (r) { return r.json(); })
-          .then(function (d) { np.textContent = d.name || "–"; }).catch(function () {});
+          .then(function (d) { if (np) np.textContent = d.name || "–"; }).catch(function () {});
+        if (form.dataset.item) q.set("item", form.dataset.item);
         var img = document.getElementById("label-img");
         if (img) img.src = "/neu/etikett.png?" + q.toString();
       }, 120);
     }
     form.addEventListener("input", preview);
     // Entwurf: Eingaben überleben den Abstecher in den Etikett-Editor (sessionStorage)
-    var dkey = "neu-draft-" + form.dataset.typ;
+    var dkey = "neu-draft-" + (form.dataset.scope || form.dataset.typ);
     function saveDraft() {
       var d = {};
       form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
@@ -351,7 +360,7 @@
       try {
         var saved = JSON.parse(sessionStorage.getItem(dkey) || "null");
         if (saved) form.querySelectorAll("input[name],select[name],textarea[name]").forEach(function (i) {
-          if (!(i.name in saved)) return;
+          if (!(i.name in saved) || i.name === "typ") return;
           if (i.type === "checkbox") i.checked = !!saved[i.name]; else i.value = saved[i.name];
         });
         sessionStorage.removeItem(dkey);
@@ -359,6 +368,18 @@
     }
     var live = document.getElementById("label-live");
     if (live) live.addEventListener("click", saveDraft);
+    // Bearbeiten: Typwechsel über die Liste nimmt die bisherigen Eingaben mit
+    if (form.dataset.scope) document.addEventListener("click", function (e) {
+      if (e.target.closest(".type-tree a[href*='typ='], .quick-types a")) saveDraft();
+    });
+    // Eigenschafts-Profil: passende Felder zeigen, die anderen nicht mitsenden
+    var prof = form.querySelector("[data-profile-select]");
+    if (prof) prof.addEventListener("change", function () {
+      form.querySelectorAll("fieldset[data-profile]").forEach(function (fs) {
+        var on = fs.dataset.profile === prof.value;
+        fs.hidden = !on; fs.disabled = !on;
+      });
+    });
     form.addEventListener("click", function (e) {
       var b = e.target.closest("button[formaction]");
       if (b) saveDraft();
@@ -406,18 +427,6 @@
     form.addEventListener("change", syncReq);
     syncReq();
     preview();
-    var filter = document.getElementById("type-filter");
-    if (filter) filter.addEventListener("input", function () {
-      var q = filter.value.trim().toLowerCase();
-      document.querySelectorAll(".neu-types li a").forEach(function (a) {
-        a.parentElement.hidden = !!q && a.dataset.name.indexOf(q) < 0;
-      });
-      document.querySelectorAll(".neu-types details.grp").forEach(function (g) {
-        var hit = !!g.querySelector("li:not([hidden])");
-        g.hidden = !!q && !hit;
-        if (q && hit) g.open = true;
-      });
-    });
   });
 
   // Einsatz-Assistent: freie Zellen je Kasten, Zeilen je Fach
@@ -473,7 +482,7 @@
 
 /* Typ-Liste: Scrollposition und aufgeklappte Gruppen bleiben beim Wechsel erhalten */
 (function () {
-  var KEY_SCROLL = "neu_types_scroll", KEY_OPEN = "neu_types_open";
+  var KEY_SCROLL = "neu_types_scroll", KEY_OPEN = "neu_types_areas";
   function get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
   function put(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* ohne Speicher */ } }
   document.addEventListener("DOMContentLoaded", function () {
@@ -481,11 +490,13 @@
     if (!list) return;
     var open = null;
     try { open = JSON.parse(get(KEY_OPEN) || "null"); } catch (e) { open = null; }
-    list.querySelectorAll("details.grp").forEach(function (g) {
-      if (open && open.indexOf(g.dataset.g) >= 0) g.open = true;
+    var filter = document.getElementById("type-filter");
+    list.querySelectorAll("details.area").forEach(function (g) {
+      if (open && open.indexOf(g.dataset.a) >= 0) g.open = true;
       g.addEventListener("toggle", function () {
-        var names = Array.prototype.filter.call(list.querySelectorAll("details.grp"), function (x) { return x.open; })
-          .map(function (x) { return x.dataset.g; });
+        if (filter && filter.value.trim()) return;  // Suche klappt nur vorübergehend auf
+        var names = Array.prototype.filter.call(list.querySelectorAll("details.area"), function (x) { return x.open; })
+          .map(function (x) { return x.dataset.a; });
         put(KEY_OPEN, JSON.stringify(names));
       });
     });
@@ -832,4 +843,24 @@ document.addEventListener("DOMContentLoaded", function () {
   svg.addEventListener("click", function (e) {
     if (on) { e.preventDefault(); e.stopPropagation(); }
   }, true);
+});
+
+/* Typ-Liste (Anlegen, Sortiment): Suchfeld filtert über Bereiche › Gruppen › Typen */
+document.addEventListener("DOMContentLoaded", function () {
+  var filter = document.getElementById("type-filter"), tree = document.querySelector(".type-tree");
+  if (!filter || !tree) return;
+  filter.addEventListener("input", function () {
+    var q = filter.value.trim().toLowerCase();
+    tree.querySelectorAll("li a[data-name]").forEach(function (a) {
+      a.parentElement.hidden = !!q && a.dataset.name.indexOf(q) < 0;
+    });
+    tree.querySelectorAll(".grp, details.area").forEach(function (g) {
+      var hit = !!g.querySelector("li:not([hidden])");
+      g.hidden = !!q && !hit;
+      if (g.tagName !== "DETAILS") return;
+      if (q && !g.dataset.was) g.dataset.was = g.open ? "1" : "0";
+      if (q) g.open = hit;
+      else if (g.dataset.was) { g.open = g.dataset.was === "1"; delete g.dataset.was; }
+    });
+  });
 });

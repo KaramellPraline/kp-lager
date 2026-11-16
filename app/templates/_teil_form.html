@@ -1,0 +1,174 @@
+{# Gemeinsames Teile-Formular: mode='neu' (leer, /neu) oder mode='edit' (vorbefüllt, /items/<id>/bearbeiten).
+   Gleiche Anordnung, gleiche Felder, gleiche Typ-Logik (Felder des Typs, Name aus Vorlage, Pflichtfelder, Auswahlwerte). #}
+{% set edit = mode == 'edit' %}
+<form method="post" action="{{ form_action }}" id="neu-form" class="card stack teil-form" data-typ="{{ ctype.key if ctype else '' }}" data-draft="{{ 1 if draft else 0 }}"{% if edit %} data-scope="item-{{ item.id }}" data-item="{{ item.id }}"{% endif %}>
+  <div class="title-row"><h1 style="margin:0">{% if edit %}{{ item.name }}{% else %}{{ ctype.label }}{% endif %}</h1>
+    {% if ctype and not edit %}<button type="submit" class="star fav-star {% if ctype.key in favs %}on{% endif %}" formaction="/neu/favorit" formnovalidate aria-label="Typ als Favorit {{ 'lösen' if ctype.key in favs else 'markieren' }}" title="Favorit">{{ icon('content.star') }}</button>{% endif %}</div>
+  {% if edit %}<p class="meta" style="margin:0">Typ: <b>{{ ctype.label if ctype else 'kein Typ' }}</b>{% if item.code %} · {{ item.code }}{% endif %} · Typ wechseln über die Liste{% if ctype %} (Felder mit gleichem Namen bleiben){% endif %}</p>{% endif %}
+  <input type="hidden" name="typ" value="{{ ctype.key if ctype else '' }}">
+  {% macro field(f, chips) %}
+  {% set fo = opts[f.key] %}
+  <div class="nf">
+    <label for="f_{{ f.key }}">{{ f.label }}{% if f.key in required %} <b class="req" title="Pflichtfeld">*</b>{% endif %}{% if f.unit %} <span class="meta">({{ f.unit }})</span>{% endif %}</label>
+    <div class="inrow"><input id="f_{{ f.key }}" name="f_{{ f.key }}" class="grow" {% if fo %}list="dl_{{ f.key }}"{% endif %} placeholder="{{ f.hint }}" value="{{ prefill.get(f.key, '') }}" autocomplete="off" {% if f.key in required %}data-req="1"{% endif %}>
+      {% if mode != 'edit' %}<label class="keep" title="Wert für das nächste Teil dieses Typs merken"><input type="checkbox" name="keep_{{ f.key }}" value="1" aria-label="{{ f.label }} merken" {% if f.key in kept %}checked{% endif %}></label>{% endif %}</div>
+    {% if fo %}
+    <datalist id="dl_{{ f.key }}">{% for o in fo %}<option value="{{ o }}">{% endfor %}</datalist>
+    {% if chips %}<div class="chips">{% for o in fo[:18] %}<button type="button" class="chip" data-for="f_{{ f.key }}">{{ o }}</button>{% endfor %}</div>{% endif %}
+    {% endif %}
+  </div>
+  {% endmacro %}
+  {% macro frows(rows, chips) %}{% for r in rows %}{% if r|length > 1 %}<div class="frow">{% for f in r %}{{ field(f, chips) }}{% endfor %}</div>{% else %}{{ field(r[0], chips) }}{% endif %}{% endfor %}{% endmacro %}
+  {% if not edit %}<input type="hidden" name="keeps" value="1">{% endif %}
+
+  {% if ctype %}
+  {% if presets or ctype.key in ('filament', 'harz') %}
+  <div class="presets" id="presets">
+    <span class="meta">Klasse:</span>
+    {% for p in presets %}<button type="button" class="chip preset-chip" data-preset="{{ p.data|tojson|forceescape }}">{{ p.name }}</button>{% endfor %}
+    {% if not edit %}
+    <details class="preset-edit"><summary class="chip" title="Presets anlegen oder löschen">+ Preset</summary>
+      <div class="stack">
+        <p class="meta">Aktuelle Eingaben als Klasse speichern (Hersteller, Kunststoff, Zusatz, Spule, Preis …). Neue Hersteller erscheinen automatisch in der Auswahl.</p>
+        <div class="row"><input name="preset_name" class="grow" placeholder="Name, z. B. Prusament PETG" aria-label="Preset-Name"><button type="submit" formaction="/neu/preset" formnovalidate class="primary">Speichern</button></div>
+        {% if presets %}<div class="chips">{% for p in presets %}<button type="submit" formaction="/neu/preset/{{ p.id }}/loeschen" formnovalidate class="chip" title="{{ p.name }} löschen">{{ p.name }} ×</button>{% endfor %}</div>{% endif %}
+      </div>
+    </details>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if last_vals and not edit %}<div class="row"><button type="button" id="use-last" class="chip" data-last="{{ last_vals|tojson|forceescape }}" title="Alle Felder vom zuletzt angelegten Teil dieses Typs übernehmen">Wie letztes Teil</button><span class="meta">alle Felder des zuletzt angelegten Teils übernehmen</span></div>{% endif %}
+  {% if sections.required %}<div class="sect-h">Pflichtfelder</div>{{ frows(sections.required, true) }}{% endif %}
+  {% if sections.optional %}{% if sections.required %}<div class="sect-h">Optional</div>{% endif %}{{ frows(sections.optional, true) }}{% endif %}
+  {% if sections.extra %}
+  <details class="nf extra-fields"><summary>Weitere Typ-Angaben <span class="meta">(optional)</span></summary>
+  {{ frows(sections.extra, false) }}
+  </details>
+  {% endif %}
+  {% endif %}
+
+  <div class="nf">
+    <label for="name">Anzeigename{% if ctype %} <span class="meta">(leer = aus den Feldern: <b id="np">{{ auto_name or '–' }}</b>)</span>{% endif %}</label>
+    <input id="name" name="name" value="{{ base.name or '' }}" autocomplete="off" {% if not ctype %}required{% endif %} placeholder="{{ 'automatisch' if ctype else 'z. B. Lötzinn 0.5 mm' }}">
+  </div>
+  {% if ctype %}
+  <a class="label-live card" id="label-live" href="/etiketten/typ/{{ ctype.key }}?back={{ (('/items/' ~ item.id ~ '/bearbeiten?typ=' ~ ctype.key ~ '&draft=1') if edit else ('/neu?typ=' ~ ctype.key ~ '&draft=1'))|urlencode }}" title="Etikett-Layout bearbeiten (Eingaben bleiben erhalten)">
+    <img id="label-img" alt="Etikett-Vorschau" width="320" height="96" src="/neu/etikett.png?typ={{ ctype.key|urlencode }}{% if edit %}&item={{ item.id }}{% endif %}">
+    <span class="meta">Etikett-Vorschau · antippen zum Bearbeiten des Layouts</span></a>
+  {% endif %}
+
+  {% if not edit and ctype %}
+  <details class="nf" id="series-box"><summary>Varianten-Reihe <span class="meta">(mehrere Teile auf einmal, z. B. Längen)</span></summary>
+    <label for="series_field">Feld</label>
+    <select id="series_field" name="series_field"><option value="">– keine Reihe –</option>{% for f in series_fields %}<option value="{{ f.key }}">{{ f.label }}</option>{% endfor %}</select>
+    <label for="series_values">Werte <span class="meta">(Komma getrennt, z. B. 6, 8, 10, 12)</span></label>
+    <input id="series_values" name="series_values" data-keep-comma autocomplete="off" placeholder="6, 8, 10, 12">
+    {% for f in series_fields %}<div class="chips" data-series="{{ f.key }}" hidden>{% for o in opts[f.key][:18] %}<button type="button" class="chip" data-add="{{ o }}">{{ o }}</button>{% endfor %}</div>{% endfor %}
+    <span class="meta">Jeder Wert wird ein eigenes Teil mit eigenem Code; die Etiketten laufen als Satz in den Druck.</span>
+  </details>
+  <details class="nf"><summary>Pflichtfelder festlegen <span class="meta">(für „{{ ctype.label }}“)</span></summary>
+    <div class="chips">{% for f in ctype.fields %}<label class="chip"><input type="checkbox" name="req_{{ f.key }}" value="1" {% if f.key in required %}checked{% endif %}> {{ f.label }}</label>{% endfor %}</div>
+    <button type="submit" formaction="/neu/pflicht" formnovalidate>Pflichtfelder speichern</button>
+  </details>
+  {% endif %}
+
+  <div class="sect-h">Bestand</div>
+  <div class="frow">
+    <div class="nf">
+      <label for="qty">{% if ctype and ctype.single and not edit %}Anzahl{% else %}Menge{% endif %} <span class="meta">({% if ctype and ctype.single and not edit %}jede Spule/Flasche ein eigenes Teil{% else %}leer = ungezählt{% endif %})</span></label>
+      <div class="inrow"><input id="qty" name="qty" inputmode="numeric" class="grow" autocomplete="off" value="{{ base.qty if base.qty is not none else '' }}">
+        {% if not edit %}<label class="keep single" title="Einzelteile: jedes Stück ein eigenes Teil mit eigenem Code und Etikett"><input type="checkbox" name="single" value="1" aria-label="Einzelteile" {% if ctype and ctype.single %}checked disabled{% endif %}> <span class="meta">Einzelteile</span></label>{% endif %}</div>
+    </div>
+    <div class="nf unit-f">
+      <label for="unit">Einheit</label>
+      <input id="unit" name="unit" value="{{ base.unit or '' }}" placeholder="{{ P.default_unit or 'Stk' }}" autocomplete="off">
+    </div>
+  </div>
+  <div class="chips">{% for q in ('1', '5', '10', '25', '50', '100', '200', '500') %}<button type="button" class="chip" data-for="qty">{{ q }}</button>{% endfor %}</div>
+  <div class="nf">
+    <label for="target">{% if edit %}Ort{% else %}Wohin?{% endif %}</label>
+    <div class="row"><select id="target" name="target" class="grow">
+      {% if not edit %}<option value="">Zu sortieren (Box of Shame)</option>{% endif %}
+      {% if recent_targets %}<optgroup label="Zuletzt">{% for p in recent_targets %}<option value="{{ p.id }}" {% if p.id == target %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</optgroup>{% endif %}
+      <optgroup label="Alle Orte">{% for p in targets %}<option value="{{ p.id }}" {% if p.id == target and (edit or not recent_targets) %}selected{% endif %}>{{ p.label }}</option>{% endfor %}</optgroup>
+      {% if fav_targets %}<optgroup label="Favoriten">{% for p in fav_targets %}<option value="{{ p.id }}">{{ p.label }}</option>{% endfor %}</optgroup>{% endif %}
+    </select>
+    {% if not edit %}<button type="button" class="icon-btn" data-set="target" data-val="" title="Zu sortieren (Box of Shame)" aria-label="Zu sortieren">{{ icon('content.inbox') }}</button>{% endif %}</div>
+    <div class="chips place-sugg" data-select="target" aria-label="Platz-Vorschläge"></div>
+  </div>
+
+  {% set buy_open = edit and (base.min_qty is not none or base.order_qty is not none or base.price is not none or base.order_url) %}
+  <details class="nf" id="tf-einkauf" {% if buy_open %}open{% endif %}><summary>Einkauf &amp; Mindestbestand <span class="meta">(optional)</span></summary>
+    <div class="frow">
+      <div class="nf"><label for="min_qty">Mindestbestand <span class="meta">(darunter → Einkaufsliste)</span></label>
+        <input id="min_qty" name="min_qty" value="{{ base.min_qty if base.min_qty is not none else '' }}" inputmode="numeric" placeholder="{% if tset.min_qty is not none %}leer = Typ-Standard {{ tset.min_qty }}{% else %}leer = keiner{% endif %}"></div>
+      <div class="nf"><label for="order_qty">Wunschmenge beim Nachkaufen</label>
+        <input id="order_qty" name="order_qty" value="{{ base.order_qty if base.order_qty is not none else '' }}" inputmode="numeric" placeholder="leer = bis Mindestbestand"></div>
+    </div>
+    <div class="frow">
+      {% if not has_price_field %}<div class="nf"><label for="price">Preis <span class="meta">(€)</span></label>
+        <input id="price" name="price" value="{{ '%.2f'|format(base.price) if base.price is not none else '' }}" inputmode="decimal" placeholder="z. B. 19.99"></div>{% endif %}
+      <div class="nf"><label for="order_url">Bestell-Link</label>
+        <input id="order_url" name="order_url" value="{{ base.order_url or '' }}" inputmode="url" placeholder="https://…"></div>
+    </div>
+  </details>
+
+  <details class="nf" id="tf-datenblatt" {% if edit and (specs or (profile and not profile_fixed)) %}open{% endif %}><summary>Datenblatt &amp; Eigenschaften <span class="meta">({% if profile %}{{ (profiles|selectattr('key', 'equalto', profile)|first).label }}{% else %}optional{% endif %})</span></summary>
+    {% if profile_fixed %}
+    <p class="meta">Eigenschafts-Profil vom Typ: <b>{{ (profiles|selectattr('key', 'equalto', profile_fixed)|first).label }}</b> · Felder oben gehen ins Datenblatt.</p>
+    <input type="hidden" name="material" value="{{ profile_fixed }}">
+    {% else %}
+    <label for="profile-sel">Eigenschafts-Profil
+      <select id="profile-sel" name="material" data-profile-select>
+        <option value="" {% if not profile %}selected{% endif %}>– kein –</option>
+        {% for p in profiles %}<option value="{{ p.key }}" {% if p.key == profile %}selected{% endif %}>{{ p.label }}</option>{% endfor %}
+      </select></label>
+    {% endif %}
+    {% for p in profiles %}
+    <fieldset class="spec-set" data-profile="{{ p.key }}" {% if p.key != profile %}hidden disabled{% endif %}>
+      {% for glabel, fs in p.groups %}{% set fs = fs|rejectattr('key', 'in', covered if p.key == profile_fixed else [])|list %}{% if fs %}
+      <h3>{{ glabel }}</h3>
+      <div class="spec-grid">{% for f in fs %}
+        <label>{{ f.de }}{% if f.unit %} ({{ f.unit }}){% endif %}
+          <input name="spec_{{ f.key }}" value="{{ specs.get(f.key, '') }}" placeholder="{{ f.hint }}" {% if f.unit and f.key not in ('shore',) %}inputmode="decimal"{% endif %}></label>
+      {% endfor %}</div>{% endif %}{% endfor %}
+    </fieldset>
+    {% endfor %}
+    <div class="frow">
+      <div class="nf"><label for="model">Modellnummer</label><input id="model" name="model" value="{{ base.model or '' }}" placeholder="z. B. ESP32-WROOM-32E"></div>
+      <div class="nf"><label for="datasheet_url">Datenblatt-URL <span class="meta">(PDF, wird gespeichert)</span></label><input id="datasheet_url" name="datasheet_url" value="{{ base.datasheet_url or '' }}" inputmode="url" placeholder="https://…"></div>
+    </div>
+  </details>
+
+  {% set more_open = edit and (base.full_name or base.qty_hint or base.expires or base.opened or base.notes) %}
+  <details class="nf" id="tf-mehr" {% if more_open %}open{% endif %}><summary>Weitere Angaben <span class="meta">(Haltbarkeit, Suchbegriffe, Notizen …)</span></summary>
+    <div class="nf"><label for="full_name">Vollständiger Name</label><input id="full_name" name="full_name" value="{{ base.full_name or '' }}" placeholder="z. B. Hersteller, Serie, genaue Bezeichnung"></div>
+    <div class="nf"><label for="qty_hint">Mengenhinweis</label><input id="qty_hint" name="qty_hint" value="{{ base.qty_hint or '' }}" placeholder="z. B. viele, ca. 20"></div>
+    <div class="frow">
+      <div class="nf"><label for="expires">Haltbar bis</label><input id="expires" name="expires" type="date" value="{{ base.expires or '' }}"></div>
+      <div class="nf"><label for="opened">Geöffnet am</label><input id="opened" name="opened" type="date" value="{{ base.opened or '' }}"></div>
+    </div>
+    <div class="nf"><label for="tags">Suchbegriffe <span class="meta">({% if edit %}bei Typwechsel neu gebildet{% else %}zusätzlich zu den automatischen{% endif %})</span></label><input id="tags" name="tags" value="{{ base.tags or '' }}"></div>
+    <div class="nf"><label for="type_id">Tag</label>
+      <select id="type_id" name="type_id" data-new-type>
+        <option value="">– kein Tag –</option>
+        {% for t in types %}<option value="{{ t.id }}" {% if t.id == base.type_id %}selected{% endif %}>{{ t.name }} · {{ t.code }}</option>{% endfor %}
+        <option value="neu">Neuer Tag …</option>
+      </select>
+      <input name="new_type" placeholder="Name des neuen Tags" aria-label="Name des neuen Tags" hidden></div>
+    <div class="nf"><label for="notes">Notizen</label><textarea id="notes" name="notes" rows="3">{{ base.notes or '' }}</textarea></div>
+  </details>
+
+  {% if not edit %}
+  <details class="nf"><summary>Karte: Notiz oder Datenblatt-Link <span class="meta">(optional)</span></summary>
+    <textarea name="note" rows="2" aria-label="Notiz oder Link" placeholder="Text oder https://…"></textarea></details>
+  <label class="check meta"><input type="checkbox" name="no_label" value="1"> Kein eigenes Etikett (nur Tags, Fachinhalt)</label>
+  {% if D30 %}<label class="d30-check" data-d30><input type="checkbox" name="d30_print" value="1" {% if print_mode == 'einzel' %}checked{% endif %} disabled>
+    <span class="d30-dot" aria-hidden="true"></span> <span class="d30-txt">D30 direkt drucken</span></label>{% endif %}
+  <div class="form-actions"><button class="primary" id="neu-submit">{{ icon('action.add', size='sm') }} Anlegen</button>
+    <span class="meta">Enter legt an · danach bleibt dieser Typ mit leeren Feldern offen</span></div>
+  {% else %}
+  <div class="form-actions"><button class="primary" id="neu-submit">{{ icon('action.save', size='sm') }} Speichern</button>
+    <a class="button" href="/items/{{ item.id }}">Abbrechen</a></div>
+  {% endif %}
+</form>

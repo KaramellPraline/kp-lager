@@ -47,7 +47,7 @@ def test_read_only_with_key_when_setting_on(api, tmp_path: Path) -> None:  # typ
     assert apikeys.verify(conn, r["X-API-Key"]) is False and apikeys.verify(
         conn, r["X-API-Key"], "read"
     )
-    assert "Lesen" in c.get("/settings/admin").text
+    assert "Lesen" in c.get("/settings/anbindungen").text
 
 
 def test_admin_creates_keys_with_scope(api) -> None:  # type: ignore[no-untyped-def]

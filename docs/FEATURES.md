@@ -11,6 +11,15 @@
   bleiben beim Wechsel erhalten). Felder per Chip oder Eingabe, Live-Namensvorschau, danach bleibt der Typ mit leeren Feldern offen.
 - **Einsatz-Assistent (`/neu/bin`):** Sortierkasten wählen → freie Zelle, Breite X × Tiefe Y, Anzahl Fächer → je Fach Art,
   Variante, Menge. Optional Inhalts- und QR-Etikett vormerken bzw. direkt drucken.
+- **Ein Formular für Anlegen und Bearbeiten:** `/neu` (leer) und `/items/<id>/bearbeiten` (vorbefüllt) nutzen dasselbe
+  Formular (`app/templates/_teil_form.html`, Speichern in `app/teilform.py`): Typ wählen → Felder des Typs, Name aus Vorlage
+  (leer lassen) oder eigener Anzeigename, Pflichtfelder, Bestand und Ort, Einkauf & Mindestbestand, Datenblatt mit
+  Eigenschafts-Profil, weitere Angaben. Typwechsel beim Bearbeiten über die Typ-Liste, gleichnamige Felder bleiben.
+  Am Handy steht oben nur „Typ: … ändern“ mit Favoriten/zuletzt genutzten Typen; die volle Liste öffnet sich bei Bedarf.
+  Behälter: `/neu/behaelter` ↔ `/n/<id>/bearbeiten` (`_behaelter_form.html`).
+- **Teil-Seite:** Kopf mit Name, Code, Ort, Menge; Aktionen Entnehmen (Menge vorbelegt bzw. per Chip, max. 2 Taps), Einlagern,
+  Umlagern, Etikett, Bearbeiten, Foto; Eigenschaften als eine Liste; alles Weitere einklappbar (Verlauf, Einkäufe, Karten,
+  Waage, Haltbarkeit, Trocknen, Verleihen, Etikett & Kopie, Gefahrenzone).
 - **Behälter:** Art als Kachel (inkl. Maschine `MAS`, Filamenttrockner `TRO`), Größe aus vorhandenen Boxen/Euro-Normen, „Luftdicht“.
 - **Foto, Import:** Foto per Handykamera am Teil/Behälter, JSON-Import/-Export. Keine KI-Funktionen.
 
@@ -18,6 +27,7 @@
 
 - Startseite und `/baum`: aufklappbarer Baum (Zweige laden beim Aufklappen), ab dem 10. Eintrag „Mehr anzeigen“.
 - Suche (`/suche`): Wortstämme, Synonyme, Tippfehler, Tag-Filter; Code im Suchfeld springt direkt.
+- Navigation: Seitenleiste Bestand · Hinzufügen · Scannen · Suche · Drucken; „Mehr“ gruppiert, Seltenes unter „Selten gebraucht“.
 - Freie Plätze, Verlauf mit Rückgängig, Verliehen, Einkaufsliste (Mindestbestand, Bestellt/Eingetroffen), Lagerwert je Behälter.
 
 ## Etiketten und Drucken

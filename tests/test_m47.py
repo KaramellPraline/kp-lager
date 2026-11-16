@@ -32,7 +32,9 @@ def test_print_mode_menu_and_queue(client: TestClient) -> None:
 def test_container_tare(client: TestClient) -> None:
     box = _box(client)
     client.post(f"/n/{box}/edit", data={"name": "Regal", "tare": "125,5"})
-    assert 'name="tare" inputmode="decimal" value="125.5"' in client.get(f"/n/{box}").text
+    assert (
+        'name="tare" inputmode="decimal" value="125.5"' in client.get(f"/n/{box}/bearbeiten").text
+    )
     r = client.post(f"/n/{box}/edit", data={"name": "Regal", "tare": "abc"})
     assert "kein Gewicht" in r.text
 
