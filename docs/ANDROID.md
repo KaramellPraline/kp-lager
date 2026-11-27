@@ -14,6 +14,9 @@ In der App:
 - **QR-Scan** fragt beim ersten Mal nach der Kamera-Berechtigung.
 - **Fotos** kommen aus Kamera oder Galerie; **Downloads** (Export, PDF) landen in „Downloads“.
 - Links zu Shops/Datenblättern öffnen im Browser.
+- **Anmeldung:** einmal im Lager anmelden; die WebView speichert das Sitzungs-Cookie (auch über Neustarts, auch für
+  Downloads). Nichts weiter einzurichten. Offline gemerkte Buchungen bleiben bei abgelaufener Sitzung gespeichert und
+  werden nach dem nächsten Login gesendet.
 - **Updates:** neue APK einfach drüber installieren – Daten und Anmeldung bleiben (gleiche Signatur).
 
 Signatur: Updates lassen sich nur über eine App mit **derselben Signatur** installieren. Der Schlüssel

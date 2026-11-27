@@ -73,3 +73,10 @@ def test_search_page(client: TestClient) -> None:
     assert "Akkuschrauber" in r.text and "Box" in r.text
     assert client.get("/suche", params={"q": "KIS-007"}).url.path == f"/n/{box}"
     assert "Nichts gefunden" in client.get("/suche", params={"q": "xyz"}).text
+
+
+def test_single_letter_search_does_not_crash(client) -> None:  # type: ignore[no-untyped-def]
+    """Ein Buchstabe ergab früher eine ungültige FTS5-Abfrage (HTTP 500)."""
+    for q in ("x", "x m3", "a b"):
+        assert client.get("/suche", params={"q": q}).status_code == 200
+        assert client.get("/api/v1/search", params={"q": q}).status_code == 200

@@ -1,5 +1,5 @@
 <section id="karten">
-  <h2>Karten</h2>
+  {% if not card_nohead %}<h2>Karten</h2>{% endif %}
   {% for c in cards %}
   <div class="card card-note">
     <div class="title-row"><b>{{ c.title }}</b><span class="chip">{{ CARD_KINDS[c.kind][0] }}</span></div>

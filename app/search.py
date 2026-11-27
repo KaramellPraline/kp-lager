@@ -164,6 +164,8 @@ def _query(
 ) -> list[sqlite3.Row]:
     only = " AND item.type_id = ?" if tag else ""
     extra = (tag,) if tag else ()
+    if groups and not all(groups):
+        return []  # ein Suchwort ohne brauchbare Variante (z. B. ein einzelner Buchstabe)
     if not groups:  # nur Tag-Filter
         return conn.execute(
             f"SELECT * FROM item WHERE archived = 0{only} ORDER BY name COLLATE NOCASE LIMIT ?",
@@ -237,8 +239,13 @@ def containers(
     if not terms:
         return []
     groups = [expand(t, synonyms) for t in terms]
-    where = " AND ".join(
-        "(" + " OR ".join(["fold(name || ' ' || notes) LIKE ?"] * len(g)) + ")" for g in groups
+    if not all(groups):  # Wort ohne brauchbare Variante: nur exakter Code kann noch passen
+        groups = []
+    where = (
+        " AND ".join(
+            "(" + " OR ".join(["fold(name || ' ' || notes) LIKE ?"] * len(g)) + ")" for g in groups
+        )
+        or "0"
     )
     rows = conn.execute(
         f"SELECT * FROM container WHERE (code = ? OR ({where}))"

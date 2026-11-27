@@ -1,4 +1,10 @@
-<nav class="seg tabs" aria-label="Einstellungsbereiche">
-  <a href="/settings" class="{% if tab == 'general' %}active{% endif %}">Allgemein</a>
-  <a href="/settings/admin" class="{% if tab == 'admin' %}active{% endif %}">Admin</a>
+{%- set admin = not USER or USER.role == 'admin' -%}
+<nav class="seg tabs settings-tabs" aria-label="Einstellungsbereiche">
+  {% if admin %}
+  <a href="/settings" class="{% if tab == 'allgemein' %}active{% endif %}">Allgemein</a>
+  <a href="/settings/bedienung" class="{% if tab == 'bedienung' %}active{% endif %}">Bedienung</a>
+  <a href="/settings/anbindungen" class="{% if tab == 'anbindungen' %}active{% endif %}">Anbindungen</a>
+  {% endif %}
+  <a href="/settings/benutzer" class="{% if tab == 'benutzer' %}active{% endif %}">Benutzer</a>
+  {% if admin %}<a href="/settings/system" class="{% if tab == 'system' %}active{% endif %}">System</a>{% endif %}
 </nav>

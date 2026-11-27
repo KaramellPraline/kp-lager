@@ -71,10 +71,35 @@ def list_types() -> list[dict[str, Any]]:
     return client().types()
 
 
+def catalog_overview(types: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Bereich > Gruppe > Typen (Schlüssel, Name, Kategorie) - kompakt wie die Typ-Liste in /neu."""
+    areas: dict[str, dict[str, list[dict[str, Any]]]] = {}
+    for t in types:
+        entry = {"key": t["key"], "label": t["label"], "category": t["category"]}
+        if t.get("single"):
+            entry["single"] = True
+        areas.setdefault(t["area"], {}).setdefault(t["group"], []).append(entry)
+    return [
+        {"area": a, "groups": [{"group": g, "types": ts} for g, ts in groups.items()]}
+        for a, groups in areas.items()
+    ]
+
+
 @mcp.tool()
-def get_schema() -> dict[str, Any]:
-    """Aktuelle Kategorien (Präfix, Felder), Behälterarten, Tags, Aktionen, Trockner-Programme."""
-    return client().schema(fresh=True)
+def get_schema(typ: str = "") -> dict[str, Any]:
+    """Schema des Lagers. Ohne `typ`: Kategorien, Behälterarten, Tags, Aktionen und der
+    Teile-Katalog wie im Hinzufügen-Tab (Bereich > Gruppe > Typ-Schlüssel).
+    Mit `typ` (z. B. "mutter", "schraube", "elektrowerkzeug"): alle Felder dieses Typs mit
+    Pflicht/optional, Einheit, Hinweis und Auswahlwerten sowie der Namensvorlage.
+    Vor dem Anlegen mit add_item(typ=...) die Felder des Typs hier nachsehen."""
+    types = client().catalog()
+    if typ:
+        found = next((t for t in types if t["key"] == typ.strip().lower()), None)
+        if found is None:
+            matches = [t["key"] for t in types if typ.lower() in t["label"].lower()]
+            raise ValueError(f"Unbekannter Typ {typ}. Passend: {', '.join(matches) or '-'}")
+        return found
+    return {**client().schema(fresh=True), "catalog": catalog_overview(types)}
 
 
 @mcp.resource("lager://schema")
@@ -84,14 +109,32 @@ def schema_resource() -> dict[str, Any]:
 
 
 @mcp.tool(
-    description="Teil mit Kategorie und Eigenschaften anlegen (Schlüssel nötig). "
-    "Kabel/Netzteile sind Einzelstücke: count = Anzahl, jedes bekommt ein eigenes Etikett. "
-    + categories_help()
+    description="Teil anlegen (Schlüssel nötig). BEVORZUGT nach Katalog-Typ wie im "
+    "Hinzufügen-Tab: `typ` = Typ-Schlüssel (Liste: get_schema(), Felder: get_schema(typ)), "
+    "`fields` = Feldwerte des Typs (Auswahlwerte verwenden, Dezimalpunkt), `qty` = Menge. "
+    "Name, Code, Tags und Datenblatt entstehen wie im Formular; Pflichtfelder werden geprüft. "
+    "`container` leer = Zu sortieren. Reihe: series_field + series (z. B. length, [10,12,16]). "
+    "Gibt es das Teil schon, kommt status=duplicate und nichts wird angelegt - dann nachfragen "
+    "und mit on_duplicate='add' (Menge dort erhöhen) oder 'new' wiederholen. dry_run=True zeigt "
+    "nur Name und Dubletten. Einzelstück-Typen (single, z. B. Elektrowerkzeug): je Stück ein Teil. "
+    "Nur ohne passenden Typ: freier `name` mit `cat` (Präfix) und `specs`. " + categories_help()
 )
 def add_item(
-    container: str, name: str = "", cat: str = "ART", qty: int | None = None, unit: str = "",
-    count: int = 1, specs: dict[str, str] | None = None,
-) -> list[dict[str, Any]]:  # fmt: skip
+    container: str = "", name: str = "", cat: str = "ART", qty: int | None = None,
+    unit: str = "", count: int = 1, specs: dict[str, str] | None = None, typ: str = "",
+    fields: dict[str, str] | None = None, series_field: str = "", series: list[str] | None = None,
+    on_duplicate: str = "ask", dry_run: bool = False, min_qty: int | None = None,
+    price: str = "", notes: str = "", tags: str = "",
+) -> list[dict[str, Any]] | dict[str, Any]:  # fmt: skip
+    if typ:
+        return client().add_catalog(
+            typ.strip().lower(), fields={k: str(v) for k, v in (fields or {}).items()},
+            container=container, qty=qty, count=count, series_field=series_field,
+            series=[str(s) for s in series or []], on_duplicate=on_duplicate, dry_run=dry_run,
+            name=name, unit=unit, min_qty=min_qty, price=price, notes=notes, tags=tags,
+        )  # fmt: skip
+    if not container:
+        raise ValueError("container fehlt (oder typ angeben)")
     valid = {c["prefix"] for c in client().schema()["categories"]}
     if cat.upper() not in valid:
         raise ValueError(f"Unbekannte Kategorie {cat}. Gültig: {', '.join(sorted(valid))}")

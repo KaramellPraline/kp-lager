@@ -1,0 +1,23 @@
+{# Typ-Auswahl für das Teile-Formular: am Handy nur „Typ: … ändern“ + Schnellwahl-Chips,
+   die volle Liste (Bereich › Gruppe › Typ mit Suche) öffnet sich bei Bedarf (#typ-liste). #}
+<div class="typ-bar mobile-only">
+  <a class="button typ-change" href="#typ-liste">{{ icon('content.type', size='sm') }} Typ: <b>{{ ctype.label if ctype else 'kein Typ' }}</b> <span class="meta">ändern</span></a>
+  {% if quick_types %}<div class="chips quick-types" aria-label="Favoriten und zuletzt genutzte Typen">{% for t in quick_types %}<a class="chip {% if ctype and t.key == ctype.key %}on{% endif %}" href="{{ typ_url }}{{ t.key }}">{{ t.label }}</a>{% endfor %}</div>{% endif %}
+</div>
+<aside class="neu-types type-tree" id="typ-liste" aria-label="Teile-Typen">
+  <div class="title-row mobile-only"><b>Typ wählen</b><a class="icon-btn" href="#" aria-label="Liste schließen">{{ icon('nav.close') }}</a></div>
+  <input type="search" id="type-filter" placeholder="Typ suchen … (z. B. Schraube)" aria-label="Typ suchen">
+  {% if mode == 'edit' %}<ul><li><a href="{{ typ_url }}-" class="{% if not ctype %}on{% endif %}" data-name="kein typ">– kein Typ –</a></li></ul>{% endif %}
+  {% for a, groups in areas %}
+  <details class="area" id="a{{ loop.index }}" data-a="{{ a }}" {% if a == ctype_area or a == 'Favoriten' %}open{% endif %}>
+  <summary>{{ a }} <span class="meta">{{ groups|sum(attribute=1, start=[])|length }}</span></summary>
+  {% for g, types in groups %}
+  <div class="grp" data-g="{{ g }}">
+  {% if g != a %}<h3>{{ g }}</h3>{% endif %}
+  <ul>{% for t in types %}<li><a href="{{ typ_url }}{{ t.key }}" class="{% if ctype and t.key == ctype.key %}on{% endif %}" data-name="{{ (t.label ~ ' ' ~ g ~ ' ' ~ a)|lower }}">{{ t.label }}</a></li>{% endfor %}</ul>
+  </div>
+  {% endfor %}
+  </details>
+  {% endfor %}
+</aside>
+<nav class="jump-bar" aria-label="Zu Bereich springen">{% for a, groups in areas %}<a href="#a{{ loop.index }}" data-jump="a{{ loop.index }}" title="{{ a }}">{{ a[:2] }}</a>{% endfor %}</nav>

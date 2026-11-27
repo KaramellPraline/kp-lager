@@ -9,7 +9,7 @@ Row = sqlite3.Row
 # Gültige Arten; füllt app/kinds (feste + eigene, zur Laufzeit aktuell)
 KINDS: list[str] = []
 # Einzelstücke (Kabel, Netzteile): keine Menge, jedes Stück bekommt ein eigenes Etikett
-INDIVIDUAL = ("CBL", "PSU")
+INDIVIDUAL = ("CBL", "PSU", "PWT")
 METER_UNITS = ("m", "cm", "meter")  # Meterware zählt in Metern, nicht in Stück
 
 
@@ -115,6 +115,36 @@ def update_container(conn: sqlite3.Connection, container_id: int, name: str, not
         conn.execute(
             "UPDATE container SET name = ?, notes = ?, updated_at = datetime('now') WHERE id = ?",
             (name.strip(), notes, container_id),
+        )
+
+
+def set_container_tare(conn: sqlite3.Connection, container_id: int, raw: str) -> None:
+    """Leergewicht in Gramm („125,5“ erlaubt); leer = keins."""
+    text = raw.strip().replace(",", ".")
+    try:
+        grams = float(text) if text else None
+    except ValueError:
+        raise LagerError(f"„{raw}“ ist kein Gewicht in Gramm") from None
+    if grams is not None and grams < 0:
+        raise LagerError("Gewicht darf nicht negativ sein")
+    with conn:
+        conn.execute("UPDATE container SET tare = ? WHERE id = ?", (grams, container_id))
+
+
+def update_container_shape(
+    conn: sqlite3.Connection, container_id: int, kind: str, dims: str, airtight: bool
+) -> None:
+    """Art, Maße und Luftdicht ändern (Bearbeiten-Formular)."""
+    from app.kinds import resolve  # spät: kinds importiert repo
+
+    kind = resolve(kind) or kind
+    if kind not in KINDS:
+        raise LagerError(f"Unbekannte Art '{kind}'")
+    with conn:
+        conn.execute(
+            "UPDATE container SET kind = ?, dims = ?, airtight = ?, updated_at = datetime('now')"
+            " WHERE id = ?",
+            (kind, dims, int(airtight), container_id),
         )
 
 

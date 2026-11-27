@@ -7,11 +7,11 @@ Zähler je Präfix in `meta` (`next:EUR`): gedruckte, unbenutzte Codes werden ni
 import re
 import sqlite3
 
-from app.repo import INDIVIDUAL  # noqa: F401  (Einzelstücke: CBL, PSU)
+from app.repo import INDIVIDUAL  # noqa: F401  (Einzelstücke: CBL, PSU, PWT)
 
 ITEM_PREFIX = "ART"
 # Präfixe für Teile (nicht Behälter): ART allgemein, FIL Filament, RES UV-Harz, Verbrauch & Co.
-ITEM_PREFIXES = (ITEM_PREFIX, "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")
+ITEM_PREFIXES = (ITEM_PREFIX, "TOL", "PWT", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")
 TYPE_PREFIX = "TAG"  # Typen/Kategorien von Teilen (item_type)
 # Präfix -> Art (None = Teil/Typ), Präfix -> Name, Art -> Präfix; gefüllt von app.kinds
 PREFIX_KIND: dict[str, str | None] = {}
@@ -130,6 +130,24 @@ def reserve(conn: sqlite3.Connection, prefix: str, count: int) -> list[str]:
 def get_setting(conn: sqlite3.Connection, key: str, default: str) -> str:
     row = conn.execute("SELECT value FROM meta WHERE key = ?", (f"setting:{key}",)).fetchone()
     return str(row["value"]) if row else default
+
+
+def get_secret(conn: sqlite3.Connection, key: str) -> str:
+    """Geheimer Wert in `meta` unter `secret:<key>` – nie im JSON-Export (nur `setting:*`)."""
+    row = conn.execute("SELECT value FROM meta WHERE key = ?", (f"secret:{key}",)).fetchone()
+    return str(row["value"]) if row else ""
+
+
+def set_secret(conn: sqlite3.Connection, key: str, value: str) -> None:
+    with conn:
+        if value:
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES (?, ?)"
+                " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (f"secret:{key}", value),
+            )
+        else:
+            conn.execute("DELETE FROM meta WHERE key = ?", (f"secret:{key}",))
 
 
 def set_setting(conn: sqlite3.Connection, key: str, value: str) -> None:

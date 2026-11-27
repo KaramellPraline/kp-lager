@@ -2,9 +2,13 @@
 (Docker) trotzdem Etiketten drucken kann.
 
 Ablauf: Der Server meldet dem Browser, welche Codes gedruckt werden sollen (Einstellung
-LAGER_D30_BRIDGE=1); der Browser ruft die Bridge auf dem PC auf; die Bridge holt die Etikettenbilder
-vom Server (`/labels/img/<CODE>.png`) und druckt sie per Bluetooth (`app.d30`). Danach meldet der
-Browser dem Server „gedruckt“ (`/d30/printed`).
+LAGER_D30_BRIDGE=1 oder Anbindungen › Druck); der Browser ruft die Bridge auf dem PC auf; die Bridge
+holt die Etikettenbilder vom Server (`/labels/img/<CODE>.png`) und druckt sie per Bluetooth
+(`app.d30`). Danach meldet der Browser dem Server „gedruckt“ (`/d30/printed`).
+
+Anmeldung: Die Bridge hat kein Sitzungs-Cookie. Der Server gibt dem Browser je Code einen
+signierten Kurzlink-Schlüssel mit (`tokens`, 15 Minuten gültig, `app.auth.sign_label`); die Bridge
+hängt ihn als `?t=` an. Alternativ ein API-Schlüssel (Lesen) über `api_key` (Header `X-API-Key`).
 
 Sicherheit: nur auf 127.0.0.1, nur Anfragen der eingetragenen Server-Adresse (CORS/Origin),
 Bilder werden nur von diesem Server geholt, höchstens `d30.MAX_LABELS` Codes je Auftrag.
@@ -27,6 +31,7 @@ DEFAULT_PORT = 8765
 CODE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{2,19}$")
 
 Fetch = Callable[[str], Image.Image]
+TokenFetch = Callable[[str, str], Image.Image]  # (Code, Kurzlink-Schlüssel)
 Printer = Callable[[list[Image.Image]], None]
 Status = Callable[[], tuple[bool, str]]
 
@@ -36,11 +41,19 @@ def origin_of(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}"
 
 
-def http_fetch(server: str, verify: str | bool = True) -> Fetch:
-    """Etikettenbild vom Server holen (eigene CA über `verify` = Pfad der CA-Datei)."""
+def http_fetch(server: str, verify: str | bool = True, api_key: str = "") -> TokenFetch:
+    """Etikettenbild vom Server holen (eigene CA über `verify` = Pfad der CA-Datei).
 
-    def fetch(code: str) -> Image.Image:
-        resp = httpx.get(f"{server}/labels/img/{code}.png", verify=verify, timeout=15)
+    Die zurückgegebene Funktion nimmt optional den Kurzlink-Schlüssel des Servers (`token`)."""
+    headers = {"X-API-Key": api_key} if api_key else {}
+
+    def fetch(code: str, token: str = "") -> Image.Image:
+        resp = httpx.get(
+            f"{server}/labels/img/{code}.png", params={"t": token} if token else None,
+            headers=headers, verify=verify, timeout=15, follow_redirects=False,
+        )  # fmt: skip
+        if resp.status_code in (301, 302, 303, 307, 308, 401):
+            raise RuntimeError("Server verlangt Anmeldung – Seite neu laden oder API-Schlüssel")
         resp.raise_for_status()
         return Image.open(io.BytesIO(resp.content)).convert("1")
 
@@ -55,10 +68,18 @@ def make_server(
     printer: Printer | None = None,
     status: Status | None = None,
     verify: str | bool = True,
+    api_key: str = "",
 ) -> ThreadingHTTPServer:
     server_url = server_url.rstrip("/")
     allowed = origin_of(server_url)
-    get_image = fetch or http_fetch(server_url, verify)
+    builtin = http_fetch(server_url, verify, api_key) if fetch is None else None
+
+    def get_image(code: str, token: str) -> Image.Image:
+        if builtin is not None:
+            return builtin(code, token)
+        assert fetch is not None
+        return fetch(code)
+
     send = printer or d30.send
     state = status or (lambda: d30.status())
 
@@ -110,7 +131,11 @@ def make_server(
                 return self._reply(404, {"error": "unbekannt"})
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                codes = json.loads(self.rfile.read(min(length, 10_000)) or b"{}").get("codes", [])
+                body = json.loads(self.rfile.read(min(length, 20_000)) or b"{}")
+                codes = body.get("codes", [])
+                tokens = body.get("tokens") or {}
+                if not isinstance(tokens, dict):
+                    raise ValueError("tokens")
             except (ValueError, AttributeError):
                 return self._reply(400, {"error": "Ungültige Anfrage"})
             codes = [str(c).upper() for c in dict.fromkeys(codes)]
@@ -119,7 +144,7 @@ def make_server(
             if len(codes) > d30.MAX_LABELS:
                 return self._reply(400, {"error": f"Höchstens {d30.MAX_LABELS} Etiketten"})
             try:
-                images = [get_image(c) for c in codes]
+                images = [get_image(c, str(tokens.get(c, ""))[:80]) for c in codes]
                 send(images)
             except Exception as exc:  # Server/Drucker nicht erreichbar → Meldung statt Absturz
                 return self._reply(502, {"ok": False, "error": str(exc)[:200]})

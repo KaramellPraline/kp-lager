@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Anbindungen · {{ APP_NAME }}{% endblock %}
+{% macro badge(s) %}<span class="badge {{ s.cls }}">{{ s.text }}</span>{% endmacro %}
+{% macro check(key, label) %}<label class="check"><input type="checkbox" name="{{ key }}" value="1" {% if values[key] == '1' %}checked{% endif %}> {{ label }}</label>{% endmacro %}
+{% block content %}
+<h1>Einstellungen</h1>
+{% include "_settings_tabs.html" %}
+<nav class="jump-bar-inline row" aria-label="Anbindungen">
+  <a class="chip" href="#api">API &amp; Schlüssel</a><a class="chip" href="#mcp">MCP</a><a class="chip" href="#ha">Home Assistant</a><a class="chip" href="#druck">Druck</a><a class="chip" href="#backup">Backup extern</a>
+</nav>
+
+<section class="card conn-card" id="api">
+  <h2>{{ icon('system.lock') }} API &amp; Schlüssel {{ badge(api) }}</h2>
+  <p class="meta">REST unter <code>{{ base_url }}/api/v1</code> für CLI, MCP, Home Assistant und eigene Werkzeuge. Schlüssel gehören in den Header <code>X-API-Key</code>. <b>Lesen</b>-Schlüssel dürfen nur abfragen, <b>Schreiben</b>-Schlüssel auch anlegen, ändern, entnehmen und umlagern. Beschreibung aller Endpunkte: <code>/docs</code>.</p>
+  {% if AUTH and read_open %}<p class="msg">Die Oberfläche ist per Anmeldung geschützt, das <b>Lesen per API aber offen</b>. Ist das Lager von außen erreichbar, „auch Lesen nur mit Schlüssel“ einschalten.</p>{% endif %}
+  <form method="post" action="/settings/anbindungen/api" class="stack">
+    {{ check('api_write_key', 'Schreiben nur mit Schlüssel (empfohlen)') }}
+    {{ check('api_read_key', 'Auch Lesen nur mit Schlüssel') }}
+    <button>Speichern</button>
+  </form>
+  {% if new_key %}
+  <div class="msg"><b>Neuer Schlüssel – jetzt kopieren, er wird nicht wieder angezeigt:</b>
+    <textarea id="new-key" readonly rows="2" style="margin-top:6px">{{ new_key }}</textarea>
+    <button type="button" class="copy" data-target="new-key">{{ icon('action.copy', size='sm') }} Kopieren</button></div>
+  {% endif %}
+  <ul class="list" style="margin:8px 0">
+    {% for k in keys %}
+    <li class="item"><span class="name">{{ k.name }} <span class="chip">{{ 'Schreiben' if k.scope == 'write' else 'Lesen' }}</span><small style="display:block">angelegt {{ k.created_at[:16] }}{% if k.last_used %} · zuletzt {{ k.last_used[:16] }}{% else %} · nie benutzt{% endif %}</small></span>
+      <form method="post" action="/settings/admin/keys/{{ k.id }}/delete" onsubmit="return confirm('Schlüssel {{ k.name }} löschen?')"><button class="danger">{{ icon('action.delete', size='sm') }} Löschen</button></form></li>
+    {% else %}<li class="empty">Noch keine Schlüssel.</li>{% endfor %}
+  </ul>
+  <form method="post" action="/settings/admin/keys" class="add-item">
+    <input name="name" placeholder="Name, z. B. Projekt-Planer" required aria-label="Name des Schlüssels">
+    <select name="scope" aria-label="Rechte"><option value="read">Nur lesen</option><option value="write">Lesen und schreiben</option></select>
+    <button class="primary">{{ icon('system.lock', size='sm') }} Schlüssel erzeugen</button>
+  </form>
+</section>
+
+<section class="card conn-card" id="mcp">
+  <h2>{{ icon('action.ai') }} MCP / KI-Werkzeuge {{ badge({'cls': 'ok' if keys else '', 'text': 'Schlüssel vorhanden' if keys else 'Schlüssel anlegen'}) }}</h2>
+  <p class="meta">Externe KI-Werkzeuge (z. B. Claude Desktop) sprechen über den MCP-Server <code>tools/lager_mcp.py</code> mit der API – das Lager selbst enthält keine KI. Konfiguration in das Werkzeug kopieren, Pfad zum Repo anpassen und einen Schlüssel von oben eintragen (Lesen genügt zum Planen, Schreiben zum Buchen).</p>
+  <pre id="mcp-json">{{ mcp_json }}</pre>
+  <button type="button" class="copy" data-target="mcp-json">{{ icon('action.copy', size='sm') }} Kopieren</button>
+</section>
+
+<section class="card conn-card" id="ha">
+  <h2>{{ icon('nav.home') }} Home Assistant {{ badge(ha) }}</h2>
+  <p class="meta">Sensor mit Nachkaufliste, Ablauf, Inventur und Backup-Status über <code>{{ base_url }}/api/v1/ha</code>. Ausschnitt in <code>configuration.yaml</code>, Schlüssel (Lesen) als <code>kp_lager_key</code> in <code>secrets.yaml</code>. Mehr Beispiele: <code>docs/HOME_ASSISTANT.md</code>.</p>
+  <pre id="ha-yaml">{{ ha_yaml }}</pre>
+  <button type="button" class="copy" data-target="ha-yaml">{{ icon('action.copy', size='sm') }} Kopieren</button>
+</section>
+
+<section class="card conn-card" id="druck">
+  <h2>{{ icon('action.print') }} Druck {% for s in printing %}{{ badge(s) }}{% endfor %}</h2>
+  <h3>A4-Netzwerkdrucker (IPP)</h3>
+  <p class="meta">IPP-Adresse des Farbdruckers, z. B. <code>ipp://192.168.1.50/ipp/print</code>. Gedruckt wird erst nach Bestätigung in der A4-Warteschlange.</p>
+  <form method="post" action="/settings/admin/a4drucker" class="stack">
+    <input name="a4_printer" value="{{ a4_url }}" placeholder="ipp://drucker.local/ipp/print" aria-label="Drucker-Adresse" data-keep-comma>
+    <button class="primary">Speichern</button>
+  </form>
+  {% if a4_url %}<form method="post" action="/settings/anbindungen/test/ipp"><button>{{ icon('action.refresh', size='sm') }} Erreichbarkeit testen</button></form>{% endif %}
+
+  <h3>D30 über MQTT (Druck-Agent am PC)</h3>
+  <p class="meta">Der Server schickt Etiketten an den Druck-Agenten auf dem PC mit dem D30 (<code>docs/PRINT_MQTT.md</code>). Ist der Broker eingetragen, drucken alle D30-Knöpfe darüber.</p>
+  {% if mq_env %}
+  <p class="msg">Per Umgebung gesetzt (<code>LAGER_PRINT_MQTT</code>): <b>{{ mq.host }}:{{ mq.port }}</b>{% if mq.user %}, Benutzer {{ mq.user }}{% endif %}, Thema <code>{{ mq.topic }}</code>{% if mq.password %}, Passwort gesetzt{% endif %}. Änderungen dort.</p>
+  {% else %}
+  <form method="post" action="/settings/anbindungen/mqtt" class="stack" autocomplete="off">
+    <div class="row">
+      <label style="flex:3 1 160px">Broker (Host) <input name="host" value="{{ mq_form.host }}" placeholder="192.168.1.10" autocapitalize="none"></label>
+      <label style="flex:1 1 80px">Port <input name="port" value="{{ mq_form.port }}" inputmode="numeric"></label>
+    </div>
+    <label>Benutzer <input name="user" value="{{ mq_form.user }}" autocapitalize="none" autocomplete="off"></label>
+    <label>Passwort <input name="password" type="password" autocomplete="new-password" placeholder="{{ 'gesetzt – leer lassen zum Behalten' if mq_form.password_set else 'nicht gesetzt' }}"></label>
+    {% if mq_form.password_set %}<label class="check"><input type="checkbox" name="password_clear" value="1"> Gespeichertes Passwort löschen</label>{% endif %}
+    <label>Thema (Basis) <input name="topic" value="{{ mq_form.topic }}" autocapitalize="none"></label>
+    <small>Leerer Host schaltet den MQTT-Druck aus.</small>
+    <button class="primary">Speichern</button>
+  </form>
+  {% endif %}
+  {% if mq %}<form method="post" action="/settings/anbindungen/test/mqtt"><button>{{ icon('action.refresh', size='sm') }} Verbindung testen</button></form>{% endif %}
+
+  <h3>D30 über die PC-Bridge</h3>
+  <p class="meta">Für einen Server ohne Bluetooth: der Windows-Client am PC druckt (<code>docs/WINDOWS.md</code>). Bluetooth am Server selbst: <b>{{ 'an' if d30_server else 'aus' }}</b> (<code>LAGER_D30</code>).</p>
+  {% if bridge_env %}
+  <p class="msg">Per Umgebung gesetzt (<code>LAGER_D30_BRIDGE</code>): <b>{{ 'an' if bridge_on else 'aus' }}</b>.</p>
+  {% else %}
+  <form method="post" action="/settings/anbindungen/bridge" class="stack">
+    <label class="check"><input type="checkbox" name="d30_bridge" value="1" {% if bridge_on %}checked{% endif %}> D30 über die PC-Bridge drucken</label>
+    <button>Speichern</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card conn-card" id="backup">
+  <h2>{{ icon('action.save') }} Backup extern {{ badge(backup) }}</h2>
+  <p class="meta">Die tägliche Sicherung (Datenbank + Fotos) wird zusätzlich in diesen Ordner kopiert: NAS-Freigabe, USB oder Sync-Ordner. Im Docker-Container den Ordner als Volume einbinden und den Pfad im Container eintragen.</p>
+  <form method="post" action="/settings/anbindungen/backup" class="stack">
+    <label>Zielordner <input name="backup_extern" value="{{ values.backup_extern }}" placeholder="{{ target if target_env else '/backup-extern' }}" autocapitalize="none"></label>
+    {% if target_env %}<small>Leer: es gilt <code>LAGER_BACKUP_EXTERN</code> = <code>{{ target }}</code> (per Umgebung gesetzt).</small>{% endif %}
+    <button class="primary">Speichern</button>
+  </form>
+  <ul class="history">
+    <li>Ziel: <b>{{ target or 'keins' }}</b></li>
+    <li>Zuletzt extern gesichert: {{ ext_last or 'noch nie' }}</li>
+    {% if ext_error %}<li>Fehler: {{ ext_error }}</li>{% endif %}
+  </ul>
+  {% if target %}
+  <div class="row">
+    <form method="post" action="/settings/anbindungen/test/backup"><button>{{ icon('action.refresh', size='sm') }} Ziel testen</button></form>
+    <form method="post" action="/status/backup/extern"><button>{{ icon('action.save', size='sm') }} Jetzt extern sichern</button></form>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

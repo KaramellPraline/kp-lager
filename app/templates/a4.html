@@ -23,7 +23,7 @@
     <a class="button" href="/a4/queue.pdf" target="_blank">{{ icon('action.download', size='sm') }} PDF ansehen</a>
     <form method="post" action="/a4/clear"><button>Leeren</button></form>
   </div>
-  {% if not printer %}<p class="meta">Noch kein Netzwerkdrucker: <a href="/settings/admin#a4drucker">Admin → A4-Drucker</a>.</p>{% else %}<p class="meta">Drucker: {{ printer }}</p>{% endif %}
+  {% if not printer %}<p class="meta">Noch kein Netzwerkdrucker: <a href="/settings/anbindungen#druck">Einstellungen › Anbindungen › Druck</a>.</p>{% else %}<p class="meta">Drucker: {{ printer }}</p>{% endif %}
 </section>
 {% else %}<p class="empty">Leer. Etiketten kommen per „A4“ am Teil, Behälter oder Einsatz hierher – oder unten frei anlegen.</p>{% endif %}
 

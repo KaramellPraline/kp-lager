@@ -1,9 +1,9 @@
-# API für externe Werkzeuge und KI (Stand 2026-11-03)
+# API für externe Werkzeuge und KI (Stand 2026-11-27)
 
 Basis: `https://<host>/api/v1` · interaktive Beschreibung aller Endpunkte: `https://<host>/docs`.
 
 ## Schlüssel
-Einstellungen › Admin › API-Schlüssel. Zwei Rechte:
+Einstellungen › Anbindungen › API &amp; Schlüssel. Zwei Rechte:
 
 | Recht | darf |
 |---|---|
@@ -11,7 +11,7 @@ Einstellungen › Admin › API-Schlüssel. Zwei Rechte:
 | **Lesen und schreiben** | zusätzlich Teile/Behälter anlegen und ändern, entnehmen, umlagern, Projekte, Einkäufe, Karten, Inventur |
 
 Header `X-API-Key: kpl_…` (oder `Authorization: Bearer kpl_…`). Der Klartext wird nur einmal angezeigt.
-Standard: Lesen ist im LAN offen. Einstellungen › Betrieb › „API: auch Lesen nur mit Schlüssel“ verlangt
+Standard: Lesen ist im LAN offen. Einstellungen › Anbindungen › API › „Auch Lesen nur mit Schlüssel“ verlangt
 auch zum Lesen einen Schlüssel (empfohlen, sobald das Lager von außen erreichbar ist).
 
 ## Lesen
@@ -24,6 +24,7 @@ auch zum Lesen einen Schlüssel (empfohlen, sobald das Lager von außen erreichb
 | Aufruf | Zweck |
 |---|---|
 | `POST /items` · `POST /items/new` | Teile anlegen (Schnelleingabe / mit Kategorie und Eigenschaften) |
+| `POST /items/catalog` | Teil nach Katalog-Typ anlegen wie der Hinzufügen-Tab (siehe unten) |
 | `PATCH /items/{ref}` | name, notes, price, min_qty, order_qty, on_list, archived, `qty` (absolut) oder `qty_delta` |
 | `DELETE /items/{ref}?hard=` | archivieren (Standard) oder endgültig löschen |
 | `POST /items/{ref}/take` · `/move` | entnehmen (7 Tage stornierbar) · umlagern |
@@ -41,9 +42,23 @@ auch zum Lesen einen Schlüssel (empfohlen, sobald das Lager von außen erreichb
 3. `POST /projects/{id}/shopping` – Fehlendes landet auf der Einkaufsliste.
 
 ## Typen, Einkauf, Home Assistant
-`GET /types/catalog` (alle Typen mit Feldern) · `GET /types/catalog/{key}/items` · `PATCH /items/{ref}` mit `ctype`, `fields`, `rename` ·
+`GET /types/catalog` (alle Typen mit Feldern, `area` = Bereich, `group` = Gruppe) · `GET /types/catalog/{key}/items` · `PATCH /items/{ref}` mit `ctype`, `fields`, `rename` ·
 `POST /purchases/import/preview` und `/purchases/import` (Rechnung/CSV) · `POST /projects/{id}/reserve?release=` ·
 `GET /ha` und `/ha/item/{ref}` für Home Assistant (siehe `docs/HOME_ASSISTANT.md`).
+
+## Anlegen nach Katalog-Typ (`POST /items/catalog`)
+Derselbe Weg wie im Hinzufügen-Tab: Typ-Schlüssel und Felder aus `GET /types/catalog` (je Feld `required`, `extra`,
+`options`, `unit`; je Typ `template` und `single`). Beispiel:
+
+```json
+{"type": "mutter", "container": "EUR-003", "qty": 50,
+ "fields": {"kind": "Sechskantmutter", "thread": "M3", "finish": "Edelstahl"}}
+```
+
+Antwort: `status` (`created`, `updated`, `duplicate`, `preview`), `created`/`updated` (Teile), `planned` (Name, Felder,
+gefundene Dubletten), `container`. Optionen: `series_field` + `series` (Reihe, z. B. Längen), `count` (Einzelstücke wie
+Elektrowerkzeug), `on_duplicate` (`ask` | `add` | `new`), `dry_run`, `label`, `queue_labels`, `name`, `unit`, `min_qty`,
+`price`, `notes`, `tags`, `model`, `order_url`. Leerer `container` = „Zu sortieren“.
 
 ## MCP-Server
 `uv run --group mcp python tools/lager_mcp.py` (Vorlage `docs/mcp.example.json`) bietet dieselben Funktionen als
@@ -51,7 +66,14 @@ Werkzeuge für KI-Assistenten (`LAGER_URL`, `LAGER_API_KEY`). Mit Lese-Schlüsse
 Schreibwerkzeuge melden dann „403: Dieser Schlüssel darf nur lesen“.
 
 ## MCP: Artikel aus einem Chat anlegen
-`tools/lager_mcp.py` ist ein MCP-Server (Tools: suchen, Behälter/Teile lesen, Teile anlegen, ein-/auslagern). In Claude Desktop (oder jedem MCP-Client) den Eintrag aus `docs/mcp.example.json` in die MCP-Konfiguration übernehmen, `--directory` auf diesen Ordner setzen, `LAGER_URL=https://lager.home.lan` und `LAGER_API_KEY` (Schreib-Schlüssel aus Einstellungen › Admin) eintragen; Voraussetzung `uv sync --group mcp`. Danach reicht im Chat z. B. „Lege 50 M3x10 Zylinderkopfschrauben ins Fach Elektro“. Der Schlüssel bleibt lokal und wird nie committet.
+`tools/lager_mcp.py` ist ein MCP-Server (Tools: suchen, Behälter/Teile lesen, Teile anlegen, ein-/auslagern). In Claude Desktop (oder jedem MCP-Client) den Eintrag aus `docs/mcp.example.json` in die MCP-Konfiguration übernehmen, `--directory` auf diesen Ordner setzen, `LAGER_URL=https://lager.home.lan` und `LAGER_API_KEY` (Schreib-Schlüssel aus Einstellungen › Anbindungen; fertige Vorlage mit Server-Adresse dort unter „MCP“) eintragen; Voraussetzung `uv sync --group mcp`. Danach reicht im Chat z. B. „Lege 50 M3x10 Zylinderkopfschrauben ins Fach Elektro“. Das Werkzeug `add_item` legt dabei nach Katalog-Typ an (`typ`, `fields`; Typen und Felder über `get_schema()` bzw. `get_schema(typ)`), meldet Dubletten zurück und legt erst nach Rückfrage mit `on_duplicate` an. Der Schlüssel bleibt lokal und wird nie committet.
 
 ## Schlüssel abschaltbar (Debug)
-`Einstellungen → Betrieb → „API: Schreiben nur mit Schlüssel“` (Standard an). Aus: Schreiben per REST/CLI/MCP im LAN ohne Schlüssel – nur zum Testen, danach wieder einschalten. „API: auch Lesen nur mit Schlüssel“ bleibt davon unabhängig.
+`Einstellungen › Anbindungen › API › „Schreiben nur mit Schlüssel“` (Standard an). Aus: Schreiben per REST/CLI/MCP im LAN ohne Schlüssel – nur zum Testen, danach wieder einschalten. „API: auch Lesen nur mit Schlüssel“ bleibt davon unabhängig.
+
+## Etikettenbild für Drucker-Werkzeuge (`/labels/img/<CODE>.png`)
+Gehört zur Oberfläche, nicht zu `/api/v1`. Mit Anmeldung (`LAGER_AUTH=1`) ohne Sitzung nur so abrufbar:
+- **D30-PC-Bridge** (Windows-Client): der Server gibt dem Browser je Code einen signierten Kurzlink-Schlüssel mit
+  (15 Minuten gültig, nur für diesen Code); die Bridge ruft `/labels/img/<CODE>.png?t=<schlüssel>` ab. Nichts einzurichten.
+- **Werkzeuge** (`tools/d30_print.py --key …`): Header `X-API-Key` mit einem Lese- oder Schreib-Schlüssel.
+

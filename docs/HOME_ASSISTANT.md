@@ -6,8 +6,9 @@ Zu sortieren, Etiketten wartend, offene Entnahmen und Projekte, Lagerwert, Backu
 Einzelne Teile (z. B. Filament-Spulen) gibt es unter `GET /api/v1/ha/item/<CODE>`.
 
 ## Schlüssel
-Lesen ist im LAN ohne Schlüssel möglich. Ist „API: auch Lesen nur mit Schlüssel“ an (Einstellungen › Betrieb),
-unter Einstellungen › Admin einen **Lesen**-Schlüssel anlegen und in Home Assistant als Secret hinterlegen:
+Einen fertigen Ausschnitt mit der echten Adresse gibt es unter Einstellungen › Anbindungen › Home Assistant.
+Lesen ist im LAN ohne Schlüssel möglich. Ist „Auch Lesen nur mit Schlüssel“ an (Einstellungen › Anbindungen › API),
+dort einen **Lesen**-Schlüssel anlegen und in Home Assistant als Secret hinterlegen:
 ```yaml
 # secrets.yaml
 kp_lager_key: kpl_…

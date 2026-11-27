@@ -32,10 +32,10 @@ Vorwissen weiterarbeiten kann.
 
 | Thema | Dateien |
 |---|---|
-| App-Start, Routen | `app/main.py`, `app/web.py` (Hauptrouten, Schnelleingabe), `app/web_ops.py` (Betrieb: Status, Trockner, Slicer, Massenaktionen, D30-Status), `app/web_katalog.py` (Katalog, Einsatz-Assistent, Baum), `app/api.py` (REST) |
+| App-Start, Routen | `app/main.py`, `app/web/app.py` (`create_app`), `app/web/shared.py` (Templates, `redirect`, `Ctx`), `app/web/routes/<bereich>.py` (bestand, teile, sortiment, hinzufuegen, katalog, scan, drucken, drucken_a4, einkauf, werkstatt, system), `app/api/` (REST, je Bereich) – Karte in `docs/ARCHITECTURE.md` |
 | Datenzugriff | `app/db.py` (Verbindung, Migrationen), `app/repo.py` (Behälter/Teile), `app/codes.py` (Code-Schema), `app/kinds.py` (Behälterarten) |
 | Anlegen | `app/catalog.py` (Teile-Typen, Namensvorlagen), `app/choices.py` (Auswahllisten Filament/Harz), `app/quick.py` (Schnelleingabe-Parser), `app/creation.py` (API/MCP), `app/importer.py` |
-| Etiketten | `app/labels.py` (Listen, Layout je Typ), `app/a4.py` + `app/web_a4.py` (A4), `app/labelimg.py` (Bild 320×96), `app/d30.py` (Bluetooth-Druck) |
+| Etiketten | `app/labels.py` (Listen, Layout je Typ), `app/a4.py` + `app/web/routes/drucken_a4.py` (A4), `app/labelimg.py` (Bild 320×96), `app/d30.py` (Bluetooth-Druck) |
 | Sortierkasten | `app/kasten.py`, `cad/norb_bins.py`, `cad/bin_params.json` |
 | Material | `app/materials.py`, `app/dryer.py`, `app/slicer.py`, `app/vision.py`, `app/value.py` |
 | Betrieb | `app/scheduler.py` (Backup täglich), `app/backup.py`, `app/status.py`, `app/config.py` |
@@ -61,7 +61,7 @@ Funktioniert vollständig für alles außer Hardware:
 
 - Läuft in der Cloud: App, API, Tests, Lint, Typecheck, Katalog, Baum, Etiketten als Bild (`/labels/img/<CODE>.png`), A4-PDF, IPP gegen Fake-Server (Testort.
 - Läuft nur am Windows-PC: D30-Druck (Bluetooth, Client mit Bridge).
-- Eine Test-Instanz für die Oberfläche: `LAGER_DATA_DIR=/tmp/lager LAGER_AUTO_BACKUP=0 LAGER_D30=0 uv run uvicorn app.main:app --port 8000`.
+- Eine Test-Instanz für die Oberfläche: `LAGER_DATA_DIR=/tmp/lager LAGER_AUTO_BACKUP=0 LAGER_D30=0 uv run uvicorn app.main:app --port 8000` (Login an: beim ersten Aufruf `/einrichten`; `LAGER_AUTH=0` ohne Login). Tests: `Settings(...)` hat `auth=False`, Login-Tests setzen `auth=True` (`tests/test_auth.py`).
 - CI (`.github/workflows/ci.yml`) führt Lint, Typecheck und Tests bei jedem Push und PR aus.
 - Geheimnisse gehören nicht ins Repository: `.env`, API-Schlüssel (`LAGER_API_KEY`), Zertifikate, `data/`.
 

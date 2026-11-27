@@ -29,6 +29,7 @@ MATERIALS = {
     "cmp": ("Elektronikbauteil", "Electronic component", "CMP"),
     "cbl": ("Kabel", "Cable", "CBL"),
     "psu": ("Netzteil", "Power supply", "PSU"),
+    "pwt": ("Elektrowerkzeug", "Power tool", "PWT"),
 }
 PRINTING = ("fil", "res")  # 3D-Druck-Material (Übersicht, Restmenge)
 PREFIX_MATERIAL = {prefix: key for key, (_, _, prefix) in MATERIALS.items()}
@@ -39,6 +40,7 @@ GROUPS = {
     "mech": ("Mechanische Eigenschaften", "Mechanical properties"),
     "elec": ("Elektrische Daten", "Electrical data"),
     "rest": ("Restmenge", "Remaining"),
+    "dev": ("Gerät & Garantie", "Device & warranty"),
 }
 _MECH = (
     Field("tensile", "mech", "Zugfestigkeit", "Tensile strength", "MPa"),
@@ -124,6 +126,18 @@ FIELDS: dict[str, tuple[Field, ...]] = {
         ),
         Field("watt", "base", "Leistung", "Power", "W", "aus V × A"),
         Field("polarity", "base", "Polarität", "Polarity", "", "Mitte +"),
+    ),
+    "pwt": (  # Elektrowerkzeug / Messgerät (Katalog-Typen elektrowerkzeug, messgeraet)
+        Field("brand", "base", "Hersteller", "Manufacturer", "", "Bosch, Makita, Parkside …"),
+        Field("model", "base", "Modell / Typ", "Model", "", "GSR 18V-55"),
+        Field("power", "base", "Antrieb / Versorgung", "Power source", "", "Akku, 230 V Netz"),
+        Field("system", "base", "Akkusystem", "Battery system", "", "Bosch 18V, Makita LXT"),
+        Field("volt", "elec", "Spannung", "Voltage", "V", "18"),
+        Field("watt", "elec", "Leistung", "Power", "W", ""),
+        Field("scope", "base", "Lieferumfang", "Scope of delivery", "", "Solo, mit 2 Akkus"),
+        Field("serial", "dev", "Seriennummer", "Serial number"),
+        Field("bought", "dev", "Kaufdatum", "Purchase date", "", "JJJJ-MM-TT"),
+        Field("warranty", "dev", "Garantie bis", "Warranty until", "", "JJJJ-MM-TT"),
     ),
 }
 # Plausible Bereiche für Zahlenwerte der KI; außerhalb -> verworfen (lieber leer als falsch)

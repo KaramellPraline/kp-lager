@@ -1,36 +1,23 @@
 # ruff: noqa: E501
-"""Routen: A4-Etikettendruck (Warteschlange, Vorschau, PDF, Netzwerkdrucker), Bin-Etikett-Editor
-und die Bin-Druckdatei (Parameter für den 3D-Generator)."""
+"""Drucken › A4: Warteschlange, Seitenvorschau, PDF, IPP-Druck, Bin-Etikett-Editor und
+bins.json."""
 
 import json
 import sqlite3
-from collections.abc import Callable
-from typing import Annotated, Any
-from urllib.parse import urlparse
+from typing import Any
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 
 from app import a4, codes, kasten, labels, repo
-from app.config import Settings
 from app.repo import LagerError
+from app.web.shared import Conn, Ctx, FormDict, redirect
 
 
-async def form_fields(request: Request) -> dict[str, str]:
-    form = await request.form()
-    return {k: v for k, v in form.items() if isinstance(v, str)}
+def register(app: FastAPI, ctx: Ctx) -> None:
+    settings = ctx.settings
+    render = ctx.render
 
-
-Form = Annotated[dict[str, str], Depends(form_fields)]
-
-
-def register(
-    app: FastAPI,
-    Conn: Any,
-    render: Callable[..., HTMLResponse],
-    redirect: Callable[..., RedirectResponse],
-    settings: Settings,
-) -> None:
     def printer(conn: sqlite3.Connection) -> str:
         return codes.get_setting(conn, "a4_printer", "")
 
@@ -98,8 +85,6 @@ def register(
             a4.png(a4.render(job)), media_type="image/png", headers={"Cache-Control": "no-store"}
         )
 
-    # --- Warteschlange ------------------------------------------------------------------------
-
     @app.get("/a4", response_class=HTMLResponse)
     def a4_page(request: Request, conn: Conn) -> HTMLResponse:
         queue = a4.queue(conn)
@@ -114,7 +99,7 @@ def register(
         )  # fmt: skip
 
     @app.post("/a4/add")
-    def a4_add(conn: Conn, form: Form) -> RedirectResponse:
+    def a4_add(conn: Conn, form: FormDict) -> RedirectResponse:
         """Etikett in die Warteschlange: frei gestaltet (t_0 …) oder klassisch (title/lines)."""
         if "t_0" in form:
             a4.enqueue(conn, layout_job(conn, form))
@@ -173,7 +158,7 @@ def register(
                         headers={"Content-Disposition": 'inline; filename="etiketten.pdf"'})  # fmt: skip
 
     @app.post("/a4/drucken")
-    def a4_print(conn: Conn, form: Form) -> RedirectResponse:
+    def a4_print(conn: Conn, form: FormDict) -> RedirectResponse:
         """Nur nach ausdrücklicher Bestätigung: PDF an den Netzwerkdrucker, danach Queue leeren."""
         if form.get("confirm") != "1":
             raise LagerError("Druck nicht bestätigt")
@@ -189,10 +174,10 @@ def register(
             "/a4", f"{len(queue)} Etiketten auf {pages} Seite{'n' if pages != 1 else ''} gedruckt"
         )
 
-    # --- Etiketten aus Teilen und Behältern in die A4-Warteschlange ------------------------------
-
     @app.post("/a4/queue/item/{item_id}")
-    def a4_queue_item(request: Request, item_id: int, conn: Conn, form: Form) -> RedirectResponse:
+    def a4_queue_item(
+        request: Request, item_id: int, conn: Conn, form: FormDict
+    ) -> RedirectResponse:
         item = repo.get_item(conn, item_id)
         if not item["code"]:
             raise LagerError("Teil hat noch keinen Code")
@@ -202,7 +187,9 @@ def register(
         )
 
     @app.post("/a4/queue/node/{node_id}")
-    def a4_queue_node(request: Request, node_id: int, conn: Conn, form: Form) -> RedirectResponse:
+    def a4_queue_node(
+        request: Request, node_id: int, conn: Conn, form: FormDict
+    ) -> RedirectResponse:
         node = repo.get_container(conn, node_id)
         if node is None:
             raise HTTPException(404, "Behälter nicht gefunden")
@@ -214,8 +201,6 @@ def register(
             raise LagerError("Behälter hat noch keinen Code")
         a4.enqueue(conn, job)
         return redirect(back_of(request, f"/n/{node_id}"), "In der A4-Warteschlange")
-
-    # --- Bin-Etikett-Editor -----------------------------------------------------------------------
 
     def bin_or_404(conn: sqlite3.Connection, node_id: int) -> sqlite3.Row:
         node = repo.get_container(conn, node_id)
@@ -248,7 +233,7 @@ def register(
                         headers={"Cache-Control": "no-store"})  # fmt: skip
 
     @app.post("/n/{node_id}/etikett")
-    def bin_label_save(node_id: int, conn: Conn, form: Form) -> RedirectResponse:
+    def bin_label_save(node_id: int, conn: Conn, form: FormDict) -> RedirectResponse:
         node = bin_or_404(conn, node_id)
         slots = repo.children(conn, node_id) or [node]
         with conn:
@@ -267,8 +252,6 @@ def register(
             return redirect(f"/n/{node_id}/etikett", "Seitenetikett in der A4-Warteschlange")
         return redirect(f"/n/{node_id}/etikett", "Etikett-Texte gespeichert")
 
-    # --- Bin-Druckdatei -------------------------------------------------------------------------------
-
     @app.get("/labels/bins.json")
     def bins_file(conn: Conn) -> JSONResponse:
         """Alle Sortierkästen/Einsätze samt Parametern als eine Datei (3D-Generator)."""
@@ -281,13 +264,3 @@ def register(
         return JSONResponse(
             data, headers={"Content-Disposition": 'attachment; filename="bins.json"'}
         )
-
-    @app.post("/settings/admin/a4drucker")
-    def admin_a4_printer(conn: Conn, form: Form) -> RedirectResponse:
-        url = form.get("a4_printer", "").strip()
-        if url:
-            p = urlparse(url)
-            if p.scheme not in ("ipp", "ipps", "http", "https") or not p.hostname:
-                raise LagerError("Drucker-Adresse ungültig, z. B. ipp://192.168.1.50/ipp/print")
-        codes.set_setting(conn, "a4_printer", url)
-        return redirect("/settings/admin#a4drucker", "A4-Drucker gespeichert")

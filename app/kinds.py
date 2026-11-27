@@ -182,8 +182,15 @@ ITEM_LABELS = {
         "Single article that fits no other category"
     ),
     "TOL": ("item",
-        "Werkzeug", "Tool", "Hand- und Elektrowerkzeug, Messgeräte, Akkus fürs Werkzeug",
-        "Hand and power tools, measuring devices, tool batteries"
+        "Werkzeug", "Tool", "Handwerkzeug, Bohrer, Bits, Zwingen, Leitern, Akkus fürs Werkzeug",
+        "Hand tools, drill bits, clamps, ladders, tool batteries"
+    ),
+    "PWT": ("item",
+        "Elektrowerkzeug", "Power Tool",
+        "Elektro- und Akkuwerkzeug, Maschinen, elektrische Messgeräte; je Gerät ein Etikett, "
+        "Datenblatt mit Akkusystem, Seriennummer und Garantie",
+        "Power and cordless tools, machines, electric measuring devices; one label per device, "
+        "datasheet with battery system, serial number and warranty"
     ),
     codes.TYPE_PREFIX: ("item",
         "Tag", "Tag",
@@ -211,10 +218,11 @@ EURO_DIMS = [
     for h in heights
 ]  # fmt: skip
 ITEM_CATS: list[tuple[str, str]] = []
-CAT_ORDER = ("ART", "TOL", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")
+CAT_ORDER = ("ART", "TOL", "PWT", "FIL", "RES", "CNS", "RAW", "CBL", "PSU", "CMP", "PPE")
 # Kurznamen für die Kategorie-Kacheln auf Start (DE, EN)
 CAT_SHORT = {"ART": ("Gegenstand", "Item"), "CNS": ("Verbrauch", "Consumables"),
              "CMP": ("Elektronik", "Electronics"), "PPE": ("Schutz", "Safety"),
+             "PWT": ("Elektrowerkzeug", "Power tool"),
              "RES": ("UV-Harz", "Resin"), "RAW": ("Rohmaterial", "Raw")}  # fmt: skip
 ITEM_CATS_SHORT: list[tuple[str, str]] = []
 # Arten fürs „Behälter anlegen“ (Schlüssel, Präfix, Name); Maße/Airtight nur bei Boxen

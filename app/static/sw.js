@@ -1,11 +1,13 @@
 /* KP Lager – Service Worker: Offline-Lesen und Offline-Warteschlange für Buchungen.
  * Seiten: zuerst Netz (4 s), sonst die zuletzt gesehene Fassung aus dem Speicher.
  * Formulare (Entnehmen, Einlagern, Umlagern, Inventur …) ohne Netz: in IndexedDB merken und
- * in derselben Reihenfolge senden, sobald wieder Verbindung besteht. */
+ * in derselben Reihenfolge senden, sobald wieder Verbindung besteht (und man angemeldet ist).
+ * Login-Seiten werden nie gespeichert; Buchungen, die der Server mit 401/403 oder einer
+ * Umleitung auf /login beantwortet, bleiben gemerkt. */
 var VERSION = "kp-lager-__V__";
 var SHELL = ["/offline", "/static/style.css?v=__V__", "/static/app.js?v=__V__", "/static/htmx.min.js",
   "/static/jsQR.js", "/static/fonts/fonts.css", "/static/icon-192.png", "/manifest.webmanifest"];
-var QUEUE_PATHS = [/^\/items\/\d+\/(take|qty|list|lend|return|zaehlen)$/, /^\/inventur\//, /^\/api\/(take|move|move-batch)$/,
+var QUEUE_PATHS = [/^\/items\/\d+\/(take|einlagern|qty|list|lend|return|zaehlen)$/, /^\/inventur\//, /^\/api\/(take|move|move-batch)$/,
   /^\/drop\/\d+$/, /^\/carry\//, /^\/labels\/queue\//, /^\/n\/\d+\/(items|quickadd)$/, /^\/zu-sortieren\/\d+\/move$/,
   /^\/withdrawals\/\d+\/cancel$/, /^\/projekte\/lines\/\d+\/gather$/, /^\/api\/projects\/\d+\/gather$/];
 
@@ -23,6 +25,11 @@ function cleanKey(url) {
   u.searchParams.delete("msg"); u.searchParams.delete("undo");
   return u.toString();
 }
+function isLoginPage(resp) {
+  var path = resp.url ? new URL(resp.url).pathname : "";
+  return path === "/login" || path === "/einrichten" || resp.headers.get("X-Lager-Login") === "1";
+}
+function needsLogin(resp) { return resp.status === 401 || resp.status === 403 || resp.status === 419 || isLoginPage(resp); }
 function timeout(ms) { return new Promise(function (_, rej) { setTimeout(function () { rej(new Error("timeout")); }, ms); }); }
 
 /* --- IndexedDB-Warteschlange ------------------------------------------------------------ */
@@ -61,6 +68,9 @@ function flush() {
         return fetch(row.url, { method: "POST", body: row.body, headers: { "Content-Type": row.type },
                                 credentials: "same-origin", redirect: "follow" })
           .then(function (resp) {
+            // Abgemeldet (401, Umleitung auf /login) oder Herkunft abgelehnt (403): behalten und
+            // nach der nächsten Anmeldung erneut senden – nicht verwerfen.
+            if (needsLogin(resp)) return false;
             // 2xx/3xx = angekommen; 4xx = vom Server abgelehnt (z. B. Teil gelöscht) -> verwerfen
             return tx("readwrite", function (s) { return s.delete(row.id); }).then(function () { return resp.status < 500; });
           }).catch(function () { return false; });
@@ -118,8 +128,10 @@ self.addEventListener("fetch", function (ev) {
   if (req.mode === "navigate" || (req.headers.get("Accept") || "").indexOf("text/html") >= 0) {
     var key = cleanKey(req.url);
     ev.respondWith(Promise.race([fetch(req), timeout(4000)]).then(function (resp) {
-      if (resp.ok && resp.type === "basic") { var copy = resp.clone(); caches.open(VERSION).then(function (c) { c.put(key, copy); }); }
-      flush();
+      // Login-Seite nie als Offline-Fassung einer Inhaltsseite speichern
+      var login = isLoginPage(resp) || url.pathname === "/login" || url.pathname === "/einrichten";
+      if (resp.ok && resp.type === "basic" && !login) { var copy = resp.clone(); caches.open(VERSION).then(function (c) { c.put(key, copy); }); }
+      if (!login) flush();
       return resp;
     }).catch(function () {
       return caches.match(key).then(function (hit) { return hit || caches.match("/offline"); });

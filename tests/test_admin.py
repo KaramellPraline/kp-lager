@@ -12,8 +12,8 @@ def test_admin_tab_lists_all_prefixes(client: TestClient) -> None:
     page = client.get("/settings/admin").text
     for p in ("RAU", "REG", "WBA", "TBX", "EUR", "KIS", "SOR", "BIN", "PPE", "ART"):
         assert f"<b>{p}</b> · " in page
-    assert 'href="/settings/admin" class="active"' in page
-    assert 'href="/settings/admin"' in client.get("/settings").text
+    assert 'href="/settings/system" class="active"' in page  # Admin heißt seit 2.0 System
+    assert 'href="/settings/system"' in client.get("/settings").text
 
 
 def test_set_next_number_and_guard_against_used(client: TestClient) -> None:
