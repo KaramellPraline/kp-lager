@@ -32,7 +32,7 @@ class Type:
     key: str
     group: str
     label: str
-    cat: str  # Code-Präfix (CNS, CMP, TOL, RAW, ART)
+    cat: str  # Code-Präfix (CNS, CMP, TOL, PWT, RAW, ART)
     fields: tuple[Field, ...]
     parts: tuple[
         tuple[str, ...], ...
@@ -83,15 +83,15 @@ LENGTH = "4|5|6|8|10|12|16|20|25|30|35|40|50|60"
 # Gliederung: Bereich › Gruppe › Typ. Die Reihenfolge hier ist die Anzeige-Reihenfolge; die
 # Reihenfolge in TYPES bleibt fest (bei Gleichstand gewinnt in `guess` der frühere Typ).
 AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("Befestigung", ("Schrauben & Muttern", "Dübel, Nieten & Stifte", "Schellen, Haken & Beschläge")),
+    ("Befestigung", ("Schrauben & Muttern", "Dübel, Nieten & Stifte", "Nägel, Anker & Holzverbinder", "Schellen, Haken & Beschläge")),
     ("Mechanik & Antrieb", ("Lager & Führung", "Antrieb & Bewegung", "Federn, Dichtungen & Pneumatik", "Profile & Magnete")),
     ("Elektronik", ("Bauteile", "Module & Boards", "Prototyping & Gehäuse")),
     ("Elektrik & Strom", ("Kabel & Leitungen", "Verbinden & Installation", "Akkus & Netzteile")),
-    ("Werkzeug & Messen", ("Handwerkzeug", "Bohren, Fräsen & Sägen", "Schleifen & Trennen", "Messen & Sets")),
+    ("Werkzeug & Messen", ("Handwerkzeug", "Elektrowerkzeug", "Bohren, Fräsen & Sägen", "Schleifen & Trennen", "Spannen & Halten", "Messen & Sets", "Arbeitshilfen & Aufbewahrung")),
     ("3D-Druck & Laser", ("Filament & Harz", "Druckerteile", "Laser", "Ordnung & Etiketten")),
-    ("Material & Chemie", ("Holz, Metall & Kunststoff", "Kleben & Dichten", "Löten, Schmieren & Reinigen", "Farbe & Oberfläche")),
+    ("Material & Chemie", ("Holz, Metall & Kunststoff", "Platten, Leisten & Bauchemie", "Kleben & Dichten", "Löten, Schmieren & Reinigen", "Farbe & Oberfläche")),
     ("Netzwerk & IT", ("Netzwerk", "Computer & Speicher")),
-    ("Haus & Schutz", ("Schutzausrüstung", "Sicherheit & Erste Hilfe", "Haushalt, Licht & Sonstiges")),
+    ("Haus & Schutz", ("Sanitär & Wasser", "Schutzausrüstung", "Sicherheit & Erste Hilfe", "Haushalt, Licht & Sonstiges")),
 )  # fmt: skip
 GROUPS: tuple[str, ...] = tuple(g for _a, gs in AREAS for g in gs)
 AREA_OF: dict[str, str] = {g: a for a, gs in AREAS for g in gs}
@@ -1835,6 +1835,297 @@ TYPES_2_0: tuple[Type, ...] = (
         extras="basis",
     ),
 )
+
+# 2.1: Heim-DIY / Baubedarf und Elektrowerkzeug (Kategorie PWT)
+_PWT_BRANDS = (
+    "Bosch|Bosch Professional|Makita|DeWalt|Metabo|Milwaukee|Festool|Einhell|Parkside|Ryobi|"
+    "Hikoki|AEG|Black+Decker|Worx|Dremel|Fein|Proxxon|Würth|Kärcher|Stanley"
+)
+_PWT_SYSTEMS = (
+    "Bosch 18V (PBA / ProCORE)|Bosch 12V|Makita LXT 18V|Makita CXT 12V|Makita XGT 40V|"
+    "DeWalt XR 18V|Milwaukee M18|Milwaukee M12|Metabo CAS 18V|Einhell Power X-Change|"
+    "Parkside X20V|Ryobi ONE+|Festool 18V|AEG 18V|Hikoki MultiVolt 36V|Worx PowerShare"
+)
+_PWT_DEVICE = (
+    F("serial", "Seriennummer", extra=True),
+    F("bought", "Kaufdatum", hint="JJJJ-MM-TT", extra=True),
+    F("warranty", "Garantie bis", hint="JJJJ-MM-TT", extra=True),
+)
+TYPES_2_1: tuple[Type, ...] = (
+    # Befestigung
+    Type(
+        "nagel", "Nägel, Anker & Holzverbinder", "Nagel / Stift", "CNS",
+        (
+            F("kind", "Art", "Drahtstift|Senkkopfnagel|Stauchkopfnagel|Breitkopfstift|Dachpappnagel|"
+              "Rillennagel|Schraubnagel|Polsternagel|Stahlnagel|Bildernagel|Hakennagel"),
+            F("dia", "Durchmesser", "1.2|1.4|1.6|1.8|2|2.2|2.5|2.8|3.1|3.4|3.8|4.2", "mm", row="m"),
+            F("length", "Länge", "16|20|25|30|35|40|50|60|70|80|100|120", "mm", row="m"),
+            F("material", "Material", "Stahl blank|Stahl verzinkt|Edelstahl|Kupfer|Messing"),
+        ),
+        (("{kind}",), ("{dia}x{length}", "{length}mm")),
+        extras="kleinteile",
+    ),
+    Type(
+        "klammer", "Nägel, Anker & Holzverbinder", "Tackerklammer / Brad-Nagel", "CNS",
+        (
+            F("kind", "Art", "Tackerklammer|Flachdrahtklammer|Rundklammer|Kabelklammer|Brad-Nagel|"
+              "Stauchkopfnagel (Nagler)|Wellennagel"),
+            F("series", "Typ / Serie", "Typ 53|Typ 140|Typ 57|Typ 80|Typ 47|Typ 36|Typ 10|SK 300"),
+            F("length", "Länge", "4|6|8|10|12|14|16|18|25|30|40|50", "mm"),
+            F("material", "Material", "Stahl verzinkt|Edelstahl|Kupfer", extra=True),
+        ),
+        (("{kind}",), ("{series}",), ("{length}mm",)),
+        extras="kleinteile",
+    ),
+    Type(
+        "anker", "Nägel, Anker & Holzverbinder", "Schwerlastanker / Betonschraube", "CNS",
+        (
+            F("kind", "Art", "Bolzenanker|Schwerlastanker|Hülsenanker|Injektionsanker|"
+              "Ankerstange (Injektion)|Betonschraube|Stockschraube|Deckenanker|Gerüstanker|"
+              "Kippdübel|Metall-Hohlraumdübel|Gipskartondübel|Porenbetondübel"),
+            F("thread", "Gewinde / Ø", "M6|M8|M10|M12|M16|6|7.5|8|10|12", row="m"),
+            F("length", "Länge", "40|50|60|75|80|100|120|140|160|200|260", "mm", row="m"),
+            F("base", "Untergrund", "Beton|Mauerwerk|Lochstein|Porenbeton|Gipskarton|Holz|Universal"),
+        ),
+        (("{kind}",), ("{thread}x{length}", "{thread}")),
+        extras="kleinteile",
+    ),
+    Type(
+        "holzverbinder", "Nägel, Anker & Holzverbinder", "Holzverbinder / Balkenschuh", "CNS",
+        (
+            F("kind", "Art", "Winkelverbinder|Schwerlastwinkel|Balkenschuh|Lochplatte|Lochband|"
+              "Flachverbinder|Pfostenträger|Pfostenanker H|Einschlaghülse|Sparrenpfettenanker|"
+              "Stuhlwinkel|Knotenblech|Nagelplatte|Montagewinkel|Zaunanker"),
+            F("size", "Maße", "40x40x40|60x60x40|70x70x55|90x90x40|105x105x90|100x40|140x55|"
+              "180x40|60x100|80x120|100x140|120x160|71x71|91x91", "mm"),
+            F("thickness", "Blechstärke", "1.5|2|2.5|3|4|5", "mm", extra=True),
+            F("material", "Material", "Stahl verzinkt|Feuerverzinkt|Edelstahl|Schwarz pulverbeschichtet"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="kleinteile",
+    ),
+    Type(
+        "moebelbeschlag", "Schellen, Haken & Beschläge", "Möbelbeschlag / Verbinder", "CNS",
+        (
+            F("kind", "Art", "Schubladenschiene Vollauszug|Schubladenschiene Teilauszug|Möbelgriff|"
+              "Möbelknopf|Bodenträger|Magnetschnäpper|Druckschnäpper (Push-to-open)|Rampa-Muffe|"
+              "Einschlagmutter|Exzenter-Verbinder|Verbindungsschraube|Möbelfuß|Stellfuß|"
+              "Klappenhalter|Möbelscharnier|Schlossbeschlag|Lamello / Flachdübel"),
+            F("size", "Größe / Länge / Gewinde", "M4|M5|M6|M8|5 mm|128 mm|160 mm|250 mm|300 mm|"
+              "350 mm|400 mm|450 mm|500 mm|550 mm|Nr. 0|Nr. 10|Nr. 20"),
+            F("material", "Material", "Stahl verzinkt|Edelstahl|Messing|Aluminium|Zink-Druckguss|"
+              "Kunststoff|Holz"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="kleinteile",
+    ),
+    Type(
+        "seil", "Schellen, Haken & Beschläge", "Seil / Kette / Gurt", "CNS",
+        (
+            F("kind", "Art", "Drahtseil|Kette (Rundstahl)|Paracord|Polyesterseil|Polypropylenseil|"
+              "Spanngurt|Ratschengurt|Expander|Spannschloss|Seilklemme|Kausche|Schäkel|"
+              "Kettenschnellglied|Seilrolle"),
+            F("dia", "Ø / Breite", "2|3|4|5|6|8|10|12|25|35|50", "mm"),
+            F("length", "Länge", "1|2|3|5|10|15|20|30|50", "m"),
+            F("wll", "Tragfähigkeit", "", "kg", extra=True),
+        ),
+        (("{kind}",), ("Ø{dia}",), ("{length}m",)),
+        extras="mechanik",
+    ),
+    # Elektrik
+    Type(
+        "installationsleitung", "Kabel & Leitungen", "Leitung (NYM, Litze, Meterware)", "CNS",
+        (
+            F("kind", "Art", "NYM-J|NYM-O|H07V-K (Aderleitung)|H07V-U (Draht)|H05VV-F (Schlauchleitung)|"
+              "H07RN-F (Gummi)|NYY-J (Erdkabel)|LiYY (Steuerleitung)|LiYCY (geschirmt)|"
+              "Lautsprecherkabel|Klingeldraht|Silikonlitze|Flachbandkabel|Telefonkabel J-Y(St)Y"),
+            F("cores", "Adern", "1|2|3|4|5|7|12", row="q"),
+            F("section", "Querschnitt", "0.14|0.25|0.5|0.75|1|1.5|2.5|4|6|10|16", "mm²", row="q"),
+            F("length", "Länge", "1|5|10|25|50|100", "m"),
+        ),
+        (("{kind}",), ("{cores}x{section}", "{section}mm²"), ("{length}m",)),
+        extras="elektrik",
+    ),
+    # Werkzeug
+    Type(
+        "hammer", "Handwerkzeug", "Hammer / Meißel / Körner", "TOL",
+        (
+            F("kind", "Art", "Schlosserhammer|Klauenhammer|Fäustel|Gummihammer|Schonhammer|"
+              "Kunststoffhammer|Vorschlaghammer|Latthammer|Fliesenlegerhammer|Körner|Durchschlag|"
+              "Splinttreiber|Flachmeißel|Spitzmeißel|Nageleisen|Kuhfuß"),
+            F("weight", "Gewicht / Länge", "100|200|300|500|800|1000|1250|1500|3000|5000", "g"),
+        ),
+        (("{kind}",), ("{weight}g",)),
+        extras="werkzeug",
+    ),
+    Type(
+        "schluessel", "Handwerkzeug", "Schraubenschlüssel / Ratsche", "TOL",
+        (
+            F("kind", "Art", "Gabelschlüssel|Ringschlüssel|Ringmaulschlüssel|Ratschenringschlüssel|"
+              "Rollgabelschlüssel|Knarre / Ratsche|Drehmomentschlüssel|Steckschlüsselsatz|"
+              "Innensechskantschlüssel|Torx-Winkelschlüssel|Rohrzange|Ölfilterschlüssel|"
+              "Schlüsselsatz"),
+            F("sw", "Schlüsselweite", "5.5|7|8|10|11|13|14|15|17|19|22|24|27|30|32", "mm"),
+            F("drive", "Antrieb", "1/4 Zoll|3/8 Zoll|1/2 Zoll|3/4 Zoll"),
+            F("torque", "Drehmomentbereich", hint="z. B. 5-60", unit="Nm", extra=True),
+        ),
+        (("{kind}",), ("SW{sw}",), ("{drive}",)),
+        extras="werkzeug",
+    ),
+    Type(
+        "elektrowerkzeug", "Elektrowerkzeug", "Elektrowerkzeug / Maschine", "PWT",
+        (
+            F("kind", "Art", "Akkuschrauber|Bohrschrauber|Schlagbohrschrauber|Schlagschrauber|"
+              "Bohrhammer|Schlagbohrmaschine|Winkelschleifer|Stichsäge|Handkreissäge|Tauchsäge|"
+              "Kapp- und Gehrungssäge|Säbelsäge|Multitool (oszillierend)|Exzenterschleifer|"
+              "Schwingschleifer|Deltaschleifer|Bandschleifer|Oberfräse|Kantenfräse|Elektrohobel|"
+              "Heißluftgebläse|Lötstation|Multifunktionswerkzeug (Dremel)|Elektrotacker|Nagler|"
+              "Heißklebepistole|Kartuschenpistole|Rührwerk|Kompressor|Werkstattsauger|"
+              "Akku-Arbeitsleuchte|Baustrahler|Tischkreissäge|Standbohrmaschine|Bandsäge|"
+              "Dekupiersäge|Doppelschleifer|Schweißgerät|Hochdruckreiniger"),
+            F("brand", "Hersteller", _PWT_BRANDS),
+            F("model", "Modell / Typ", hint="z. B. GSR 18V-55"),
+            F("power", "Antrieb", "Akku|230 V Netz|Druckluft|Benzin", row="p"),
+            F("volt", "Spannung", "10.8|12|18|20|36|40|230", "V", row="p"),
+            F("system", "Akkusystem", _PWT_SYSTEMS),
+            F("watt", "Leistung", "", "W", extra=True),
+            F("scope", "Lieferumfang", "Solo (ohne Akku)|mit 1 Akku|mit 2 Akkus|im Koffer|"
+              "L-Boxx|Systainer|MAKPAC|TSTAK", extra=True),
+            *_PWT_DEVICE,
+        ),
+        (("{kind}",), ("{brand}",), ("{model}",)),
+        material="pwt",
+        single=True,
+        extras="basis",
+    ),
+    Type(
+        "messgeraet", "Messen & Sets", "Messgerät (elektrisch / Laser)", "PWT",
+        (
+            F("kind", "Art", "Multimeter|Stromzange|Spannungsprüfer (zweipolig)|Phasenprüfer|"
+              "Steckdosentester|Leitungssucher / Ortungsgerät|Linienlaser|Kreuzlinienlaser|"
+              "Rotationslaser|Laser-Entfernungsmesser|Feuchtemessgerät|Infrarot-Thermometer|"
+              "Wärmebildkamera|Oszilloskop|Labornetzgerät|Netzwerktester|Isolationsmessgerät|"
+              "Endoskopkamera|Schallpegelmesser|Digitale Wasserwaage|Digitale Waage"),
+            F("brand", "Hersteller", _PWT_BRANDS + "|Fluke|Uni-T|Benning|Brennenstuhl|Testo|"
+              "Rigol|Owon|Peaktech"),
+            F("model", "Modell / Typ"),
+            F("power", "Versorgung", "Batterie|Akku|230 V Netz|USB"),
+            F("calib", "Nächste Kalibrierung / Prüfung", hint="JJJJ-MM", extra=True),
+            *_PWT_DEVICE,
+        ),
+        (("{kind}",), ("{brand}",), ("{model}",)),
+        material="pwt",
+        single=True,
+        extras="basis",
+    ),
+    Type(
+        "spannen", "Spannen & Halten", "Zwinge / Schraubstock / Spanner", "TOL",
+        (
+            F("kind", "Art", "Schraubzwinge|Einhandzwinge|Federzwinge|Korpuszwinge|Rohrzwinge|"
+              "Winkelspanner|Kniehebelspanner|Bandzwinge|Gehrungsspanner|Schraubstock|"
+              "Maschinenschraubstock|Bankhaken|Saugheber|Magnethalter|Montagehilfe (Türfutter)"),
+            F("span", "Spannweite / Backenbreite", "100|150|200|300|400|500|600|800|1000|1250", "mm",
+              row="s"),
+            F("depth", "Ausladung", "50|60|80|100|120|150", "mm", row="s"),
+        ),
+        (("{kind}",), ("{span}x{depth}", "{span}mm")),
+        extras="werkzeug",
+    ),
+    Type(
+        "arbeitshilfe", "Arbeitshilfen & Aufbewahrung", "Leiter / Bock / Koffer / Eimer", "TOL",
+        (
+            F("kind", "Art", "Stehleiter|Anlegeleiter|Mehrzweckleiter|Tritt / Hocker|Arbeitsbock|"
+              "Unterstellbock|Klappwerkbank|Sägebock|Sackkarre|Plattenträger|Eimer|Mörtelkübel|"
+              "Rührquirl|Werkzeugkoffer|Werkzeugtasche|Werkzeuggürtel|Sortimentskasten|"
+              "Systemkoffer (L-Boxx / Systainer)|Magnetleiste|Knieschoner|Stirnlampe|Arbeitsleuchte"),
+            F("size", "Größe", "2 Stufen|3 Stufen|4 Stufen|5 Stufen|6 Stufen|3x6 Sprossen|"
+              "3x8 Sprossen|12 l|20 l|40 l|65 l|90 l|S|M|L|XL"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="werkzeug",
+    ),
+    # Material & Chemie
+    Type(
+        "platte", "Platten, Leisten & Bauchemie", "Plattenwerkstoff", "RAW",
+        (
+            F("kind", "Art", "OSB/3|Spanplatte|Spanplatte beschichtet|MDF|HDF|Multiplex Birke|"
+              "Siebdruckplatte|Sperrholz|Tischlerplatte|Leimholz|Hartfaserplatte|Gipskarton|"
+              "Gipskarton imprägniert|Gipsfaser|Zementbauplatte|Hartschaumplatte (XPS)|Lochplatte"),
+            F("thickness", "Stärke", "3|4|6|8|9.5|10|12|12.5|15|16|18|19|21|22|25|30|40", "mm"),
+            F("size", "Format", "600x300|800x400|1200x600|1250x625|2000x600|2500x1250|2600x1250|"
+              "2800x2070", "mm"),
+        ),
+        (("{kind}",), ("{thickness}mm",), ("{size}",)),
+        extras="material",
+    ),
+    Type(
+        "leiste", "Platten, Leisten & Bauchemie", "Kantholz / Latte / Leiste", "RAW",
+        (
+            F("kind", "Art", "Kantholz|Dachlatte|Konstruktionsvollholz (KVH)|Rahmenholz|Leiste|"
+              "Rundstab|Quadratleiste|Winkelleiste|Abschlussleiste|Sockelleiste|Profilholz|"
+              "Rhombusleiste|Terrassendiele"),
+            F("section", "Querschnitt", "10x10|15x15|20x20|24x48|30x50|38x58|40x60|45x70|60x80|"
+              "80x80|100x100|Ø6|Ø8|Ø10|Ø12|Ø20", "mm"),
+            F("length", "Länge", "0.5|1|2|2.4|3|4|5", "m"),
+            F("material", "Holzart / Material", "Kiefer|Fichte|Buche|Eiche|Lärche|Douglasie|"
+              "Meranti|Ramin|MDF|WPC|Kunststoff|Aluminium"),
+        ),
+        (("{kind}",), ("{section}",), ("{length}m",)),
+        extras="material",
+    ),
+    Type(
+        "bauchemie", "Platten, Leisten & Bauchemie", "Bauschaum / Mörtel / Grundierung", "CNS",
+        (
+            F("kind", "Art", "Bauschaum (PU)|Pistolenschaum|Brandschutzschaum|Fliesenkleber|"
+              "Fugenmörtel|Zement|Mauermörtel|Schnellzement|Estrich|Reparaturmörtel|Ausgleichsmasse|"
+              "Gips|Spachtelmasse (Wand)|Tiefengrund|Haftgrund|Sperrgrund|Silikonentferner|"
+              "Montageschaum-Reiniger"),
+            F("amount", "Gebinde", "300 ml|500 ml|750 ml|1 kg|2 kg|5 kg|10 kg|25 kg|1 l|5 l|10 l"),
+        ),
+        (("{kind}",), ("{amount}",)),
+        extras="verbrauch",
+    ),
+    Type(
+        "dichtband", "Kleben & Dichten", "Gewinde- / Fugendichtung", "CNS",
+        (
+            F("kind", "Art", "Teflonband (PTFE)|Dichthanf|Gewindedichtpaste|Gewindedichtfaden|"
+              "Kompriband|Fensterdichtband|Türdichtung|Gummiprofil|Butylband|Bitumenband|"
+              "Dichtschnur|Dichtmanschette"),
+            F("width", "Breite / Größe", "6|9|12|15|19|20|25|50|75|100", "mm"),
+        ),
+        (("{kind}",), ("{width}mm",)),
+        extras="verbrauch",
+    ),
+    Type(
+        "malerbedarf", "Farbe & Oberfläche", "Maler- & Abdeckbedarf", "CNS",
+        (
+            F("kind", "Art", "Abdeckfolie|Abdeckvlies|Malerfolie mit Klebeband|Abdeckpapier|"
+              "Kantenschutz|Farbwanne|Abstreifgitter|Teleskopstange|Rührstab|Spachtel (Werkzeug)|"
+              "Glättkelle|Zahnkelle|Fugenglätter|Kartuschenpistole|Tapezierbürste"),
+            F("size", "Größe", "4x5 m|2.6x25 m|1x25 m|0.55x33 m|50 m²|250 mm|10 l|1-2 m|60 mm|"
+              "100 mm|280 mm"),
+        ),
+        (("{kind}",), ("{size}",)),
+        extras="verbrauch",
+    ),
+    # Haus
+    Type(
+        "sanitaer", "Sanitär & Wasser", "Sanitär-Fitting / Ventil", "CNS",
+        (
+            F("kind", "Art", "Muffe|Winkel 90°|Winkel 45°|T-Stück|Reduzierung|Doppelnippel|"
+              "Verschlusskappe|Stopfen|Übergangsverschraubung|Kugelhahn|Eckventil|Absperrventil|"
+              "Rückschlagventil|Flexschlauch|Siphon|HT-Rohr|HT-Bogen|Abzweig HT|Gummidichtung"),
+            F("size", "Größe", "1/4 Zoll|3/8 Zoll|1/2 Zoll|3/4 Zoll|1 Zoll|10 mm|12 mm|15 mm|18 mm|"
+              "22 mm|28 mm|DN32|DN40|DN50|DN70|DN100"),
+            F("conn", "Anschluss", "Innengewinde|Außengewinde|IG x AG|Pressfitting|Klemmring|"
+              "Lötfitting|Steckfitting|Klebemuffe|Steckmuffe (HT)"),
+            F("material", "Material", "Messing|Messing vernickelt|Rotguss|Edelstahl|Kupfer|PVC|"
+              "PP (HT)|PE|Verbundrohr"),
+        ),
+        (("{kind}",), ("{size}",), ("{conn}",)),
+        extras="mechanik",
+    ),
+)
 # fmt: on
 
 # --- Optionale Zusatzfelder (eingeklappt unter „Weitere Angaben“) ---------------------------
@@ -1940,7 +2231,7 @@ def _with_extras(types: tuple[Type, ...]) -> tuple[Type, ...]:
 # Bisherige Typen bewerten in `guess` wie bisher (kurze Werte dürfen mehrfach zählen); neue Typen
 # zählen jeden kurzen Wert nur einmal, damit z. B. „5-polig“ keine Maß-Felder doppelt trifft.
 _LEGACY_KEYS = frozenset(t.key for t in TYPES)
-TYPES = _with_extras(TYPES + TYPES_2_0)
+TYPES = _with_extras(TYPES + TYPES_2_0 + TYPES_2_1)
 
 
 BY_KEY = {t.key: t for t in TYPES}

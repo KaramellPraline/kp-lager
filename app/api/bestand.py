@@ -22,6 +22,7 @@ from app import (
     scheduler,
     search,
     sortiment,
+    typesettings,
     value,
     withdrawals,
 )
@@ -42,6 +43,30 @@ class NewTyped(BaseModel):
     unit: str = ""
     count: int = 1  # Kabel/Netzteile: so viele Einzelstücke
     specs: dict[str, str] = {}  # Schlüssel siehe GET /schema (fields je Kategorie)
+
+
+class CatalogNew(BaseModel):
+    """Teil nach Katalog-Typ anlegen - wie der Hinzufügen-Tab (/neu)."""
+
+    type: str  # Typ-Schlüssel aus GET /types/catalog, z. B. "mutter", "schraube"
+    fields: dict[str, str] = {}  # Feld-Schlüssel des Typs -> Wert (Auswahlwerte bevorzugt)
+    container: str = ""  # Code oder ID; leer = "Zu sortieren"
+    qty: int | None = None  # Menge (bei Einzelstück-Typen: Anzahl Stück)
+    count: int = 1  # Einzelstück-Typen: so viele Teile mit eigenem Etikett
+    series_field: str = ""  # Reihe: dieses Feld nimmt nacheinander jeden Wert aus `series`
+    series: list[str] = []  # z. B. series_field="length", series=["10","12","16"]
+    on_duplicate: str = "ask"  # ask = nichts anlegen und melden | add = Menge erhöhen | new
+    dry_run: bool = False  # nur Name/Dubletten prüfen, nichts schreiben
+    label: bool = True  # False = Fachinhalt ohne eigenes Etikett/Code
+    queue_labels: bool | None = None  # None = wie Druckmodus; True/False erzwingen
+    name: str = ""  # eigener Anzeigename statt Vorlage (nicht bei Reihen)
+    unit: str = ""
+    min_qty: int | None = None
+    price: str = ""  # Stückpreis in Euro, z. B. "0,12"
+    notes: str = ""
+    tags: str = ""  # zusätzliche Suchbegriffe
+    model: str = ""
+    order_url: str = ""
 
 
 class BulkBody(BaseModel):
@@ -181,6 +206,29 @@ def register(router: APIRouter) -> None:
             raise HTTPException(400, str(exc)) from None
         return [item_json(conn, repo.get_item(conn, i)) for i in ids]
 
+    @router.post("/items/catalog", dependencies=[Write])
+    def add_catalog(conn: Conn, body: CatalogNew) -> dict[str, Any]:
+        """Teil(e) nach Katalog-Typ anlegen (Name aus Vorlage, Pflichtfelder, Reihe, Dubletten)."""
+        target = find_node(conn, body.container)["id"] if body.container else repo.inbox(conn)
+        extra = {
+            "name": body.name, "unit": body.unit, "notes": body.notes, "tags": body.tags,
+            "model": body.model, "order_url": body.order_url, "price": body.price,
+            "min_qty": "" if body.min_qty is None else str(body.min_qty),
+        }  # fmt: skip
+        extra = {k: v for k, v in extra.items() if v}
+        try:
+            res = creation.add_from_catalog(
+                conn, body.type, body.fields, target, body.qty, body.count, body.series_field,
+                body.series, body.on_duplicate, body.dry_run, extra or None, body.label,
+                body.queue_labels,
+            )  # fmt: skip
+        except LagerError as exc:
+            raise bad(exc) from None
+        res["container"] = repo.path_label(conn, target)
+        for key in ("created", "updated"):
+            res[key] = [item_detail(conn, repo.get_item(conn, i)) for i in res[key]]
+        return res
+
     @router.post("/bulk", dependencies=[Write])
     def bulk_apply(conn: Conn, body: BulkBody) -> dict[str, str]:
         target = str(find_node(conn, body.container)["id"]) if body.container else ""
@@ -226,16 +274,30 @@ def register(router: APIRouter) -> None:
 
     @router.get("/types/catalog")
     def catalog_types(conn: Conn) -> list[dict[str, Any]]:
-        """Alle Typen (Katalog + eigene) mit Feldern und Auswahlwerten, plus Anzahl Teile."""
+        """Alle Typen (Katalog + eigene) mit Feldern und Auswahlwerten, plus Anzahl Teile.
+
+        Wie im Hinzufügen-Tab: Bereich > Gruppe > Typ; je Feld Pflicht/optional/„Weitere Angaben“
+        (`extra`), Einheit, Hinweis und Auswahlwerte (freie Werte sind erlaubt); `template` ist die
+        Namensvorlage, `single` = jedes Stück eigenes Teil mit Etikett.
+        Anlegen: POST /items/catalog."""
         n = sortiment.counts(conn)
-        return [
-            {"key": t.key, "label": t.label, "group": g, "area": catalog.area_of(t),
-             "category": t.cat,
-             "items": n.get(t.key, 0),
-             "fields": [{"key": f.key, "label": f.label, "unit": f.unit, "options": list(f.options)}
-                        for f in t.fields]}
-            for g, ts in catalog.grouped(conn) if g != catalog.FAVORITES for t in ts
-        ]  # fmt: skip
+        out = []
+        for g, ts in catalog.grouped(conn):
+            if g == catalog.FAVORITES:
+                continue
+            for t in ts:
+                req = typesettings.required_keys(conn, t.key)
+                out.append({
+                    "key": t.key, "label": t.label, "group": g, "area": catalog.area_of(t),
+                    "category": t.cat, "single": t.single, "profile": catalog.profile_of(t),
+                    "template": " ".join(a[0] for a in t.parts if a),
+                    "items": n.get(t.key, 0),
+                    "fields": [{"key": f.key, "label": f.label, "unit": f.unit, "hint": f.hint,
+                                "required": f.key in req, "extra": f.extra,
+                                "options": list(catalog.options_for(conn, f, t))}
+                               for f in t.fields],
+                })  # fmt: skip
+        return out
 
     @router.get("/types/catalog/{key}/items")
     def type_items(conn: Conn, key: str) -> list[dict[str, Any]]:

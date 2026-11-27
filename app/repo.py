@@ -9,7 +9,7 @@ Row = sqlite3.Row
 # Gültige Arten; füllt app/kinds (feste + eigene, zur Laufzeit aktuell)
 KINDS: list[str] = []
 # Einzelstücke (Kabel, Netzteile): keine Menge, jedes Stück bekommt ein eigenes Etikett
-INDIVIDUAL = ("CBL", "PSU")
+INDIVIDUAL = ("CBL", "PSU", "PWT")
 METER_UNITS = ("m", "cm", "meter")  # Meterware zählt in Metern, nicht in Stück
 
 

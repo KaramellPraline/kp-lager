@@ -69,6 +69,10 @@ class LagerClient:
             self._schema = (time.monotonic(), dict(self._call("GET", "/schema")))
         return self._schema[1]
 
+    def catalog(self) -> list[dict[str, Any]]:
+        """Katalog-Typen wie im Hinzufügen-Tab (Bereich, Gruppe, Felder, Auswahlwerte)."""
+        return list(self._call("GET", "/types/catalog"))
+
     def shopping(self) -> dict[str, Any]:
         return dict(self._call("GET", "/shopping"))
 
@@ -89,6 +93,11 @@ class LagerClient:
         body = {"container": container, "name": name, "cat": cat.upper(), "qty": qty, "unit": unit,
                 "count": count, "specs": specs or {}}  # fmt: skip
         return list(self._call("POST", "/items/new", json=body))
+
+    def add_catalog(self, type_key: str, **body: Any) -> dict[str, Any]:
+        """Teil(e) nach Katalog-Typ anlegen (POST /items/catalog), Felder siehe catalog()."""
+        payload = {"type": type_key, **{k: v for k, v in body.items() if v is not None}}
+        return dict(self._call("POST", "/items/catalog", json=payload))
 
     def bulk(self, refs: list[str], action: str, value: str = "", container: str = "") -> str:
         body = {"refs": refs, "action": action, "value": value, "container": container}

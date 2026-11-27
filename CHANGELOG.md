@@ -3,6 +3,35 @@
 Format: je Version ein Abschnitt `## [x.y.z] – Datum`. Der Abschnitt der Release-Version wird als
 Text des GitHub-Releases übernommen (`tools/release.py notes`).
 
+## [2.1.0] - 2026-11-27
+
+Heim-DIY-Ausbau des Katalogs, neue Kategorie Elektrowerkzeug und Anlegen nach Typ über API und MCP
+(z. B. per Diktat in einem KI-Chat) - mit denselben Regeln wie der Hinzufügen-Tab.
+
+**Vor dem Update:** Backup erstellen. Keine Migration; bestehende Teile, Codes und Typen bleiben unverändert.
+
+### Neu
+- **API `POST /api/v1/items/catalog`:** Teil nach Katalog-Typ anlegen (`type`, `fields`, `container`, `qty`). Name aus der
+  Namensvorlage, Pflichtfelder, Reihe (`series_field` + `series`), Einzelstück-Typen (`count`), Etikett-Warteschlange nach
+  Druckmodus, Stammdaten (Preis, Mindestbestand, Notizen, Suchbegriffe). Dubletten wie im Formular: `on_duplicate`
+  `ask` (Standard, nichts anlegen und melden) · `add` (Menge beim vorhandenen Teil erhöhen) · `new`; `dry_run` zeigt nur Namen
+  und Dubletten.
+- `GET /api/v1/types/catalog` liefert zusätzlich je Feld `required`, `extra` („Weitere Angaben“), `hint`, gelernte
+  Hersteller als Auswahl, je Typ `template` (Namensvorlage), `single` und `profile`.
+- **MCP ohne neue Werkzeuge:** `get_schema()` enthält den Katalog (Bereich > Gruppe > Typ), `get_schema(typ)` alle Felder eines
+  Typs; `add_item(typ=…, fields=…)` legt nach Typ an (freier Name mit `cat` bleibt als Rückfall).
+- **Kategorie Elektrowerkzeug (`PWT`)**: Einzelstück je Gerät mit eigenem Etikett, Datenblatt mit Hersteller, Modell,
+  Antrieb, Akkusystem, Spannung, Leistung, Lieferumfang, Seriennummer, Kaufdatum und Garantie.
+- **19 neue Typen (136 gesamt)** in 7 neuen Gruppen:
+  - Befestigung › *Nägel, Anker & Holzverbinder*: Nagel/Stift, Tackerklammer/Brad-Nagel, Schwerlastanker/Betonschraube,
+    Holzverbinder/Balkenschuh; › Schellen, Haken & Beschläge: Möbelbeschlag/Verbinder, Seil/Kette/Gurt
+  - Elektrik › Kabel & Leitungen: Leitung (NYM, Litze, Meterware) mit Adern × Querschnitt
+  - Werkzeug & Messen: Hammer/Meißel, Schraubenschlüssel/Ratsche; *Elektrowerkzeug*; Messgerät (elektrisch/Laser, PWT);
+    *Spannen & Halten* (Zwingen, Schraubstock); *Arbeitshilfen & Aufbewahrung* (Leiter, Bock, Koffer, Eimer)
+  - Material & Chemie › *Platten, Leisten & Bauchemie*: Plattenwerkstoff, Kantholz/Latte/Leiste, Bauschaum/Mörtel/Grundierung;
+    Gewinde-/Fugendichtung; Maler- & Abdeckbedarf
+  - Haus & Schutz › *Sanitär & Wasser*: Sanitär-Fitting/Ventil
+
 ## [2.0.0] – 2026-11-15
 
 Vollversion: Betrieb als gehosteter Dienst mit Anmeldung, Anlegen und Bearbeiten über dasselbe Formular,
